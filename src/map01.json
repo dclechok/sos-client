@@ -1,0 +1,33 @@
+{
+  "map01": {
+    "name": "World Map 1",
+    "regions": {
+      "Echo Pillars": {
+        "areas": {
+          "Ash Wastes": {
+            "scenes": {
+              "Siltstorm Crossing": {},
+              "Glassed Flats": {},
+              "Cindered Outpost IX": {}
+            }
+          },
+          "Dead Caravan Trail": {
+            "scenes": {
+              "Burned Freight Tunnel": {},
+              "Convoy Gravebend": {},
+              "Bonepicker’s Cache": {},
+              "Tirefire Rise": {}
+            }
+          },
+          "The Bone Orchard": {
+            "scenes": {
+              "Iron Maw Gate": {},
+              "The Hanging Cross": {},
+              "Echo of Mercy": {}
+            }
+          }
+        }
+      }
+    }
+  }
+}

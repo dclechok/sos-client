@@ -1,0 +1,75 @@
+.App {
+  text-align: center;
+}
+
+.ui-grid {
+  display: flex;
+  justify-content: space-around;
+  gap: 10px;
+  padding: 10px;
+}
+
+.box-container{
+  border-style: solid;
+  border-width: 2px;
+  border-color: rgb(47, 76, 104);
+  background-color: rgb(0, 0, 0);
+}
+
+.main-text{
+  width: 50%;
+  min-height: 600px;
+}
+
+.sys-messages{
+  min-width:23%;
+  min-height: 2%;
+  height: 300px;
+}
+
+.map-overview{
+  min-width: 23%;
+  height: 300px;
+}
+
+.lower-ui-grid{
+  display: flex;
+  justify-content: space-around;
+  gap: 10px;
+  padding: 10px;
+}
+
+.action-bar{
+  width: 40%;
+  min-height: 200px;
+}
+
+.title-bar{
+  background-color: rgb(15, 18, 27);
+  padding: 0;
+  margin: 0;
+  white-space: none;
+  font-family: "Montserrat", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-style: normal;
+  border-color: black;
+  border-width: 1px;
+  border-style: solid;
+  color: rgb(158, 191, 240);
+}
+
+p{
+    padding: 15px;
+    text-align: left;    
+    font-family: "Montserrat", sans-serif;
+    font-optical-sizing: auto;
+    font-weight: 400;
+    font-style: normal;
+    font-size: 11px;
+    color: rgb(255, 255, 255);
+}
+
+.other-chat{
+    color: rgb(79, 190, 166);
+}
