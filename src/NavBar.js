@@ -8,8 +8,8 @@ function NavBar(){
             <button className="nav-item">Stats</button>
             <button className="nav-item">Map</button>
             <button className="nav-item">Inventory</button>
-            <button className="nav-item">Test4</button>
-            <button className="nav-item">Test5</button>
+            <button className="nav-item">Leaderboards</button>
+            <button className="nav-item">Community</button>
             <button className="nav-item">Settings</button>
         </div>
     );
