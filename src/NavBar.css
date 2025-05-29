@@ -14,13 +14,17 @@
   font-optical-sizing: auto;
   font-weight: 400;
   font-style: normal;
+  border-color: black;
+  border-width: 1px;
+  border-style: solid;
 }
 
 .nav-item {
   background-color: rgb(10, 8, 15);
   border-style: solid;
   border-color: rgb(4, 3, 8);
-  color: rgb(142, 175, 224);
+  border-width: 1px;
+  color: rgb(158, 191, 240);
   padding: 0 24px;
   height: 100%;
   display: flex;
@@ -37,3 +41,4 @@
 .nav-item:hover{
     background-color: rgb(28, 31, 56);
 }
+
