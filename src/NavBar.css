@@ -33,3 +33,7 @@
   font-weight: 400;
   font-style: normal;
 }
+
+.nav-item:hover{
+    background-color: rgb(28, 31, 56);
+}
