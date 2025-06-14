@@ -64,5 +64,5 @@ jobs:
         with:
           app-name: 'ProjectDomehead'
           slot-name: 'Production'
-          package: .
+          package: build
           
