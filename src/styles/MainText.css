@@ -1,2 +1,40 @@
+.main-text-span{
+  position: relative;
+  font-family: "Montserrat", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-style: normal;
+  color: rgb(204, 196, 163);
+  font-size: 12px;
+}
 
+.main-text{
+  width: 50%;
+  min-height: 600px;
+}
 
+.scene-info p{
+    padding: 15px;
+    text-align: left;    
+    font-family: "Montserrat", sans-serif;
+    font-optical-sizing: auto;
+    font-weight: 500;
+    font-style: normal;
+    font-size: 11px;
+    color: rgb(255, 255, 255);
+}
+
+.scene-info p.other-chat{
+    color: rgb(114, 125, 218);
+    font-size: 12px;
+}
+
+.main-text-input{
+    position: relative;
+    width: 98%;
+    background-color: rgb(55, 69, 95);
+    border-color: rgb(0, 204, 255);
+    border-width: 1px;
+    border-style: solid;
+    
+}
