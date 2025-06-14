@@ -5,10 +5,12 @@ import NavBar from './NavBar';
 import MainText from './MainText';
 import MapOverview from './MapOverview';
 import SystemMessages from './SystemMessages';
-import SomethingHere from './SomethingHere';
+// import SomethingHere from './SomethingHere';
 import ActionMenu from './ActionMenu';
 
 function App() {
+
+  //test 
   return (
     <div className="App">
      <NavBar />
