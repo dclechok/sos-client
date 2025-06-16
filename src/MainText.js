@@ -1,6 +1,38 @@
 import './styles/MainText.css';
+import { useEffect, useState } from 'react';
+
 
 function MainText(){
+
+    const [sceneData, setSceneData] = useState({});
+
+    useEffect(() => {
+    const socket = new WebSocket('ws://localhost:8080');
+
+    socket.onopen = () => {
+        console.log('Connected to WebSocket');
+    };
+
+    socket.onmessage = async (event) => {
+    const text = await event.data;
+    if (!text) return; // prevent parsing empty string
+
+    try {
+        const data = JSON.parse(text);
+        if (data.type === 'mapData') {
+        setSceneData(data.payload);
+        }
+    } catch (err) {
+        console.error('Invalid JSON received:', text);
+    }
+    };
+
+    return () => socket.close(); // cleanup
+    }, []);
+
+    useEffect(() => {
+        console.log('Scene data updated:', sceneData);
+    }, [sceneData]);
 
     return(
         <div>
@@ -8,7 +40,7 @@ function MainText(){
                 <span className="main-text-span">World · Region · Area · Scene ([0, 0]) - Security: Low</span>
             </div>
             <div className="scene-info">
-                <p>The rain hit the rusted rooftops like static against a dead channel. Neon signs flickered through the smog, casting warped reflections in puddles of oil and blood. Sirens howled somewhere beyond the barricades, their wails swallowed by the thrum of distant turbines and the hiss of steam vents bleeding from fractured infrastructure. In the alleys below, data runners huddled in shadows, masking their neural signatures from patrolling drones. The sky was a grid of surveillance satellites and glitching ad banners — hope had long since been overwritten. Tonight, something shifted in the code of the city. Someone new had entered the Sprawl… and the system was already watching...</p>
+                <p>{sceneData?.map01?.regions?.Tuscan?.newArrivalDesc}</p>
                 <p className="other-chat">Laeik: Get fucked!</p>
                 {/* <input className="main-text-input" /> */}
             </div>

@@ -1,0 +1,11 @@
+.login-box{
+    position: relative;
+    margin: 5% 28% 0 28%;
+    padding: 0;
+    background-color: black;
+    color: rgb(230, 230, 243);
+    min-height: 300px;
+    border-style: solid;
+    border-width: 1px;
+    border-color: rgb(29, 32, 58);
+}
