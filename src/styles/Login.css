@@ -1,4 +1,9 @@
+@import url('https://fonts.googleapis.com/css2?family=Jersey+10&family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');
+
 .login-box{
+    font-family: "Jersey 10", sans-serif;
+    font-weight: 400;
+    font-style: normal;
     position: relative;
     margin: 5% 28% 0 28%;
     padding: 0;
@@ -8,4 +13,26 @@
     border-style: solid;
     border-width: 1px;
     border-color: rgb(29, 32, 58);
+    letter-spacing: 2px;
+}
+
+.login-box button{
+    background-color: rgb(15, 15, 26);
+    color: rgb(187, 69, 223);
+    font-family: "Jersey 10", sans-serif;
+    font-weight: 400;
+    font-style: normal;
+    font-size: 16px;
+    letter-spacing: 1px;
+    margin-bottom: 15px;
+}
+
+.login-box input{
+    background-color: rgb(15, 15, 26);
+    color: rgb(152, 209, 134);
+    font-weight: bold;
+}
+
+.login-box img{
+    width: 40px;
 }

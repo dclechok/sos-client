@@ -13,7 +13,7 @@ import CharacterOverview from './CharacterOverview';
 // import SomethingHere from './SomethingHere';
 
 function App() {
-  const [account, setAccount] = useState(true);
+  const [account, setAccount] = useState(false);
 
   return (
     <div className="App">
