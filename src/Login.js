@@ -5,7 +5,6 @@ function Login(){
     return(
         <div className="login-box">
             <h1>Project Domehead</h1>
-            <h3>Login</h3>
             <div className="inputs">
                 User<br/>   <input /><br/><br/>
                 Password<br/> <input /><br />
