@@ -4,7 +4,8 @@
         "name": "New Player",
         "age": "DateCreated",
         "currentCoords": {"x": 0, "y": 0},
-        "gold": 0,
+        "visited": "0,0",
+        "currency": 0,
         "inventory": [
             "ItemOne", "ItemTwo"
         ]

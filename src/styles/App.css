@@ -1,44 +1,20 @@
 .App {
   text-align: center;
+  overflow-y: auto;
 }
 
-.ui-grid {
-  display: flex;
-  justify-content: space-around;
-  gap: 10px;
-  padding: 10px;
-}
-
-.box-container{
+.main-box-container{
+  position: relative;
+  display: inline-block;
+  min-width: 300px; 
+  max-width: 800px;
+  height: 96dvh;
   border-style: solid;
   border-width: 2px;
-  border-color: rgb(47, 76, 104);
+  border-color: rgb(13, 30, 46);
   background-color: rgb(0, 0, 0);
-}
-
-
-
-.sys-messages{
-  min-width:23%;
-  min-height: 2%;
-  height: 300px;
-}
-
-.map-overview{
-  min-width: 23%;
-  height: 300px;
-}
-
-.lower-ui-grid{
-  display: flex;
-  justify-content: space-around;
-  gap: 10px;
-  padding: 10px;
-}
-
-.action-bar{
-  width: 40%;
-  min-height: 200px;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .title-bar{
@@ -53,6 +29,7 @@
   border-color: black;
   border-width: 1px;
   border-style: solid;
-  color: rgb(158, 191, 240);
+  color: rgb(37, 83, 136);
+  font-size: 12px;
 }
 

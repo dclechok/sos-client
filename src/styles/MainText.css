@@ -1,40 +1,58 @@
-.main-text-span{
-  position: relative;
+.scene-info-cont{
+  height: 33vh;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+.scene-info{
+  padding: 15px;
+  text-align: left;    
   font-family: "Montserrat", sans-serif;
   font-optical-sizing: auto;
   font-weight: 400;
   font-style: normal;
-  color: rgb(204, 196, 163);
-  font-size: 12px;
+  font-size: 11px;
+  color: rgb(255, 255, 255);
+  /* fill most of the box height, minus space for title + input */
+  /* min-height: 30%;
+  max-height: 60%; */
+  display: block;
+  background-color: rgb(15, 15, 26);
+  scrollbar-width: thin;
 }
 
-.main-text{
-  width: 50%;
-  min-height: 600px;
+.scene-info-cont::-webkit-scrollbar {
+  width: 5px;         /* or whatever */
 }
 
-.scene-info p{
-    padding: 15px;
-    text-align: left;    
-    font-family: "Montserrat", sans-serif;
-    font-optical-sizing: auto;
-    font-weight: 500;
-    font-style: normal;
-    font-size: 11px;
-    color: rgb(255, 255, 255);
+.scene-info-cont::-webkit-scrollbar-track{
+  background: #000000; /* Color of the thumb */
+}
+
+.scene-info-cont::-webkit-scrollbar-thumb {
+
+    background-color: rgb(34, 61, 70);
+  border-radius: 5px; /* Rounded corners for the thumb */
 }
 
 .scene-info p.other-chat{
-    color: rgb(114, 125, 218);
+    color: rgb(224, 204, 197);
     font-size: 12px;
 }
 
 .main-text-input{
     position: relative;
-    width: 98%;
-    background-color: rgb(55, 69, 95);
-    border-color: rgb(0, 204, 255);
+    margin-top: 15px;
+    width: 95%;
+    background-color: rgb(19, 21, 26);
+    border-color: rgb(70, 96, 102);
     border-width: 1px;
-    border-style: solid;
-    
+    border-style: solid;   
+    color: rgb(196, 196, 196);
+    outline: none;
+    overflow: hidden;
+}
+
+.time-stamp{
+  color: rgb(102, 129, 141);
+  border-color: black;
 }

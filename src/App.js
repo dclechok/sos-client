@@ -4,10 +4,12 @@ import { useState } from 'react';
 // UI Components
 import Login from './Login';
 import NavBar from './NavBar';
+import MainImg from './MainImg';
 import MainText from './MainText';
 import MapOverview from './MapOverview';
 import SystemMessages from './SystemMessages';
 import ActionMenu from './ActionMenu';
+import CharacterOverview from './CharacterOverview';
 // import SomethingHere from './SomethingHere';
 
 function App() {
@@ -18,13 +20,15 @@ function App() {
       {account ? (
         <>
           <NavBar />
-          <div className="ui-grid">
-            <div className="box-container sys-messages"><SystemMessages /></div>
-            <div className="box-container main-text"><MainText /></div>
-            <div className="box-container map-overview"><MapOverview /></div>
-          </div>
+            {/* <div className="box-container sys-messages"><SystemMessages /></div> */}
+            <div className="main-box-container">
+              <MainImg />
+              <MainText />
+              </div>
+            {/* <div className="box-container map-overview"><MapOverview /></div> */}
+
           <div className="lower-ui-grid">
-            <div className="box-container action-bar"><ActionMenu /></div>
+            {/* <div className="box-container char"><CharacterOverview /></div> */}
           </div>
         </>
       ) : (
