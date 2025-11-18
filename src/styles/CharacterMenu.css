@@ -1,0 +1,48 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&display=swap');
+
+.char-menu-cont{
+  display: flex;
+  flex-direction: column;
+  background-color: rgb(15, 18, 27);
+  padding: 0;
+  margin: 0;
+  font-family: "Orbitron", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 300;
+  font-style: normal;
+  border-color: rgb(36, 37, 46);
+  border-width: 1px;
+  border-style: solid;
+  color: rgb(143, 145, 135);
+  font-size: 12px;
+  height: 45vh;
+  border-radius: 4px;
+}
+
+.char-menu-tabs{
+    display: flex;
+    justify-content:space-evenly;
+    margin-top: 5px;
+    color: rgb(82, 128, 150);
+}
+
+.tab{
+    display: flex;
+    justify-content: space-evenly;
+    padding: 15px;
+}
+.tab:hover{
+    background-color: rgb(2, 2, 8);
+    border-radius: 4px 4px 0 0;
+}
+.tab-active{
+    background-color: rgb(2, 2, 8);
+    border-radius: 4px 4px 0 0;
+}
+.char-menu-display{
+  background-color: rgb(2, 2, 8);
+  margin: 0 2px 2px 2px;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  min-height: 0;
+}

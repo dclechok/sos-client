@@ -51,38 +51,11 @@ function MainText(){
 At the center of everything rises the Spire.
 
 A needle of steel and glass, impossibly tall, its thousands of windows shimmer like a constellation trapped in metal. The deeper into the city the eye moves, the denser the buildings become—homes collapsing into apartments, apartments into factories, factories into the sprawling labyrinth that feeds the Spire’s base.
-
-Far in the outskirts, where the forest meets forgotten suburbs, a crane hangs motionless over half-finished housing blocks. A thin mist clings to the roofs and roads, softening shapes but never the silence. There is no movement, save for the flicker of distant lights and the quiet pulse of the Spire’s glow—steady, rhythmic, alive.
-
-From here, the world feels frozen, suspended between decay and something brighter. Every street, every chimney, every window leads inward… toward the heart of the city… toward the Spire.
+ecay and something brighter. Every street, every chimney, every window leads inward… toward the heart of the city… toward the Spire.
 
 And tonight, you are standing at the edge of it all, where wilderness becomes industry, and the last safe darkness gives way to the neon promise of the inner wards.
 
-The Spire waits.
 
-At the center of everything rises the Spire.
-
-A needle of steel and glass, impossibly tall, its thousands of windows shimmer like a constellation trapped in metal. The deeper into the city the eye moves, the denser the buildings become—homes collapsing into apartments, apartments into factories, factories into the sprawling labyrinth that feeds the Spire’s base.
-
-Far in the outskirts, where the forest meets forgotten suburbs, a crane hangs motionless over half-finished housing blocks. A thin mist clings to the roofs and roads, softening shapes but never the silence. There is no movement, save for the flicker of distant lights and the quiet pulse of the Spire’s glow—steady, rhythmic, alive.
-
-From here, the world feels frozen, suspended between decay and something brighter. Every street, every chimney, every window leads inward… toward the heart of the city… toward the Spire.
-
-And tonight, you are standing at the edge of it all, where wilderness becomes industry, and the last safe darkness gives way to the neon promise of the inner wards.
-
-The Spire waits.
-
-At the center of everything rises the Spire.
-
-A needle of steel and glass, impossibly tall, its thousands of windows shimmer like a constellation trapped in metal. The deeper into the city the eye moves, the denser the buildings become—homes collapsing into apartments, apartments into factories, factories into the sprawling labyrinth that feeds the Spire’s base.
-
-Far in the outskirts, where the forest meets forgotten suburbs, a crane hangs motionless over half-finished housing blocks. A thin mist clings to the roofs and roads, softening shapes but never the silence. There is no movement, save for the flicker of distant lights and the quiet pulse of the Spire’s glow—steady, rhythmic, alive.
-
-From here, the world feels frozen, suspended between decay and something brighter. Every street, every chimney, every window leads inward… toward the heart of the city… toward the Spire.
-
-And tonight, you are standing at the edge of it all, where wilderness becomes industry, and the last safe darkness gives way to the neon promise of the inner wards.
-
-The Spire waits.
 
 TEST
 <br /> <br />

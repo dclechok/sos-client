@@ -42,20 +42,3 @@
         flex-direction: column;
     }
 }
-
-.title-bar{
-  background-color: rgb(15, 18, 27);
-  padding: 0;
-  margin: 0;
-  white-space: normal;
-  font-family: "Montserrat", sans-serif;
-  font-optical-sizing: auto;
-  font-weight: 400;
-  font-style: normal;
-  border-color: black;
-  border-width: 1px;
-  border-style: solid;
-  color: rgb(37, 83, 136);
-  font-size: 12px;
-}
-

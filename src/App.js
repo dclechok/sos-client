@@ -11,7 +11,7 @@ import ChatMenu from "./ChatMenu";
 import NavigationMenu from "./NavigationMenu";
 // import SystemMessages from './SystemMessages';
 // import ActionMenu from './ActionMenu';
-// import CharacterOverview from './CharacterOverview';
+import CharacterMenu from './CharacterMenu';
 
 function App() {
   const [account, setAccount] = useState(true);
@@ -73,7 +73,7 @@ function App() {
 
           <div className="column-right">
 
-            {/* <div className="box-container char"><CharacterOverview /></div> */}
+            <div className="box-container char"><CharacterMenu /></div>
             </div>
           </div>
         </>
