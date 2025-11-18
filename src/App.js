@@ -16,7 +16,7 @@ import NavigationMenu from "./NavigationMenu";
 // import ActionMenu from "./ActionMenu";
 import CharacterMenu from "./CharacterMenu";
 
-// custom hook
+// handles display check
 function useWindowSize() {
   const [size, setSize] = useState({
     width: window.innerWidth,
@@ -76,6 +76,7 @@ function App() {
   //   verifyToken();
   // }, []);
 
+  //handles display check
   const { width, height } = useWindowSize();
   const tooSmall = width < 1160 || height < 800;
 

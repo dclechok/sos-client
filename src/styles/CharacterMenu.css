@@ -23,7 +23,8 @@
     display: flex;
     justify-content:space-evenly;
     margin-top: 5px;
-    color: rgb(82, 128, 150);
+    /* color: rgb(82, 128, 150); */
+    color:rgb(81, 89, 207);
     overflow-x: auto;
 }
 
