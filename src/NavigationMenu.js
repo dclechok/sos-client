@@ -1,6 +1,6 @@
-import './styles/MapOverview.css';
+import './styles/NavigationMenu.css';
 
-function MapOverview(){
+function NavigationMenu(){
 
     return(
         <div className="ui-box">
@@ -14,4 +14,4 @@ function MapOverview(){
     );
 }
 
-export default MapOverview;
+export default NavigationMenu;

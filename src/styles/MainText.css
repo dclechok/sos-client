@@ -29,9 +29,9 @@
 }
 
 .scene-info-cont::-webkit-scrollbar-thumb {
-
-  background-color: rgb(34, 61, 70);
-  border-radius: 5px; /* Rounded corners for the thumb */
+  background-color: rgb(7, 7, 7);
+  border-radius: 1px;
+  border: 1px solid #242931; /* fake outline around thumb */
 }
 
 .scene-info p.other-chat{

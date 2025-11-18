@@ -7,8 +7,8 @@ import Login from "./Login";
 import NavBar from "./NavBar";
 import MainImg from "./MainImg";
 import MainText from "./MainText";
-import Chat from "./Chat";
-import MapOverview from './MapOverview';
+import ChatMenu from "./ChatMenu";
+import NavigationMenu from "./NavigationMenu";
 // import SystemMessages from './SystemMessages';
 // import ActionMenu from './ActionMenu';
 // import CharacterOverview from './CharacterOverview';
@@ -62,9 +62,9 @@ function App() {
           <div className="game-shell">
           {/* <div className="box-container sys-messages"><SystemMessages /></div> */}
           <div className="column-left">
-            <>Hello</>
+            <div className="box-container map-overview"><NavigationMenu /></div>
             <>Hello2HeHello2HeHello2HeHello2HeHello2HeHeello2HeHeello2HeHeello2HeHeello2HeHello2HeHello2HeHello2HeHello2HeHello2He</>
-            <Chat />
+            <ChatMenu />
           </div>
           <div className="center-container">
             <MainImg />
@@ -72,7 +72,7 @@ function App() {
           </div>
 
           <div className="column-right">
-            <div className="box-container map-overview"><MapOverview /></div>
+
             {/* <div className="box-container char"><CharacterOverview /></div> */}
             </div>
           </div>

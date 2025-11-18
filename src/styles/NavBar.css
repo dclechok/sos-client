@@ -9,7 +9,7 @@
   gap: 0; /* ensures no gap is added */
   padding: 0;
   margin: 0;
-  white-space: none;
+  white-space: normal;
   font-family: "Montserrat", sans-serif;
   font-optical-sizing: auto;
   font-weight: 400;

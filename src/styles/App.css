@@ -1,26 +1,31 @@
 .App {
+  height: 100vh;     
+  display: flex;
+  flex-direction: column;
   text-align: center;
-  overflow-y: auto;
+  overflow-y: hidden;         
 }
 
-.game-shell{
+
+.game-shell {
   display: flex;
+  flex: 1 1 calc(100vh - 25px);   
+  min-height: 0;   
   text-align: center;
-  overflow-y: auto;
   justify-content: center;
   margin: 0;
   padding: 0;
+  height: calc(100vh - 25px);
+  overflow: auto;
 }
 
 .center-container{
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  align-items: stretch;
   width: 45%;
-  background-color: purple;
-  flex-grow: 0;
-  flex-shrink: 0;
+  flex: 1 1 calc(100vh - 25px);    
+  min-height: 0;    
+  /* overflow-y: auto; */
 }
 
 .column-left,.column-right{
@@ -39,14 +44,11 @@
     }
 }
 
-
-
-
 .title-bar{
   background-color: rgb(15, 18, 27);
   padding: 0;
   margin: 0;
-  white-space: none;
+  white-space: normal;
   font-family: "Montserrat", sans-serif;
   font-optical-sizing: auto;
   font-weight: 400;
