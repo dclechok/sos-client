@@ -10,7 +10,7 @@ export async function handleLoginPassCheck(username, pass) {
       body: JSON.stringify({ username: username, unhashedPass: pass })
     });
     const jsonResponse = await response.json(); //json-ify readablestream data
-    console.log(jsonResponse)
+
     if (jsonResponse) return jsonResponse;
   } catch (e) {
     console.log(e, "Request failed.");

@@ -1,0 +1,7 @@
+.chat-container{
+    text-align: left;
+    position: relative;
+    display: flex;
+    width: 100px;
+    background-color: blue;
+}
