@@ -14,7 +14,6 @@ function CharacterMenu(){
         // set tab
         setActiveTab(tabName);
 
-        // play sound ONLY when clicking tabs
         audio.currentTime = 0;
         audio.play().catch(() => {});
     };
