@@ -6,26 +6,25 @@
   overflow-y: hidden;         
 }
 
-
 .game-shell {
   display: flex;
-  flex: 1 1 calc(100vh - 25px);   
-  min-height: 0;   
+  flex: 1 1 auto;   
   text-align: center;
   justify-content: center;
   margin: 0;
-  padding: 0;
-  height: calc(100vh - 25px);
-  overflow: auto;
+  padding: 0 0 45px 0;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .center-container{
   display: flex;
   flex-direction: column;
+  justify-content: flex-start;
   width: 45%;
-  flex: 1 1 calc(100vh - 25px);    
+  flex: 1 1 auto;    
   min-height: 0;    
-  /* overflow-y: auto; */
+  overflow: hidden;
 }
 
 .column-left,.column-right{

@@ -1,3 +1,5 @@
-.scenepic{
-  height: 35%;
+.scenepic {
+  flex: 0 0 auto;     /* don't let it shrink vertically */
+  /* optional: cap its height so it doesn't dominate */
+  max-height: 33vh;
 }
