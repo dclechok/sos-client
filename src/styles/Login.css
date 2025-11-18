@@ -5,7 +5,7 @@
     font-weight: 400;
     font-style: normal;
     position: relative;
-    margin: 5% 28% 0 28%;
+    margin: 5% 20% 0 20%;
     padding: 0;
     background-color: black;
     color: rgb(230, 230, 243);
@@ -29,8 +29,12 @@
 
 .login-box input{
     background-color: rgb(15, 15, 26);
-    color: rgb(152, 209, 134);
-    font-weight: bold;
+    color: rgb(0, 255, 76);
+    font-family: "Jersey 10", sans-serif;
+    font-weight: 300;
+    font-style: normal;
+    font-size: 15px;
+    letter-spacing: 1px;
 }
 
 .login-box img{
