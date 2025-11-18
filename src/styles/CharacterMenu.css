@@ -24,6 +24,7 @@
     justify-content:space-evenly;
     margin-top: 5px;
     color: rgb(82, 128, 150);
+    overflow-x: auto;
 }
 
 .tab{
