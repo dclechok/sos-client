@@ -12,8 +12,6 @@ function Login({ setAccount }) {
 
   async function handleLoginClick(e) {
     e.preventDefault();
-    console.log("login clicked", creds);
-
     try {
       const data = await handleLoginPassCheck(creds.name, creds.password);
       // data should be { user: { id, username }, token }

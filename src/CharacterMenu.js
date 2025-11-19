@@ -3,24 +3,21 @@ import { useState } from 'react';
 
 import clickSound from "./sounds/button_click1.wav";
 
-function CharacterMenu(){
+function CharacterMenu({ account }){
 
     const [activeTab, setActiveTab] = useState("stats");
-
     // single audio instance for all tab clicks
     const audio = new Audio(clickSound);
 
     const handleTabClick = (tabName) => {
-        // set tab
         setActiveTab(tabName);
-
         audio.currentTime = 0;
         audio.play().catch(() => {});
     };
 
     return (
         <div className="char-menu-cont">
-            <h3>Character Overview</h3>
+            {account?.username ? <h3>{account.username}</h3> : ""}
 
             <div className="char-menu-tabs">
 
