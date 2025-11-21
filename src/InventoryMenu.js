@@ -61,7 +61,8 @@ export default function InventoryMenu({ account, character }) {
                         top: mousePos.y + 12,
                         left: mousePos.x + 12,
                         pointerEvents: "none",
-                        zIndex: 9999
+                        zIndex: 9999,
+                        "--tooltip-glow": LOOT_COLORS[hoverItem.lootClass] 
                     }}
                 >
                     <div className="tooltip-name"  style={{ color: LOOT_COLORS[hoverItem.lootClass] }}><strong>{hoverItem.name}</strong></div>
