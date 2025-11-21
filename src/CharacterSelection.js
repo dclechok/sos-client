@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchCharacterList } from "./utils/characterApi";
+import { fetchCharacterList } from "./api/characterApi";
 import LogoutButton from "./LogoutButton";       // ← ADD THIS
 import "./styles/CharacterSelection.css";
 

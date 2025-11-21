@@ -1,7 +1,7 @@
 import "./styles/Login.css";
 import discordImg from "./img/discord.png";
 import { useState } from "react";
-import { handleLoginPassCheck } from "./utils/accountApi";
+import { handleLoginPassCheck } from "./api/accountApi";
 
 function Login({ setAccount }) {
   const [creds, setCreds] = useState({

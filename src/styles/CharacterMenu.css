@@ -15,7 +15,7 @@
   border-width: 2px;
   color: rgb(255, 255, 255);
   font-size: 12px;
-  height: 48vh; 
+  height: 48vh; /* ⬅ fits 35 slots perfectly */
   border-radius: 4px;
   overflow: hidden;
 }
