@@ -33,23 +33,29 @@
   text-align: center;
   background-color: transparent;
   width: 350px;
-  padding: 20px 0 20px 0;
-  gap: 10px; 
+  padding: 20px 0;
+  gap: 10px;
 }
 
+/* 🔥 Purple cyberpunk vessel slots */
 .chars > div {
   background-color: rgb(2, 2, 8);
   padding: 12px 0;
   display: block;
   width: 100%;
-  border: 1px solid #0ff2f2; /* cyan tech-line */
-  color: #e0f7ff;
+
+  /* 🔮 Purple neon border */
+  border: 1px solid rgb(81, 89, 207);
+
+  /* Text color */
+  color: rgb(190, 185, 255);
   font-size: 18px;
   letter-spacing: 1px;
 
+  /* Purple glow */
   box-shadow:
-    0 0 6px rgba(0, 255, 255, 0.35),
-    inset 0 0 6px rgba(0, 255, 255, 0.15);
+    0 0 6px rgba(81, 89, 207, 0.45),
+    inset 0 0 6px rgba(81, 89, 207, 0.25);
 
   transition:
     transform 0.15s ease,
@@ -58,23 +64,25 @@
     color 0.2s ease;
 }
 
+/* 🚀 Hover — brighter holographic purple */
 .chars > div:hover {
   transform: scale(1.03);
-  background-color: rgba(0, 30, 40, 0.75);
+  background-color: rgba(20, 15, 40, 0.8);
 
   box-shadow:
-    0 0 12px rgba(0, 255, 255, 0.55),
-    0 0 24px rgba(0, 255, 255, 0.35),
-    inset 0 0 8px rgba(0, 255, 255, 0.25);
+    0 0 12px rgba(81, 89, 207, 0.7),
+    0 0 24px rgba(81, 89, 207, 0.5),
+    inset 0 0 10px rgba(81, 89, 207, 0.35);
 
   color: white;
 }
 
+/* 🧬 Selected Vessel */
 .chars > div.selected {
-  background-color: rgba(0, 255, 255, 0.12);
+  background-color: rgba(81, 89, 207, 0.12);
   box-shadow:
-    0 0 20px rgba(0, 255, 255, 0.7),
-    inset 0 0 12px rgba(0, 255, 255, 0.35);
+    0 0 22px rgba(81, 89, 207, 0.85),
+    inset 0 0 14px rgba(81, 89, 207, 0.45);
   transform: scale(1.06);
-  color: #ffffff;
+  color: #fff;
 }

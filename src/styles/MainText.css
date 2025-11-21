@@ -75,6 +75,8 @@
   width: 16px;
   height: 16px;
   pointer-events: none;
+  /* filter: drop-shadow(0 0 3px rgba(81, 89, 207, 0.7)); */
+  opacity: 0.85;
 }
 
 .scene-info p.other-chat {

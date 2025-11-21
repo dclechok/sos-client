@@ -1,49 +1,108 @@
-@import url('https://fonts.googleapis.com/css2?family=Jersey+10&family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Jersey+10&family=Orbitron:wght@300;400;700&display=swap');
 
-.login-box{
+/* LOGIN CONTAINER */
+.login-box {
     font-family: "Jersey 10", sans-serif;
     text-align: center;
-    font-weight: 400;
-    font-style: normal;
     position: relative;
     margin: 5% 20% 0 20%;
-    padding: 0;
-    background-color: black;
-    color: rgb(230, 230, 243);
+    padding: 30px;
     min-height: 300px;
-    border-style: solid;
-    border-width: 1px;
-    border-color: rgb(29, 32, 58);
+
+    background-color: rgb(2, 2, 8);
+    color: rgb(220, 215, 255); /* slight purple tint */
+
+    border: 2px solid rgba(81, 89, 207, 0.35);
+    box-shadow:
+        0 0 10px rgba(81, 89, 207, 0.35),
+        inset 0 0 14px rgba(81, 89, 207, 0.25);
+
     letter-spacing: 2px;
+    border-radius: 4px;
 }
 
-.login-box button{
-    background-color: rgb(15, 15, 26);
-    color: rgb(69, 136, 223);
+/* INPUTS — purple neon bars */
+.login-box input {
+    width: 70%;
+    margin-top: 8px;
+    margin-bottom: 16px;
+    padding: 10px 12px;
+
+    background-color: rgb(10, 10, 18);
+    border: 1px solid rgb(81, 89, 207);
+
+    color: rgb(190, 185, 255);
     font-family: "Orbitron", sans-serif;
-    font-optical-sizing: auto;
     font-weight: 300;
-    font-style: normal;
-    font-size: 16px;
-    letter-spacing: 1px;
-    margin-bottom: 15px;
-}
-
-.login-box button:hover{
-    background-color: rgb(10, 10, 10);
-}
-
-.login-box input{
-    background-color: rgb(15, 15, 26);
-    color:rgb(30, 255, 0);
-    font-family: "Orbitron", sans-serif;
-    font-optical-sizing: auto;
-    font-weight: 300;
-    font-style: normal;
     font-size: 15px;
     letter-spacing: 1px;
+
+    box-shadow:
+        0 0 6px rgba(81, 89, 207, 0.35),
+        inset 0 0 6px rgba(81, 89, 207, 0.2);
+
+    transition: box-shadow 0.2s ease, background-color 0.2s ease;
 }
 
-.login-box img{
+.login-box input:focus {
+    outline: none;
+    background-color: rgb(5, 5, 15);
+
+    box-shadow:
+        0 0 12px rgba(81, 89, 207, 0.65),
+        inset 0 0 10px rgba(81, 89, 207, 0.35);
+}
+
+/* LOGIN BUTTON */
+.login-box button {
+    background-color: rgb(5, 10, 18);
+    border: 1px solid rgb(81, 89, 207);
+
+    color: rgb(220, 215, 255);
+    font-family: "Orbitron", sans-serif;
+    font-weight: 300;
+    font-size: 16px;
+    letter-spacing: 1px;
+
+    padding: 8px 24px;
+    margin-top: 10px;
+    margin-bottom: 20px;
+
+    cursor: pointer;
+
+    box-shadow:
+        0 0 6px rgba(81, 89, 207, 0.4),
+        inset 0 0 4px rgba(81, 89, 207, 0.25);
+
+    transition:
+        background-color 0.2s ease,
+        box-shadow 0.25s ease,
+        transform 0.1s ease;
+}
+
+.login-box button:hover {
+    background-color: rgb(8, 8, 20);
+    transform: scale(1.03);
+
+    box-shadow:
+        0 0 14px rgba(81, 89, 207, 0.7),
+        0 0 26px rgba(81, 89, 207, 0.45),
+        inset 0 0 10px rgba(81, 89, 207, 0.3);
+
+    color: #fff;
+}
+
+/* DISCORD ICON */
+.login-box img {
     width: 40px;
+    margin-top: 8px;
+
+    transition:
+        transform 0.15s ease,
+        filter 0.2s ease;
+}
+
+.login-box img:hover {
+    transform: scale(1.08);
+    filter: drop-shadow(0 0 6px rgba(81, 89, 207, 0.6));
 }

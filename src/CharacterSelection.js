@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
-import { fetchCharacterList } from './utils/characterApi'
-import './styles/CharacterSelection.css';
+import { fetchCharacterList } from "./utils/characterApi";
+import LogoutButton from "./LogoutButton";       // ← ADD THIS
+import "./styles/CharacterSelection.css";
 
-function CharacterSelection({ account, setCharacter }) {
+function CharacterSelection({ account, setAccount, setCharacter }) {
 
   const [characters, setCharacters] = useState(null);
 
+  // Load characters
   useEffect(() => {
     async function loadChars() {
       const chars = await fetchCharacterList(account, account.token);
@@ -14,27 +16,56 @@ function CharacterSelection({ account, setCharacter }) {
     loadChars();
   }, [account]);
 
+  // If user leaves this page *without* choosing a character → auto logout
+  useEffect(() => {
+    return () => {
+      if (!account.selectedCharacter) {
+        localStorage.removeItem("pd_token");
+      }
+    };
+  }, []);
+
   if (characters === null) {
-    return <div className="char-wrapper">Loading vessels...</div>;
+    return (
+      <div className="char-wrapper">
+        <LogoutButton setAccount={setAccount} />
+        Loading vessels...
+      </div>
+    );
   }
 
   return (
     <div className="char-wrapper">
-      
+
+      {/* 🔥 Always-visible logout button */}
+      <LogoutButton setAccount={setAccount} />
+
       <div className="char-title">Select Your Vessel</div>
 
       <div className="char-cont">
         <div className="chars">
-            {characters.length === 0 && (
+
+          {/* No characters */}
+          {characters.length === 0 && (
             <div>No vessels found. Create one?</div>
           )}
-    
-          <div>{characters[0] ? characters[0].charName : ""}</div>
-          <div>{characters[1] ? characters[1].charName : "t"}</div>
-          <div>{characters[2] ? characters[2].charName : "d"}</div>
-          <div>{characters[3] ? characters[3].charName : "e"}</div>
-          <div>{characters[4] ? characters[4].charName : "f"}</div>
-          <div>{characters[5] ? characters[5].charName : "e"}</div>
+
+          {/* Dynamically render characters */}
+          {characters.map((c, index) => (
+            <div key={index} onClick={() => setCharacter(c)}>
+              {c.charName}
+            </div>
+          ))}
+
+          {/* If fewer than 6, pad the slots (keeps layout stable) */}
+          {Array.from({ length: Math.max(0, 6 - characters.length) }).map(
+            (_, idx) => (
+              <div key={`empty-${idx}`} className="empty-slot">
+                —
+              </div>
+            )
+          )}
+
         </div>
       </div>
 

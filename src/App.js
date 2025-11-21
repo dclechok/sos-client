@@ -14,7 +14,10 @@ import MainText from "./MainText";
 import ChatMenu from "./ChatMenu";
 import NavigationMenu from "./NavigationMenu";
 import CharacterMenu from "./CharacterMenu";
-import CharacterSelection from "./CharacterSelection"; // ← you will create this
+import CharacterSelection from "./CharacterSelection";
+
+// 🔹 NEW
+import LogoutButton from "./LogoutButton";
 
 // window size hook
 function useWindowSize() {
@@ -39,18 +42,12 @@ function useWindowSize() {
 }
 
 function App() {
-  // undefined = checking auth
-  // null = not logged in
-  // object = logged in
   const [account, setAccount] = useState(undefined);
-
-  // character loading flag
-  const [character, setCharacter] = useState(null); // null = not chosen yet
+  const [character, setCharacter] = useState(null);
 
   // verify token on load
   useEffect(() => {
     const token = localStorage.getItem("pd_token");
-
     if (!token) {
       setAccount(null);
       return;
@@ -70,13 +67,12 @@ function App() {
 
         const data = await res.json();
 
-      setAccount({
-        id: data.user.id,
-        username: data.user.username,
-        characters: data.user.characters || [],
-        token,
-      });
-
+        setAccount({
+          id: data.user.id,
+          username: data.user.username,
+          characters: data.user.characters || [],
+          token,
+        });
 
       } catch (err) {
         console.error("Error verifying token:", err);
@@ -93,36 +89,40 @@ function App() {
   const tooSmall = width < 1160 || height < 800;
 
   if (tooSmall) return <DisplayCheck />;
-
-  // still checking auth
   if (account === undefined) return <Spinner />;
 
-  // ❶ Not logged in → show Login
+  // ❶ Not logged in → Login
   if (account === null) {
     return <Login setAccount={setAccount} />;
   }
 
-  // ❷ Logged in, but no character selected yet → show character selection
-  if (account && character === null) {
+  // ❷ Logged in → Character Selection (no character chosen yet)
+  if (character === null) {
     return (
-      <CharacterSelection
-        account={account}
-        setCharacter={setCharacter}
-      />
+      <>
+        <LogoutButton setAccount={setAccount} />
+        <CharacterSelection
+          account={account}
+          setAccount={setAccount}
+          setCharacter={setCharacter}
+        />
+      </>
     );
   }
 
-  // ❸ Logged in + character loaded → full game UI
+  // ❸ Logged in + character selected → Full UI
   return (
     <div className="App">
+      <LogoutButton setAccount={setAccount} />
+
       <NavBar account={account} />
+
       <div className="game-shell">
 
         <div className="column-left">
           <div className="box-container map-overview">
             <NavigationMenu />
           </div>
-
           <ChatMenu />
         </div>
 
