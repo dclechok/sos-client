@@ -18,7 +18,7 @@ function CharacterMenu({ account, character }){
     };
 
     return (
-        <div className="char-menu-cont">
+        <div className="char-menu-cont noselect">
             {account?.username ? <h3>{account.username}</h3> : ""}
 
             <div className="char-menu-tabs">
