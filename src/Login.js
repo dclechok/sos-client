@@ -68,9 +68,9 @@ function Login({ setAccount }) {
       <br />
       Join our Discord!
       <br />
-      <a href="https://discord.gg/M74rSWaa">
+      {/* <a href="https://discord.gg/M74rSWaa"> */}
         <img src={discordImg} alt="Project Domehead Discord" />
-      </a>
+      {/* </a> */}
     </div>
   );
 }
