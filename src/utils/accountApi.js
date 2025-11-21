@@ -1,8 +1,8 @@
-const BASE_URL = "http://localhost:5000/api/auth/";
+const BASE_URL = "http://localhost:5000/api/auth";
 
 export async function handleLoginPassCheck(username, pass) {
   try {
-    const response = await fetch(BASE_URL + "login", {
+    const response = await fetch(BASE_URL + "/login", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

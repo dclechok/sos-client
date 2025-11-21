@@ -1,8 +1,7 @@
-// Login.js
 import "./styles/Login.css";
 import discordImg from "./img/discord.png";
 import { useState } from "react";
-import { handleLoginPassCheck } from "./utils/api";
+import { handleLoginPassCheck } from "./utils/accountApi";
 
 function Login({ setAccount }) {
   const [creds, setCreds] = useState({
@@ -14,20 +13,18 @@ function Login({ setAccount }) {
     e.preventDefault();
     try {
       const data = await handleLoginPassCheck(creds.name, creds.password);
-      // data should be { user: { id, username }, token }
 
       if (!data || !data.token) {
         alert("Login failed");
         return;
       }
 
-      // store token so we can auto-login on refresh
       localStorage.setItem("pd_token", data.token);
 
-      // set full account in App
       setAccount({
         id: data.user.id,
         username: data.user.username,
+        characters: data.user.characters || [],
         token: data.token,
       });
     } catch (err) {
@@ -39,28 +36,35 @@ function Login({ setAccount }) {
   return (
     <div className="login-box">
       <h1>Project Domehead</h1>
-      <div className="inputs">
-        User
+      <form onSubmit={handleLoginClick}>
+
+        <div className="inputs">
+          User
+          <br />
+          <input
+            type="text"
+            value={creds.name}
+            onChange={(e) => setCreds({ ...creds, name: e.target.value })}
+          />
+          <br /><br />
+
+          Password
+          <br />
+          <input
+            type="password"
+            value={creds.password}
+            onChange={(e) => setCreds({ ...creds, password: e.target.value })}
+            required
+          />
+          <br />
+        </div>
+
         <br />
-        <input
-          type="text"
-          value={creds.name}
-          onChange={(e) => setCreds({ ...creds, name: e.target.value })}
-        />
-        <br />
-        <br />
-        Password
-        <br />
-        <input
-          type="password"
-          value={creds.password}
-          onChange={(e) => setCreds({ ...creds, password: e.target.value })}
-          required
-        />
-        <br />
-      </div>
-      <br />
-      <button onClick={handleLoginClick}>Login</button>
+
+        {/* This button now triggers onSubmit when hitting Enter */}
+        <button type="submit">Login</button>
+      </form>
+
       <br />
       Join our Discord!
       <br />

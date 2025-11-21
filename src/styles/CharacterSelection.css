@@ -1,0 +1,80 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&display=swap');
+
+.char-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  font-family: "Orbitron", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 300;
+  font-style: normal;
+  margin-top: 8vh;
+}
+
+.char-title {
+  font-size: 24px;
+  margin-bottom: 20px;
+  color: white;
+  text-align: center;
+}
+
+.char-cont {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-width: 400px;
+  padding: 20px;
+}
+
+.chars {
+  display: flex;
+  flex-direction: column;
+  text-align: center;
+  background-color: transparent;
+  width: 350px;
+  padding: 20px 0 20px 0;
+  gap: 10px; 
+}
+
+.chars > div {
+  background-color: rgb(2, 2, 8);
+  padding: 12px 0;
+  display: block;
+  width: 100%;
+  border: 1px solid #0ff2f2; /* cyan tech-line */
+  color: #e0f7ff;
+  font-size: 18px;
+  letter-spacing: 1px;
+
+  box-shadow:
+    0 0 6px rgba(0, 255, 255, 0.35),
+    inset 0 0 6px rgba(0, 255, 255, 0.15);
+
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.2s ease,
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.chars > div:hover {
+  transform: scale(1.03);
+  background-color: rgba(0, 30, 40, 0.75);
+
+  box-shadow:
+    0 0 12px rgba(0, 255, 255, 0.55),
+    0 0 24px rgba(0, 255, 255, 0.35),
+    inset 0 0 8px rgba(0, 255, 255, 0.25);
+
+  color: white;
+}
+
+.chars > div.selected {
+  background-color: rgba(0, 255, 255, 0.12);
+  box-shadow:
+    0 0 20px rgba(0, 255, 255, 0.7),
+    inset 0 0 12px rgba(0, 255, 255, 0.35);
+  transform: scale(1.06);
+  color: #ffffff;
+}
