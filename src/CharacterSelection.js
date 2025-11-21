@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { fetchCharacterList } from "./api/characterApi";
-import LogoutButton from "./LogoutButton";       // ← ADD THIS
+import LogoutButton from "./LogoutButton";
 import "./styles/CharacterSelection.css";
 
 function CharacterSelection({ account, setAccount, setCharacter }) {
 
   const [characters, setCharacters] = useState(null);
 
-  // Load characters
+  // Load characters from server
   useEffect(() => {
     async function loadChars() {
       const chars = await fetchCharacterList(account, account.token);
@@ -16,14 +16,11 @@ function CharacterSelection({ account, setAccount, setCharacter }) {
     loadChars();
   }, [account]);
 
-  // If user leaves this page *without* choosing a character → auto logout
-  useEffect(() => {
-    return () => {
-      if (!account.selectedCharacter) {
-        localStorage.removeItem("pd_token");
-      }
-    };
-  }, []);
+  // When player selects a character save it in localStorage
+  const handleSelect = (char) => {
+    localStorage.setItem("pd_character", JSON.stringify(char));
+    setCharacter(char);
+  };
 
   if (characters === null) {
     return (
@@ -36,9 +33,7 @@ function CharacterSelection({ account, setAccount, setCharacter }) {
 
   return (
     <div className="char-wrapper">
-
-      {/* 🔥 Always-visible logout button */}
-      <LogoutButton setAccount={setAccount} />
+      <LogoutButton setAccount={setAccount} setCharacter={setCharacter} />
 
       <div className="char-title">Select Your Vessel</div>
 
@@ -50,14 +45,17 @@ function CharacterSelection({ account, setAccount, setCharacter }) {
             <div>No vessels found. Create one?</div>
           )}
 
-          {/* Dynamically render characters */}
+          {/* Character list */}
           {characters.map((c, index) => (
-            <div key={index} onClick={() => setCharacter(c)}>
+            <div 
+              key={index}
+              onClick={() => handleSelect(c)}
+            >
               {c.charName}
             </div>
           ))}
 
-          {/* If fewer than 6, pad the slots (keeps layout stable) */}
+          {/* Pad layout to always show 6 slots */}
           {Array.from({ length: Math.max(0, 6 - characters.length) }).map(
             (_, idx) => (
               <div key={`empty-${idx}`} className="empty-slot">
@@ -68,7 +66,6 @@ function CharacterSelection({ account, setAccount, setCharacter }) {
 
         </div>
       </div>
-
     </div>
   );
 }

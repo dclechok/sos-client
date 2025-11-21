@@ -2,12 +2,10 @@
 import "./styles/App.css";
 import { useState, useEffect } from "react";
 
-// utils
 import DisplayCheck from "./DisplayCheck";
 import Spinner from "./Spinner";
 import useButtonClickSound from "./hooks/useButtonClickSound";
 
-// UI Components
 import Login from "./Login";
 import NavBar from "./NavBar";
 import MainImg from "./MainImg";
@@ -18,7 +16,9 @@ import CharacterMenu from "./CharacterMenu";
 import CharacterSelection from "./CharacterSelection";
 import LogoutButton from "./LogoutButton";
 
-// window size hook
+// --------------------------------------------------
+// Window-size hook (must NOT be conditional)
+// --------------------------------------------------
 function useWindowSize() {
   const [size, setSize] = useState({
     width: window.innerWidth,
@@ -26,33 +26,67 @@ function useWindowSize() {
   });
 
   useEffect(() => {
-    function handleResize() {
+    const handler = () => {
       setSize({
         width: window.innerWidth,
         height: window.innerHeight,
       });
-    }
-
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+    };
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
   }, []);
 
   return size;
 }
 
+// --------------------------------------------------
+// MAIN APP COMPONENT
+// --------------------------------------------------
 function App() {
   const [account, setAccount] = useState(undefined);
-  const [character, setCharacter] = useState(null);
+  const [character, setCharacter] = useState(undefined);
 
+  console.log(account, character)
   useButtonClickSound();
-  // verify token on load
+  const { width, height } = useWindowSize();
+
+  // --------------------------------------------------
+  // Restore account + character from localStorage
+  // --------------------------------------------------
   useEffect(() => {
     const token = localStorage.getItem("pd_token");
-    if (!token) {
+    const savedAccount = localStorage.getItem("pd_account");
+    const savedCharacter = localStorage.getItem("pd_character");
+
+    if (!token || !savedAccount) {
+      setAccount(null);
+      setCharacter(null);
+      return;
+    }
+
+    // Restore account immediately
+    let parsedAccount;
+    try {
+      parsedAccount = JSON.parse(savedAccount);
+    } catch {
       setAccount(null);
       return;
     }
 
+    setAccount({ ...parsedAccount, token });
+
+    // Restore selected character if exists
+    if (savedCharacter) {
+      try {
+        setCharacter(JSON.parse(savedCharacter));
+      } catch {
+        setCharacter(null);
+      }
+    } else {
+      setCharacter(null);
+    }
+
+    // Verify token async AFTER restoring UI
     async function verifyToken() {
       try {
         const res = await fetch("http://localhost:5000/api/auth/me", {
@@ -61,12 +95,14 @@ function App() {
 
         if (!res.ok) {
           localStorage.removeItem("pd_token");
+          localStorage.removeItem("pd_account");
+          localStorage.removeItem("pd_character");
           setAccount(null);
+          setCharacter(null);
           return;
         }
 
         const data = await res.json();
-
         setAccount({
           id: data.user.id,
           username: data.user.username,
@@ -75,28 +111,29 @@ function App() {
         });
 
       } catch (err) {
-        console.error("Error verifying token:", err);
-        localStorage.removeItem("pd_token");
-        setAccount(null);
+        console.error("Token verify failed:", err);
       }
     }
 
     verifyToken();
   }, []);
 
-  // display check
-  const { width, height } = useWindowSize();
-  const tooSmall = width < 1160 || height < 800;
-
-  if (tooSmall) return <DisplayCheck />;
+  // --------------------------------------------------
+  // SIZE CHECK
+  // --------------------------------------------------
+  if (width < 1160 || height < 800) return <DisplayCheck />;
   if (account === undefined) return <Spinner />;
 
-  // ❶ Not logged in → Login
+  // --------------------------------------------------
+  // ROUTING LOGIC
+  // --------------------------------------------------
+
+  // 1️⃣ NOT LOGGED IN → LOGIN PAGE
   if (account === null) {
     return <Login setAccount={setAccount} />;
   }
 
-  // ❷ Logged in → Character Selection (no character chosen yet)
+  // 2️⃣ LOGGED IN BUT NO CHARACTER SELECTED YET
   if (character === null) {
     return (
       <>
@@ -104,21 +141,23 @@ function App() {
         <CharacterSelection
           account={account}
           setAccount={setAccount}
-          setCharacter={setCharacter}
+          setCharacter={(char) => {
+            setCharacter(char);
+            localStorage.setItem("pd_character", JSON.stringify(char));
+          }}
         />
       </>
     );
   }
 
-  // ❸ Logged in + character selected → Full UI
+  // 3️⃣ LOGGED IN + CHARACTER SELECTED → FULL GAME UI
   return (
     <div className="App">
-      <LogoutButton setAccount={setAccount} setCharacter={setCharacter}/>
+      <LogoutButton setAccount={setAccount} setCharacter={setCharacter} />
 
       <NavBar account={account} />
 
       <div className="game-shell">
-
         <div className="column-left">
           <div className="box-container map-overview">
             <NavigationMenu />
@@ -136,7 +175,6 @@ function App() {
             <CharacterMenu account={account} character={character} />
           </div>
         </div>
-
       </div>
     </div>
   );

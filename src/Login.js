@@ -19,14 +19,30 @@ function Login({ setAccount }) {
         return;
       }
 
+      // Save token
       localStorage.setItem("pd_token", data.token);
 
+      // Save account info for persistence
+      localStorage.setItem(
+        "pd_account",
+        JSON.stringify({
+          id: data.user.id,
+          username: data.user.username,
+          characters: data.user.characters || []
+        })
+      );
+
+      // clear any old character selection
+      localStorage.removeItem("pd_character");
+
+      // Restore UI immediately
       setAccount({
         id: data.user.id,
         username: data.user.username,
         characters: data.user.characters || [],
         token: data.token,
       });
+
     } catch (err) {
       console.error(err);
       alert("Login failed");
@@ -61,16 +77,13 @@ function Login({ setAccount }) {
 
         <br />
 
-        {/* This button now triggers onSubmit when hitting Enter */}
         <button type="submit">Login</button>
       </form>
 
       <br />
       Join our Discord!
       <br />
-      {/* <a href="https://discord.gg/M74rSWaa"> */}
-        <img src={discordImg} alt="Project Domehead Discord" />
-      {/* </a> */}
+      <img src={discordImg} alt="Project Domehead Discord" />
     </div>
   );
 }
