@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 // utils
 import DisplayCheck from "./DisplayCheck";
 import Spinner from "./Spinner";
+import useButtonClickSound from "./hooks/useButtonClickSound";
 
 // UI Components
 import Login from "./Login";
@@ -15,8 +16,6 @@ import ChatMenu from "./ChatMenu";
 import NavigationMenu from "./NavigationMenu";
 import CharacterMenu from "./CharacterMenu";
 import CharacterSelection from "./CharacterSelection";
-
-// 🔹 NEW
 import LogoutButton from "./LogoutButton";
 
 // window size hook
@@ -45,6 +44,7 @@ function App() {
   const [account, setAccount] = useState(undefined);
   const [character, setCharacter] = useState(null);
 
+  useButtonClickSound();
   // verify token on load
   useEffect(() => {
     const token = localStorage.getItem("pd_token");
