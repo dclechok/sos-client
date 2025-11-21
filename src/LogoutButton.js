@@ -1,11 +1,25 @@
 import "./styles/LogoutButton.css";
 import buttonClickSound from './sounds/button_click2.wav';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 function LogoutButton({ setAccount, setCharacter }) {
 
   const clickSound = new Audio(buttonClickSound);
   const [warningMsg, setWarningMsg] = useState(false);
+
+
+    useEffect(() => {
+    if (!warningMsg) return;
+
+    function handleKey(e) {
+      if (e.key === "Escape") {
+        handleCancel();
+      }
+    }
+
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [warningMsg]);
 
   function handleLogout() {
     localStorage.removeItem("pd_token");
@@ -36,7 +50,7 @@ function LogoutButton({ setAccount, setCharacter }) {
       </button>
 
       {/* CONFIRMATION BOX */}
-      {warningMsg && (
+      {warningMsg && (<div className="validate-logout-cont">
         <div className="validate-logout">
           <div>Are you sure you wish to logout here?</div>
 
@@ -44,6 +58,7 @@ function LogoutButton({ setAccount, setCharacter }) {
             <button className="logout-yes" onClick={handleLogout}>Yes</button>
             <button className="logout-no" onClick={handleCancel}>No</button>
           </div>
+        </div>
         </div>
       )}
 
