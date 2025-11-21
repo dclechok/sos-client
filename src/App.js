@@ -100,7 +100,7 @@ function App() {
   if (character === null) {
     return (
       <>
-        <LogoutButton setAccount={setAccount} />
+        <LogoutButton setAccount={setAccount} setCharacter={setCharacter} />
         <CharacterSelection
           account={account}
           setAccount={setAccount}
@@ -113,7 +113,7 @@ function App() {
   // ❸ Logged in + character selected → Full UI
   return (
     <div className="App">
-      <LogoutButton setAccount={setAccount} />
+      <LogoutButton setAccount={setAccount} setCharacter={setCharacter}/>
 
       <NavBar account={account} />
 
