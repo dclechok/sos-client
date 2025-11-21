@@ -16,6 +16,7 @@ import CharacterMenu from "./CharacterMenu";
 import CharacterSelection from "./CharacterSelection";
 import LogoutButton from "./LogoutButton";
 
+console.log(process.env.REACT_APP_API_BASE_URL);
 // --------------------------------------------------
 // Window-size hook (must NOT be conditional)
 // --------------------------------------------------
