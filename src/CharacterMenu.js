@@ -3,15 +3,17 @@ import { useState } from 'react';
 
 import clickSound from "./sounds/button_click1.wav";
 
-function CharacterMenu({ account }){
+import InventoryMenu from './InventoryMenu';
+
+function CharacterMenu({ account, character }){
 
     const [activeTab, setActiveTab] = useState("stats");
-    // single audio instance for all tab clicks
     const audio = new Audio(clickSound);
 
     const handleTabClick = (tabName) => {
         setActiveTab(tabName);
         audio.currentTime = 0;
+        audio.volume = 0.3;
         audio.play().catch(() => {});
     };
 
@@ -52,7 +54,7 @@ function CharacterMenu({ account }){
             </div>
 
             <div className="char-menu-display">
-                test
+                {activeTab === "inventory" && <InventoryMenu account={account} character={character} />}
             </div>
         </div>
     );

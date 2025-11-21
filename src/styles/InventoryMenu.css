@@ -1,0 +1,28 @@
+.inventory-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(55px, 1fr));
+  gap: 8px;
+
+  /* no scroll inside inventory */
+  overflow: hidden;
+
+  padding: 10px;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+/* PERFECT SQUARE ITEMS */
+.inventory-slot {
+  width: 100%;
+  aspect-ratio: 1 / 1;        /* keeps it square */
+  
+  background-color: #0d0f16;
+  border: 2px solid #1b1e29;
+  border-radius: 8px;
+}
+
+
+.inventory-slot:hover {
+  border-color: rgb(120, 130, 255);
+  background-color: rgb(16, 16, 28);
+}

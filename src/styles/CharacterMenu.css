@@ -15,8 +15,9 @@
   border-width: 2px;
   color: rgb(255, 255, 255);
   font-size: 12px;
-  height: 45vh;
+  height: 48vh; 
   border-radius: 4px;
+  overflow: hidden;
 }
 
 .char-menu-tabs{
@@ -44,6 +45,6 @@
   background-color: rgb(2, 2, 8);
   margin: 0 2px 2px 2px;
   flex: 1 1 auto;
-  overflow-y: auto;
+  overflow: hidden;
   min-height: 0;
 }
