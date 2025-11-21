@@ -1,17 +1,24 @@
 import './styles/CharacterMenu.css';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 import clickSound from "./sounds/button_click1.wav";
-
 import InventoryMenu from './InventoryMenu';
 
 function CharacterMenu({ account, character }){
 
-    const [activeTab, setActiveTab] = useState("stats");
+    // Load from localStorage or default to "stats"
+    const [activeTab, setActiveTab] = useState(
+        () => localStorage.getItem("pd_character_tab") || "stats"
+    );
+
     const audio = new Audio(clickSound);
 
     const handleTabClick = (tabName) => {
         setActiveTab(tabName);
+
+        // 🔥 Save selected tab for persistence
+        localStorage.setItem("pd_character_tab", tabName);
+
         audio.currentTime = 0;
         audio.volume = 0.3;
         audio.play().catch(() => {});
@@ -54,7 +61,9 @@ function CharacterMenu({ account, character }){
             </div>
 
             <div className="char-menu-display">
-                {activeTab === "inventory" && <InventoryMenu account={account} character={character} />}
+                {activeTab === "inventory" && (
+                    <InventoryMenu account={account} character={character} />
+                )}
             </div>
         </div>
     );

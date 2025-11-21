@@ -21,14 +21,14 @@
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  width: 45%;
+  width: 60%;
   flex: 1 1 auto;    
   min-height: 0;    
   overflow: hidden;
 }
 
 .column-left,.column-right{
-  flex-basis: 27.5%;
+  flex-basis: 20%;
   flex-grow:0;
   flex-shrink: 0;
   max-width: 27.5%;

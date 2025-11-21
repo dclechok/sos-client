@@ -5,7 +5,7 @@ import { LOOT_COLORS } from "./utils/lootColorCodes";
 
 export default function InventoryMenu({ account, character }) {
 
-    const [slots, setSlots] = useState(Array(35).fill(null));
+    const [slots, setSlots] = useState(Array(25).fill(null));
     const [hoverItem, setHoverItem] = useState(null);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
