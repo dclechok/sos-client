@@ -48,7 +48,6 @@ function useWindowSize() {
 function App() {
   const [account, setAccount] = useState(undefined); // undefined = loading
   const [character, setCharacter] = useState(undefined);
-console.log("LOCAL ENV:", process.env.REACT_APP_API_BASE_URL);
 
   useButtonClickSound();
   const { width, height } = useWindowSize();
