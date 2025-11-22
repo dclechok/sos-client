@@ -1,8 +1,9 @@
+const BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
 export async function fetchInventory(playerId, token) {
     try {
         const res = await fetch(
-            `http://localhost:5000/api/inventory/${playerId}`,
+            `${BASE_URL}/api/inventory/${playerId}`,
             {
                 headers: {
                     "Authorization": `Bearer ${token}`,

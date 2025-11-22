@@ -1,14 +1,13 @@
-const BASE_URL = "http://localhost:5000/api/characters/";
+const BASE_URL =
+  process.env.REACT_APP_API_BASE_URL + "/characters/";
 
 export async function fetchCharacterList(account, token) {
   try {
-    const response = await fetch(BASE_URL + "byIds", {
-      method: "POST",
+    const response = await fetch(BASE_URL + account.id, {
+      method: "GET",
       headers: {
-        "Content-Type": "application/json",
         "Authorization": `Bearer ${token}`
-      },
-      body: JSON.stringify({ ids: account.characters })
+      }
     });
 
     if (!response.ok) return [];
