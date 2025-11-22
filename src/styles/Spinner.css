@@ -1,0 +1,16 @@
+.spinner-wrapper {
+  position: fixed;          /* sits above everything */
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+
+  display: flex;
+  justify-content: center;  /* center horizontally */
+  align-items: center;      /* center vertically */
+
+  background: rgba(0, 0, 0, 0.45);  /* soft dark backdrop */
+  backdrop-filter: blur(2px);      /* optional: mild glass effect */
+
+  z-index: 9999;  /* always on top */
+}
