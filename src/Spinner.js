@@ -1,4 +1,4 @@
-import { PropagateLoader } from 'react-spinners';
+import { PulseLoader } from 'react-spinners';
 import "./styles/Spinner.css";
 
 function Spinner() {
@@ -6,7 +6,7 @@ function Spinner() {
 
   return (
     <div className="spinner-wrapper">
-      <PropagateLoader
+      <PulseLoader
         color={color}
         loading={true}
         size={40}
