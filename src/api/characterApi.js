@@ -1,5 +1,5 @@
 const BASE_URL =
-  process.env.REACT_APP_API_BASE_URL + "api/characters/";
+  process.env.REACT_APP_API_BASE_URL + "/api/characters/";
 
 export async function fetchCharacterList(account, token) {
   try {
