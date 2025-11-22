@@ -104,7 +104,7 @@ function App() {
 
         const data = await res.json();
         setAccount({
-          id: data.user.id,
+          id: data.user._id,
           username: data.user.username,
           characters: data.user.characters || [],
           token,
