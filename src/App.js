@@ -56,41 +56,47 @@ function App() {
   // Restore local session + verify token
   // --------------------------------------------------
   useEffect(() => {
-    // Restore from localStorage immediately
-    const { account: savedAcc, character: savedChar } = loadStoredSession();
+  const token = localStorage.getItem("pd_token");
+  const savedAccount = localStorage.getItem("pd_account");
+  const savedCharacter = localStorage.getItem("pd_character");
 
-    setAccount(savedAcc);
-    setCharacter(savedChar);
+  if (!token || !savedAccount) {
+    setAccount(null);
+    setCharacter(null);
+    return;
+  }
 
-    // Verify token AFTER restoring UI
-    async function runVerification() {
-      if (!savedAcc?.token) return;
+  let parsed;
+  try {
+    parsed = JSON.parse(savedAccount);
+  } catch {
+    setAccount(null);
+    return;
+  }
 
-      const verified = await verifyToken(savedAcc.token);
+  // Make sure id exists
+  if (!parsed.id) {
+    console.warn("Invalid saved account. Clearing storage.");
+    localStorage.removeItem("pd_account");
+    localStorage.removeItem("pd_token");
+    return;
+  }
 
-      if (!verified) {
-        // Token was invalid → force logout
-        localStorage.removeItem("pd_token");
-        localStorage.removeItem("pd_account");
-        localStorage.removeItem("pd_character");
-        setAccount(null);
-        setCharacter(null);
-        return;
-      }
+  // Restore account
+  setAccount({ ...parsed, token });
 
-      // Token OK → update state
-      setAccount(verified);
-
-      // Refresh localStorage so it's always clean
-      localStorage.setItem("pd_account", JSON.stringify({
-        id: verified.id,
-        username: verified.username,
-        characters: verified.characters
-      }));
+  // Restore character
+  if (savedCharacter) {
+    try {
+      setCharacter(JSON.parse(savedCharacter));
+    } catch {
+      setCharacter(null);
     }
+  } else {
+    setCharacter(null);
+  }
+}, []);
 
-    runVerification();
-  }, []);
 
   // --------------------------------------------------
   // SIZE CHECK

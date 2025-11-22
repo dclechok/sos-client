@@ -9,6 +9,7 @@ function CharacterSelection({ account, setAccount, setCharacter }) {
 
   // Load characters from server
   useEffect(() => {
+    if (!account || !account.id) return;
     async function loadChars() {
       const chars = await fetchCharacterList(account, account.token);
       setCharacters(chars);

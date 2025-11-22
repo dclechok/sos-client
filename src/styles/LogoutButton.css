@@ -112,13 +112,13 @@
 }
 
 .logout-yes {
-  border-color: rgba(139, 81, 204, 0.2);
+  border-color: rgb(81, 89, 207, 0.35);
 }
 
 .logout-no {
-  border-color: rgba(139, 81, 204, 0.2);
+  border-color: rgb(81, 89, 207, 0.35);
   box-shadow:
-    0 0 6px rgba(255, 120, 200, 0.45),
+    0 0 6px rgb(81, 89, 207, 0.35),
     inset 0 0 4px rgba(255, 120, 200, 0.2);
 }
 
