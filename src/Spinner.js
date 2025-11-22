@@ -2,7 +2,7 @@ import { PulseLoader } from 'react-spinners';
 import "./styles/Spinner.css";
 
 function Spinner() {
-  let color = "rgb(90, 255, 241)";
+  let color = "rgba(86, 54, 230, 1)";
 
   return (
     <div className="spinner-wrapper">
