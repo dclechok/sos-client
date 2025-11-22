@@ -90,7 +90,7 @@ console.log("LOCAL ENV:", process.env.REACT_APP_API_BASE_URL);
   // --------------------------------------------------
   // SIZE CHECK
   // --------------------------------------------------
-  if (width < 1160 || height < 800) return <DisplayCheck />;
+  if (width < 1100 || height < 700) return <DisplayCheck />;
 
   // --------------------------------------------------
   // Still loading session
