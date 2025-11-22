@@ -28,12 +28,12 @@ function useWindowSize() {
   });
 
   useEffect(() => {
-    function handler() {
+    const handler = () => {
       setSize({
         width: window.innerWidth,
         height: window.innerHeight,
       });
-    }
+    };
 
     window.addEventListener("resize", handler);
     return () => window.removeEventListener("resize", handler);
@@ -46,74 +46,67 @@ function useWindowSize() {
 // MAIN APP COMPONENT
 // --------------------------------------------------
 function App() {
-  const [account, setAccount] = useState(undefined);
+  const [account, setAccount] = useState(undefined); // undefined = loading
   const [character, setCharacter] = useState(undefined);
 
   useButtonClickSound();
   const { width, height } = useWindowSize();
 
   // --------------------------------------------------
-  // Restore local session + verify token
+  // Restore local session + verify token cleanly
   // --------------------------------------------------
   useEffect(() => {
-  const token = localStorage.getItem("pd_token");
-  const savedAccount = localStorage.getItem("pd_account");
-  const savedCharacter = localStorage.getItem("pd_character");
+    async function init() {
+      const { account: storedAccount, character: storedChar } = loadStoredSession();
 
-  if (!token || !savedAccount) {
-    setAccount(null);
-    setCharacter(null);
-    return;
-  }
+      if (!storedAccount?.token) {
+        setAccount(null);
+        setCharacter(null);
+        return;
+      }
 
-  let parsed;
-  try {
-    parsed = JSON.parse(savedAccount);
-  } catch {
-    setAccount(null);
-    return;
-  }
+      // Attempt to verify token
+      const valid = await verifyToken(storedAccount.token);
 
-  // Make sure id exists
-  if (!parsed.id) {
-    console.warn("Invalid saved account. Clearing storage.");
-    localStorage.removeItem("pd_account");
-    localStorage.removeItem("pd_token");
-    return;
-  }
+      if (!valid) {
+        // Token invalid → wipe storage
+        localStorage.removeItem("pd_token");
+        localStorage.removeItem("pd_account");
+        localStorage.removeItem("pd_character");
+        setAccount(null);
+        setCharacter(null);
+        return;
+      }
 
-  // Restore account
-  setAccount({ ...parsed, token });
-
-  // Restore character
-  if (savedCharacter) {
-    try {
-      setCharacter(JSON.parse(savedCharacter));
-    } catch {
-      setCharacter(null);
+      // Token valid → restore full session
+      setAccount(valid);
+      setCharacter(storedChar || null);
     }
-  } else {
-    setCharacter(null);
-  }
-}, []);
 
+    init();
+  }, []);
 
+  console.log(character)
   // --------------------------------------------------
   // SIZE CHECK
   // --------------------------------------------------
   if (width < 1160 || height < 800) return <DisplayCheck />;
+
+  // --------------------------------------------------
+  // Still loading session
+  // --------------------------------------------------
   if (account === undefined) return <Spinner />;
 
   // --------------------------------------------------
-  // ROUTING LOGIC
+  // ROUTING LOGIC (your exact flow)
   // --------------------------------------------------
 
-  // Not logged in → Login
+  // Not logged in → Login screen
   if (account === null) {
     return <Login setAccount={setAccount} />;
   }
 
-  // Logged in but no character chosen
+  // Logged in but no character chosen → Character Selection
   if (character === null) {
     return (
       <>
