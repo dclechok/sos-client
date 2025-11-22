@@ -16,7 +16,8 @@ import CharacterMenu from "./CharacterMenu";
 import CharacterSelection from "./CharacterSelection";
 import LogoutButton from "./LogoutButton";
 
-console.log(process.env.REACT_APP_API_BASE_URL);
+import { loadStoredSession, verifyToken } from "./utils/session";
+
 // --------------------------------------------------
 // Window-size hook (must NOT be conditional)
 // --------------------------------------------------
@@ -27,12 +28,13 @@ function useWindowSize() {
   });
 
   useEffect(() => {
-    const handler = () => {
+    function handler() {
       setSize({
         width: window.innerWidth,
         height: window.innerHeight,
       });
-    };
+    }
+
     window.addEventListener("resize", handler);
     return () => window.removeEventListener("resize", handler);
   }, []);
@@ -51,71 +53,43 @@ function App() {
   const { width, height } = useWindowSize();
 
   // --------------------------------------------------
-  // Restore account + character from localStorage
+  // Restore local session + verify token
   // --------------------------------------------------
   useEffect(() => {
-    const token = localStorage.getItem("pd_token");
-    const savedAccount = localStorage.getItem("pd_account");
-    const savedCharacter = localStorage.getItem("pd_character");
+    // Restore from localStorage immediately
+    const { account: savedAcc, character: savedChar } = loadStoredSession();
 
-    if (!token || !savedAccount) {
-      setAccount(null);
-      setCharacter(null);
-      return;
-    }
+    setAccount(savedAcc);
+    setCharacter(savedChar);
 
-    // Restore account immediately
-    let parsedAccount;
-    try {
-      parsedAccount = JSON.parse(savedAccount);
-    } catch {
-      setAccount(null);
-      return;
-    }
+    // Verify token AFTER restoring UI
+    async function runVerification() {
+      if (!savedAcc?.token) return;
 
-    setAccount({ ...parsedAccount, token });
+      const verified = await verifyToken(savedAcc.token);
 
-    // Restore selected character if exists
-    if (savedCharacter) {
-      try {
-        setCharacter(JSON.parse(savedCharacter));
-      } catch {
+      if (!verified) {
+        // Token was invalid → force logout
+        localStorage.removeItem("pd_token");
+        localStorage.removeItem("pd_account");
+        localStorage.removeItem("pd_character");
+        setAccount(null);
         setCharacter(null);
+        return;
       }
-    } else {
-      setCharacter(null);
+
+      // Token OK → update state
+      setAccount(verified);
+
+      // Refresh localStorage so it's always clean
+      localStorage.setItem("pd_account", JSON.stringify({
+        id: verified.id,
+        username: verified.username,
+        characters: verified.characters
+      }));
     }
 
-    // Verify token async AFTER restoring UI
-    async function verifyToken() {
-      try {
-        const res = await fetch("http://localhost:5000/api/auth/me", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (!res.ok) {
-          localStorage.removeItem("pd_token");
-          localStorage.removeItem("pd_account");
-          localStorage.removeItem("pd_character");
-          setAccount(null);
-          setCharacter(null);
-          return;
-        }
-
-        const data = await res.json();
-        setAccount({
-          id: data.user._id,
-          username: data.user.username,
-          characters: data.user.characters || [],
-          token,
-        });
-
-      } catch (err) {
-        console.error("Token verify failed:", err);
-      }
-    }
-
-    verifyToken();
+    runVerification();
   }, []);
 
   // --------------------------------------------------
@@ -128,12 +102,12 @@ function App() {
   // ROUTING LOGIC
   // --------------------------------------------------
 
-  // 1️⃣ NOT LOGGED IN → LOGIN PAGE
+  // Not logged in → Login
   if (account === null) {
     return <Login setAccount={setAccount} />;
   }
 
-  // 2️⃣ LOGGED IN BUT NO CHARACTER SELECTED YET
+  // Logged in but no character chosen
   if (character === null) {
     return (
       <>
@@ -150,7 +124,7 @@ function App() {
     );
   }
 
-  // 3️⃣ LOGGED IN + CHARACTER SELECTED → FULL GAME UI
+  // Logged in + character selected → Game UI
   return (
     <div className="App">
       <LogoutButton setAccount={setAccount} setCharacter={setCharacter} />
@@ -158,6 +132,7 @@ function App() {
       <NavBar account={account} />
 
       <div className="game-shell">
+
         <div className="column-left">
           <div className="box-container map-overview">
             <NavigationMenu />
@@ -175,6 +150,7 @@ function App() {
             <CharacterMenu account={account} character={character} />
           </div>
         </div>
+
       </div>
     </div>
   );
