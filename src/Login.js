@@ -2,27 +2,27 @@ import "./styles/Login.css";
 import discordImg from "./img/discord.png";
 import { useState } from "react";
 import { handleLoginPassCheck } from "./api/accountApi";
+import Spinner from "./Spinner"; // import spinner
 
 function Login({ setAccount }) {
-  const [creds, setCreds] = useState({
-    name: "",
-    password: "",
-  });
+  const [creds, setCreds] = useState({ name: "", password: "" });
+  const [loading, setLoading] = useState(false);  // <<< add this
 
   async function handleLoginClick(e) {
     e.preventDefault();
+    setLoading(true); // <<< show spinner immediately
+
     try {
       const data = await handleLoginPassCheck(creds.name, creds.password);
 
       if (!data || !data.token) {
         alert("Login failed");
+        setLoading(false);
         return;
       }
 
-      // Save token
       localStorage.setItem("pd_token", data.token);
 
-      // Save account info for persistence
       localStorage.setItem(
         "pd_account",
         JSON.stringify({
@@ -32,10 +32,8 @@ function Login({ setAccount }) {
         })
       );
 
-      // clear any old character selection
       localStorage.removeItem("pd_character");
 
-      // Restore UI immediately
       setAccount({
         id: data.user.id,
         username: data.user.username,
@@ -46,12 +44,17 @@ function Login({ setAccount }) {
     } catch (err) {
       console.error(err);
       alert("Login failed");
+      setLoading(false);
     }
   }
+
+  // ⛔ If loading: replace whole Login UI with spinner
+  if (loading) return <Spinner />;
 
   return (
     <div className="login-box">
       <h1>Project Domehead</h1>
+
       <form onSubmit={handleLoginClick}>
 
         <div className="inputs">
@@ -72,7 +75,6 @@ function Login({ setAccount }) {
             onChange={(e) => setCreds({ ...creds, password: e.target.value })}
             required
           />
-          <br />
         </div>
 
         <br />

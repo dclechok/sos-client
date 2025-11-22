@@ -16,8 +16,7 @@ function CharacterSelection({ account, setAccount, setCharacter }) {
     }
     loadChars();
   }, [account]);
-
-  console.log(characters)
+  
   // When player selects a character save it in localStorage
   const handleSelect = (char) => {
     localStorage.setItem("pd_character", JSON.stringify(char));

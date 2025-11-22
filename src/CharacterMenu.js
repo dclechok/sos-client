@@ -1,5 +1,5 @@
 import './styles/CharacterMenu.css';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 import clickSound from "./sounds/button_click1.wav";
 import InventoryMenu from './InventoryMenu';
