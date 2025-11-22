@@ -47,7 +47,6 @@ function App() {
   const [account, setAccount] = useState(undefined);
   const [character, setCharacter] = useState(undefined);
 
-  console.log(account, character)
   useButtonClickSound();
   const { width, height } = useWindowSize();
 
