@@ -1,0 +1,202 @@
+/* --- DO NOT TOUCH EXISTING LAYOUT CONTAINERS --- */
+
+.scene-info-cont {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.scene-info-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 100%;
+  overflow-y: hidden; /* important */
+}
+
+.scene-info {
+  padding: 0;
+  flex: 1 1 auto;
+
+  height: calc(100vh - 280px) !important;
+  max-height: calc(100vh - 280px) !important;
+
+  background-color: rgb(2, 2, 8);
+  display: flex;
+
+  /* ensures border is seen */
+  min-height: 0;
+}
+
+/* --- BORDERED CRT FRAME --- */
+
+.terminal-frame {
+  width: 100%;
+  height: 100%;
+
+  border: 1px solid #003c38;
+  box-shadow:
+    inset 0 0 10px #001a18,
+    0 0 8px #00ffd5aa;
+
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+
+  /* must not hide overflow */
+  overflow: hidden; 
+}
+
+/* --- SCROLLING TEXT AREA --- */
+
+.terminal-text {
+  flex: 1;
+  min-height: 0;
+
+  padding: 15px;
+  overflow-y: auto;
+
+  font-family: "Courier New", monospace;
+  font-size: 13px;
+  color: #00f6d2;
+  text-align: left !important;
+
+  text-shadow: 0 0 4px #00f2ffa8;
+  background: transparent;
+}
+
+/* --- TERMINAL LINE --- */
+
+.terminal-line {
+  position: relative;
+  padding-left: 14px;
+  margin: 4px 0;
+  white-space: pre-wrap;
+  border-left: 2px solid #00f6d2;
+  text-shadow: 0 0 4px #00f6d2aa;
+}
+
+.terminal-line:before {
+  content: "";
+  position: absolute;
+  left: -2px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #00f6d2;
+}
+
+/* --- CURSOR --- */
+
+.terminal-cursor {
+  display: inline-block;
+  color: #00f6d2;
+  font-family: "Courier New", monospace;
+  font-size: 14px;
+  text-shadow: 0 0 6px #00f6d2cc;
+  animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 1; }
+}
+
+/* --- CRT SCANLINES --- */
+
+.crt-scanlines {
+  position: relative;
+}
+
+.crt-scanlines::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.06) 0px,
+    rgba(255, 255, 255, 0.06) 2px,
+    rgba(0, 0, 0, 0) 4px
+  );
+  opacity: 0.35;
+  z-index: 10;
+}
+
+/* --- Flicker --- */
+
+.crt-flicker {
+  animation: crtFlicker 2.5s infinite;
+}
+
+@keyframes crtFlicker {
+  0% { opacity: 0.95; }
+  5% { opacity: 1; }
+  10% { opacity: 0.9; }
+  15% { opacity: 1; }
+  22% { opacity: 0.92; }
+  30% { opacity: 1; }
+  45% { opacity: 0.93; }
+  55% { opacity: 1; }
+  100% { opacity: 0.97; }
+}
+
+/* --- Boot glow --- */
+
+.boot-glow {
+  animation: bootGlow 2.4s ease-out forwards;
+}
+
+@keyframes bootGlow {
+  0%   { box-shadow: inset 0 0 40px #00ffd577, 0 0 25px #00ffd5bb; }
+  100% { box-shadow: inset 0 0 10px #001a18, 0 0 8px #00ffd5aa; }
+}
+
+/* --- INPUT FIELD --- */
+
+.input-wrapper {
+  position: relative;
+  width: 95%;
+  margin: 15px auto 0;
+}
+
+.main-text-input {
+  width: 100%;
+  padding-left: 28px;
+
+  background-color: #00070c;
+  border: 1px solid #00c8b0;
+  color: #00ffe4;
+  font-family: "Courier New", monospace;
+
+  outline: none;
+  text-shadow: 0 0 4px #00ffe4aa;
+}
+
+.arrow-icon {
+  position: absolute;
+  left: 10px;
+  top: 55%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  filter: drop-shadow(0 0 4px #00ffe4aa) brightness(1.6);
+  opacity: 0.9;
+}
+
+/* neon scrollbar */
+.terminal-text::-webkit-scrollbar {
+  width: 6px;
+}
+
+.terminal-text::-webkit-scrollbar-track {
+  background: #000;
+}
+
+.terminal-text::-webkit-scrollbar-thumb {
+  background-color: #003f3a;
+  border-radius: 2px;
+  border: 1px solid #00c8b0;
+  box-shadow: 0 0 4px #00ffe4aa;
+}
