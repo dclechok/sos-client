@@ -33,7 +33,8 @@ function Gameshell({ character }) {
   const addLine = (line, delay = 300) => {
     return new Promise((resolve) => {
       setTimeout(() => {
-        setTerminalLines((prev) => [...prev, line]);
+      const timestamp = `[${new Date().toLocaleTimeString()}] `;
+      setTerminalLines((prev) => [...prev, timestamp + line]);
         playTypeSound();
         resolve();
       }, delay);
