@@ -3,8 +3,15 @@ import { io } from "socket.io-client";
 
 export function useGameSocket(onMessage) {
   const socketRef = useRef(null);
-  const onMessageRef = useRef(onMessage); // prevent stale closure
+  const onMessageRef = useRef(onMessage);
   const [isReady, setIsReady] = useState(false);
+
+  // Determine WebSocket URL
+  const WS_URL =
+    process.env.REACT_APP_WS_URL ||
+    (window.location.hostname === "localhost"
+      ? "ws://localhost:5000"
+      : "wss://mud-project-server-2.onrender.com");
 
   // Keep callback fresh
   useEffect(() => {
@@ -12,37 +19,34 @@ export function useGameSocket(onMessage) {
   }, [onMessage]);
 
   useEffect(() => {
-    // Create ONLY ONE socket
-    const socket = io("http://localhost:5000", {
-      transports: ["websocket"],  // force websocket-only
-      reconnection: true,         // enable automatic reconnection
+    console.log("🔌 Connecting to WebSocket:", WS_URL);
+
+    const socket = io(WS_URL, {
+      transports: ["websocket"],
+      reconnection: true,
       reconnectionAttempts: Infinity,
-      reconnectionDelay: 500,     // initial delay
-      reconnectionDelayMax: 3000, // max backoff
-      timeout: 5000,              // connection timeout
+      reconnectionDelay: 500,
+      reconnectionDelayMax: 3000,
+      timeout: 5000,
       autoConnect: true,
     });
 
     socketRef.current = socket;
 
-    // When connected
     socket.on("connect", () => {
-      console.log("🔗 Socket connected");
+      console.log("🔗 Socket connected to:", WS_URL);
       setIsReady(true);
     });
 
-    // When disconnected
     socket.on("disconnect", (reason) => {
       console.warn("⚠️ Socket disconnected:", reason);
       setIsReady(false);
     });
 
-    // Handle messages
     socket.on("mapData", (msg) => {
       onMessageRef.current(msg);
     });
 
-    // Handle connection errors
     socket.on("connect_error", (err) => {
       console.warn("❌ Connection error:", err.message);
     });
@@ -51,9 +55,8 @@ export function useGameSocket(onMessage) {
       console.log("🔌 Cleaning up socket...");
       socket.disconnect();
     };
-  }, []);
+  }, [WS_URL]);
 
-  // Stable send() function
   const send = useCallback((eventName, data) => {
     if (!socketRef.current || !socketRef.current.connected) {
       console.warn("❌ Attempted to send but socket not connected");
