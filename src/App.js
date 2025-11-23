@@ -9,7 +9,7 @@ import useButtonClickSound from "./hooks/useButtonClickSound";
 import Login from "./Login";
 import NavBar from "./NavBar";
 import MainImg from "./MainImg";
-import MainText from "./MainText";
+import Gameshell from "./Gameshell";
 import ChatMenu from "./ChatMenu";
 import NavigationMenu from "./NavigationMenu";
 import CharacterMenu from "./CharacterMenu";
@@ -140,7 +140,7 @@ function App() {
 
         <div className="center-container">
           <MainImg />
-          <MainText />
+          <Gameshell character={character} setCharacter={setCharacter} />
         </div>
 
         <div className="column-right">
