@@ -9,40 +9,40 @@
   justify-content: center;
   align-items: center;
 
-  /* cyberpunk background */
+  /* darker, moodier, subtle */
   background: radial-gradient(
-    circle at center,
-    rgba(86, 54, 230, 0.18) 0%,      /* your purple */
-    rgba(10, 8, 24, 0.85) 60%,
-    rgba(0, 0, 0, 0.95) 100%
+    circle at 50% 40%,
+    rgba(40, 32, 80, 0.15) 0%,          /* faint purple */
+    rgba(10, 12, 20, 0.9) 45%,          /* deep shadow */
+    rgba(2, 2, 6, 0.98) 100%            /* almost black */
   );
 
-  /* subtle glass */
-  backdrop-filter: blur(3px) saturate(140%);
+  backdrop-filter: blur(2px) saturate(125%);
 
-  /* neon glow around edges */
+  /* faint border glow, not neon bright */
   box-shadow:
-    0 0 40px rgba(86, 54, 230, 0.5) inset,
-    0 0 80px rgba(86, 54, 230, 0.25);
+    0 0 22px rgba(90, 70, 190, 0.12) inset,
+    0 0 50px rgba(90, 70, 190, 0.08);
 
   z-index: 99999;
 
-  /* slight fade-in animation */
   animation: spinnerFadeIn 0.25s ease-out forwards;
 }
 
-/* subtle "breathing" glow while loading */
+/* super subtle breathing glow */
 .spinner-wrapper::after {
   content: "";
   position: absolute;
   inset: 0;
   pointer-events: none;
+
   background: radial-gradient(
-    circle,
-    rgba(86, 54, 230, 0.08),
+    circle at 60% 50%,
+    rgba(90, 70, 190, 0.06),
     transparent 70%
   );
-  animation: pulseGlow 2.2s infinite ease-in-out;
+
+  animation: pulseGlow 3.5s infinite ease-in-out;
 }
 
 @keyframes spinnerFadeIn {
@@ -50,8 +50,9 @@
   to   { opacity: 1; }
 }
 
+/* slower + softer breathing neon */
 @keyframes pulseGlow {
-  0%   { opacity: 0.25; }
-  50%  { opacity: 0.55; }
-  100% { opacity: 0.25; }
+  0%   { opacity: 0.15; }
+  50%  { opacity: 0.35; }
+  100% { opacity: 0.15; }
 }
