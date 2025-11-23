@@ -7,54 +7,80 @@
   min-height: 0;
 }
 
+/* must NOT hide overflow */
 .scene-info-scroll {
   flex: 1 1 auto;
   min-height: 0;
   max-height: 100%;
-  overflow-y: hidden; /* important */
+  overflow-y: hidden !;
 }
 
 .scene-info {
   padding: 0;
-  flex: 1 1 auto;
+  flex: 0 0 auto;
 
-  height: calc(100vh - 280px) !important;
-  max-height: calc(100vh - 280px) !important;
+  /* FINAL PERFECT HEIGHT */
+  height: calc(67vh - 55px) !important;
+  max-height: calc(67vh - 55px) !important;
 
   background-color: rgb(2, 2, 8);
   display: flex;
-
-  /* ensures border is seen */
   min-height: 0;
 }
 
-/* --- BORDERED CRT FRAME --- */
+
+.crt-scanlines::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+
+  /* important fixes */
+  height: 100%;
+  width: 100%;
+  pointer-events: none;
+  z-index: 1;              /* should NOT be higher than the frame’s border */
+  overflow: hidden;
+
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.06) 0px,
+    rgba(255, 255, 255, 0.06) 2px,
+    rgba(0, 0, 0, 0) 4px
+  );
+
+  opacity: 0.35;
+}
+
+
+/* --- TERMINAL FRAME (BORDER) --- */
 
 .terminal-frame {
   width: 100%;
   height: 100%;
+  display: flex;
+  flex-direction: column;
 
   border: 1px solid #003c38;
   box-shadow:
     inset 0 0 10px #001a18,
     0 0 8px #00ffd5aa;
 
-  display: flex;
-  flex-direction: column;
   box-sizing: border-box;
 
-  /* must not hide overflow */
-  overflow: hidden; 
+  overflow: hidden;
+  min-height: 0; /* ABSOLUTELY REQUIRED */
 }
 
 /* --- SCROLLING TEXT AREA --- */
 
 .terminal-text {
-  flex: 1;
-  min-height: 0;
-
   padding: 15px;
+
   overflow-y: auto;
+  flex: 1 1 auto;
+
+  max-height: 100%;
+  min-height: 0;
 
   font-family: "Courier New", monospace;
   font-size: 13px;
@@ -63,9 +89,11 @@
 
   text-shadow: 0 0 4px #00f2ffa8;
   background: transparent;
+
+  padding-bottom: 40px; /* allows full scroll */
 }
 
-/* --- TERMINAL LINE --- */
+/* --- TERMINAL LINES --- */
 
 .terminal-line {
   position: relative;
@@ -86,7 +114,7 @@
   background: #00f6d2;
 }
 
-/* --- CURSOR --- */
+/* --- BLINKING CURSOR --- */
 
 .terminal-cursor {
   display: inline-block;
@@ -107,24 +135,7 @@
 .crt-scanlines {
   position: relative;
 }
-
-.crt-scanlines::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-
-  background: repeating-linear-gradient(
-    to bottom,
-    rgba(255, 255, 255, 0.06) 0px,
-    rgba(255, 255, 255, 0.06) 2px,
-    rgba(0, 0, 0, 0) 4px
-  );
-  opacity: 0.35;
-  z-index: 10;
-}
-
-/* --- Flicker --- */
+/* --- FLICKER --- */
 
 .crt-flicker {
   animation: crtFlicker 2.5s infinite;
@@ -142,14 +153,14 @@
   100% { opacity: 0.97; }
 }
 
-/* --- Boot glow --- */
+/* --- BOOT GLOW --- */
 
 .boot-glow {
   animation: bootGlow 2.4s ease-out forwards;
 }
 
 @keyframes bootGlow {
-  0%   { box-shadow: inset 0 0 40px #00ffd577, 0 0 25px #00ffd5bb; }
+  0% { box-shadow: inset 0 0 40px #00ffd577, 0 0 25px #00ffd5bb; }
   100% { box-shadow: inset 0 0 10px #001a18, 0 0 8px #00ffd5aa; }
 }
 
@@ -185,7 +196,8 @@
   opacity: 0.9;
 }
 
-/* neon scrollbar */
+/* --- NEON SCROLLBAR --- */
+
 .terminal-text::-webkit-scrollbar {
   width: 6px;
 }
