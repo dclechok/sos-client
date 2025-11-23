@@ -27,6 +27,7 @@ function LogoutButton({ setAccount, setCharacter }) {
     localStorage.removeItem("pd_character");
 
     clickSound.currentTime = 0;
+    clickSound.volume = 0.5;
     clickSound.play().catch(() => {});
 
     setAccount(null);
