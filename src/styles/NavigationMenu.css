@@ -1,9 +1,120 @@
-.main-text-span{
-  position: relative;
-  font-family: "Montserrat", sans-serif;
-  font-optical-sizing: auto;
-  font-weight: 400;
-  font-style: normal;
-  color: rgb(204, 196, 163);
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600&display=swap');
+/* Outer container — same as .char-menu-cont */
+.nav-menu-cont {
+  display: flex;
+  flex-direction: column;
+  background-color: rgb(15, 18, 27);
+  padding: 0;
+  margin: 0;
+  font-family: "Orbitron", sans-serif;
+  font-weight: 300;
+  color: white;
   font-size: 12px;
+  border: 2px solid rgb(36, 37, 46);
+  border-radius: 4px;
+  overflow: hidden;
+
+  /* match sizing with your left sidebar spacing */
+  padding-bottom: 4px;
+}
+
+/* Title bar (like character menu tab row) */
+.nav-title-bar {
+  background-color: #0C1A2E;
+  padding: 10px 12px;
+  border-bottom: 2px solid rgb(36, 37, 46);
+  text-align: center;
+}
+
+/* Title text with cyan glow */
+.nav-title {
+  margin: 0;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 500;
+
+  color: #3FFFEF;
+  text-shadow: 0 0 6px #3FFFEF55;
+}
+
+/* Inside content */
+.nav-content {
+  padding: 10px 12px;
+  background-color: rgb(2, 2, 8);
+  border-radius: 0 0 4px 4px;
+}
+
+/* Normal text */
+.nav-location {
+  color: #cfd3e6;
+  font-size: 11px;
+}
+
+/* High security highlight */
+.nav-security-high {
+  color: rgba(72, 236, 107, 1);
+  text-shadow: 0 0 6px rgba(72,236,107,0.4);
+}
+
+/* Outer container — same as .char-menu-cont */
+.nav-menu-cont {
+  display: flex;
+  flex-direction: column;
+  background-color: rgb(15, 18, 27);
+  padding: 0;
+  margin: 0;
+  font-family: "Montserrat", sans-serif;
+  font-weight: 400;
+  color: white;
+  font-size: 12px;
+
+  border: 2px solid rgb(36, 37, 46);
+  border-radius: 4px;
+  overflow: hidden;
+
+  /* match sizing with your left sidebar spacing */
+  padding-bottom: 4px;
+}
+
+/* Title bar (like character menu tab row) */
+/* .nav-title-bar {
+  background-color: #0C1A2E;
+  padding: 10px 12px;
+  border-bottom: 2px solid rgb(36, 37, 46);
+  text-align: center;
+    font-family: "Orbitron", sans-serif;
+  font-weight: 300;
+  color: white;
+  font-size: 12px;
+} */
+
+/* Title text with cyan glow */
+.nav-title {
+  margin: 0;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 500;
+
+  color: #3FFFEF;
+  text-shadow: 0 0 6px #3FFFEF55;
+}
+
+/* Inside content */
+.nav-content {
+  padding: 10px 12px;
+  background-color: rgb(2, 2, 8);
+  border-radius: 0 0 4px 4px;
+}
+
+/* Normal text */
+.nav-location {
+  color: #cfd3e6;
+  font-size: 11px;
+}
+
+/* High security highlight */
+.nav-security-high {
+  color: rgba(72, 236, 107, 1);
+  text-shadow: 0 0 6px rgba(72,236,107,0.4);
 }
