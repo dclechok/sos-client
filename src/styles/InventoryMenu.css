@@ -1,73 +1,130 @@
+/* --- INVENTORY GRID --- */
 .inventory-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   grid-template-rows: repeat(5, 1fr);
   gap: 8px;
-  padding: 10px;
-  /* height: 100%; */
-  box-sizing: border-box;
+  padding: 12px;
+
+  background: rgba(10, 8, 18, 0.45);
+  border: 1px solid #2a2340;
+  border-radius: 10px;
+
+  box-shadow:
+    inset 0 0 20px rgba(72, 59, 115, 0.4),
+    0 0 12px rgba(72, 59, 115, 0.3);
 }
-/* Prevent resizing */
+
+/* --- INVENTORY SLOT (cyberpunk matte) --- */
 .inventory-slot {
   width: 55px;
   height: 55px;
   position: relative;
+
   display: flex;
   justify-content: center;
   align-items: center;
-  background-color: #0d0f16;
-  border: 2px solid #1b1e29;
+
+  background: linear-gradient(
+    145deg,
+    #0d0b14,
+    #14111e
+  );
+  border: 1px solid #2e2944;
   border-radius: 8px;
+
+  transition: 150ms ease;
+  overflow: hidden;
+
+  box-shadow:
+    inset 0 0 6px rgba(140, 66, 255, 0.15),
+    inset 0 0 12px rgba(40, 20, 80, 0.2);
 }
 
+/* optional subtle shimmer grid inside slot */
+.inventory-slot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.03) 0px,
+    rgba(255, 255, 255, 0.03) 2px,
+    rgba(0, 0, 0, 0) 4px
+  );
+  opacity: 0.15;
+  pointer-events: none;
+}
 
+/* --- ITEM IMAGE --- */
 .inventory-slot img {
   width: 40px;
   height: 40px;
   object-fit: contain;
   image-rendering: pixelated;
+  filter: drop-shadow(0 0 4px rgba(180, 160, 255, 0.4));
 }
 
+/* --- STACK COUNT --- */
+.inventory-slot-stacksize {
+  position: absolute;
+  right: 3px;
+  bottom: 2px;
 
-.inventory-slot-stacksize{
-    position: absolute;
-    right: 2px;
-    bottom: 2px;
-    color: white;
-    font-size: 8px;
+  font-size: 9px;
+  font-family: "Orbitron", sans-serif;
+  color: #b89fff;
+  text-shadow: 0 0 4px rgba(150, 120, 255, 0.7);
 }
+
+/* --- HOVER EFFECT --- */
 .inventory-slot:hover {
-  border-color: rgb(120, 130, 255);
-  background-color: rgb(16, 16, 28);
+  border-color: #8f6aff;
+  background-color: #1a1524;
+  box-shadow:
+    0 0 14px rgba(140, 66, 255, 0.5),
+    inset 0 0 10px rgba(140, 66, 255, 0.25);
+  transform: translateY(-2px);
 }
 
-.tooltip-name{
-    font-family: "Orbitron", sans-serif;
-    font-optical-sizing: auto;
-    font-weight: 400;
-    font-style: normal;
-}
-
+/* --- TOOLTIP --- */
 .inventory-tooltip {
-    background-color: rgba(0, 0, 0, 0.65);
-    font-size: 10px;
-    padding: 10px;
-    border-radius: 4px;
-    width: 150px;
-    font-family: "Montserrat", sans-serif;
-    font-optical-sizing: auto;
-    font-weight: 400;
-    font-style: normal;
-    box-shadow: 0 0 10px var(--tooltip-glow, transparent);
-    animation: tooltipPulse 1.2s ease-in-out infinite alternate;
+  background: rgba(14, 12, 22, 0.85);
+  backdrop-filter: blur(2px);
+
+  font-size: 11px;
+  padding: 10px 12px;
+  border-radius: 6px;
+
+  border: 1px solid #673d9c;
+  color: #dcd3ff;
+
+  font-family: "Montserrat", sans-serif;
+
+  box-shadow:
+    0 0 18px rgba(116, 69, 186, 0.6),
+    inset 0 0 12px rgba(123, 84, 255, 0.4);
+
+  animation: tooltipGlow 2s ease-in-out infinite alternate;
 }
 
-/* smooth glowing animation */
-@keyframes tooltipPulse {
-    from {
-        box-shadow: 0 0 6px var(--tooltip-glow, transparent);
-    }
-    to {
-        box-shadow: 0 0 14px var(--tooltip-glow, transparent);
-    }
+.tooltip-name {
+  font-family: "Orbitron", sans-serif;
+  color: #a57cff;
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+/* --- Tooltip pulse animation --- */
+@keyframes tooltipGlow {
+  from {
+    box-shadow:
+      0 0 10px rgba(116, 69, 186, 0.35),
+      inset 0 0 6px rgba(123, 84, 255, 0.25);
+  }
+  to {
+    box-shadow:
+      0 0 20px rgba(160, 100, 255, 0.7),
+      inset 0 0 14px rgba(143, 111, 255, 0.45);
+  }
 }
