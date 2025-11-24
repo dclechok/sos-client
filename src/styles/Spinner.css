@@ -1,3 +1,5 @@
+/* --- FULLSCREEN CYBERPUNK LOADING OVERLAY --- */
+
 .spinner-wrapper {
   position: fixed;
   top: 0;
@@ -9,50 +11,58 @@
   justify-content: center;
   align-items: center;
 
-  /* darker, moodier, subtle */
-  background: radial-gradient(
-    circle at 50% 40%,
-    rgba(40, 32, 80, 0.15) 0%,          /* faint purple */
-    rgba(10, 12, 20, 0.9) 45%,          /* deep shadow */
-    rgba(2, 2, 6, 0.98) 100%            /* almost black */
-  );
+  /* atmospheric cyberpunk background */
+  background:
+    radial-gradient(
+      circle at center,
+      rgba(70, 130, 160, 0.18) 0%,      /* subtle teal opalescent glow */
+      rgba(15, 20, 30, 0.92) 55%,        /* deep bluish fog */
+      rgba(3, 5, 10, 0.98) 100%          /* near-black */
+    );
 
-  backdrop-filter: blur(2px) saturate(125%);
+  /* glassy futuristic haze */
+  backdrop-filter: blur(3px) saturate(120%);
 
-  /* faint border glow, not neon bright */
+  /* faint edge halo like the picture */
   box-shadow:
-    0 0 22px rgba(90, 70, 190, 0.12) inset,
-    0 0 50px rgba(90, 70, 190, 0.08);
+    0 0 90px rgba(80, 150, 200, 0.10) inset,
+    0 0 140px rgba(80, 150, 200, 0.05);
 
   z-index: 99999;
-
-  animation: spinnerFadeIn 0.25s ease-out forwards;
+  animation: spinnerFadeIn 0.35s ease-out forwards;
 }
 
-/* super subtle breathing glow */
+/* --- BLOOM BEHIND THE LOADER --- */
 .spinner-wrapper::after {
   content: "";
   position: absolute;
-  inset: 0;
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
   pointer-events: none;
 
+  /* soft cyan bloom like the render */
   background: radial-gradient(
-    circle at 60% 50%,
-    rgba(90, 70, 190, 0.06),
-    transparent 70%
+    circle,
+    rgba(100, 180, 220, 0.20),
+    rgba(0, 0, 0, 0)
   );
 
-  animation: pulseGlow 3.5s infinite ease-in-out;
+  filter: blur(45px);
+  opacity: 0.6;
+
+  animation: pulseBloom 4s ease-in-out infinite;
 }
 
+/* --- FADE IN --- */
 @keyframes spinnerFadeIn {
   from { opacity: 0; }
   to   { opacity: 1; }
 }
 
-/* slower + softer breathing neon */
-@keyframes pulseGlow {
-  0%   { opacity: 0.15; }
-  50%  { opacity: 0.35; }
-  100% { opacity: 0.15; }
+/* --- SOFT ATMOSPHERIC BLOOM ANIMATION --- */
+@keyframes pulseBloom {
+  0%   { opacity: 0.35; transform: scale(0.95); }
+  50%  { opacity: 0.70; transform: scale(1.05); }
+  100% { opacity: 0.35; transform: scale(0.95); }
 }

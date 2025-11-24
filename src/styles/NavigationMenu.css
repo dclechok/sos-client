@@ -14,7 +14,7 @@
   border: 2px solid rgb(36, 37, 46);
   border-radius: 4px;
   overflow: hidden;
-
+  min-height: 250px;
   /* match sizing with your left sidebar spacing */
   padding-bottom: 4px;
 }
@@ -43,6 +43,7 @@
   padding: 10px 12px;
   background-color: rgb(2, 2, 8);
   border-radius: 0 0 4px 4px;
+  
 }
 
 /* Normal text */

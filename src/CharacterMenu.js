@@ -4,6 +4,11 @@ import { useState } from 'react';
 import clickSound from "./sounds/button_click1.wav";
 import InventoryMenu from './InventoryMenu';
 
+import CharacterEquipment from './CharacterEquipment';
+
+//utils
+import { levelFormat } from './utils/levelFormatter';
+
 function CharacterMenu({ account, character }){
 
     // Load from localStorage or default to "stats"
@@ -26,7 +31,15 @@ function CharacterMenu({ account, character }){
 
     return (
         <div className="char-menu-cont noselect">
-            {account?.username ? <h3>{account.username}</h3> : ""}
+            <div className="char-equip-cont">
+            <div className="name">
+                {character?.charName ? <h3>{character.charName}</h3> : ""}
+            </div>
+            <div className="class">
+                {character?.exp ? <div>Level: {levelFormat(character.exp)} - {character.class} </div> : ""}
+            </div>
+            <CharacterEquipment />
+            </div>
 
             <div className="char-menu-tabs">
 

@@ -49,3 +49,28 @@
   overflow: hidden;
   min-height: 0;
 }
+
+.char-equip-cont {
+  background-color: rgb(10, 13, 20);
+  background-image:
+    linear-gradient(rgba(63, 255, 239, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(63, 255, 239, 0.05) 1px, transparent 1px);
+  background-size: 14px 14px;
+  background-position: center center;
+  border: 2px solid rgb(36, 37, 46);
+  border-radius: 4px;
+}
+
+
+
+
+.char-equip-cont .class{
+  color: white;
+  font-size: 10px;
+  font-family: "Montserrat", sans-serif;
+  font-weight: 400;
+}
+
+.char-equip-cont .name{
+  color: rgb(81, 89, 207);
+}
