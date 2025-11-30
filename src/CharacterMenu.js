@@ -8,6 +8,7 @@ import CharacterEquipment from './CharacterEquipment';
 
 //utils
 import { levelFormat } from './utils/levelFormatter';
+import SkillsMenu from './SkillsMenu';
 
 function CharacterMenu({ account, character }){
 
@@ -76,6 +77,12 @@ function CharacterMenu({ account, character }){
             <div className="char-menu-display">
                 {activeTab === "inventory" && (
                     <InventoryMenu account={account} character={character} />
+                )}
+            </div>
+
+            <div>
+                {activeTab === "skills" && (
+                    <SkillsMenu />
                 )}
             </div>
         </div>

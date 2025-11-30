@@ -1,0 +1,153 @@
+/* ---------------------------------------- */
+/* SKILL CATEGORY CONTAINER */
+/* ---------------------------------------- */
+.skills-container {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.skill-category {
+  list-style: none;
+  padding: 12px;
+  margin: 0;
+
+  font-family: "Courier New", monospace;
+  color: #9bb8c7; /* softer skill text */
+  text-shadow: none;
+
+  background: #0b0f14; /* dark slate */
+  border: 1px solid #1c2a38; /* steel navy border */
+  box-shadow:
+    inset 0 0 12px #0e161f,
+    0 0 8px #0c1b26aa;
+
+  max-height: 250px;
+  width: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border-radius: 4px;
+
+  text-align: left !important;
+}
+
+/* ---------------------------------------- */
+/* CATEGORY TITLE */
+/* ---------------------------------------- */
+.skill-category > li {
+  color: #b4c9d6; /* soft steel blue */
+  font-size: 14px;
+  margin-top: 14px;
+  margin-bottom: 6px;
+
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  font-weight: bold;
+
+  text-shadow: none;
+  border-left: 3px solid #6fc7ff; /* soft cyan accent */
+  padding-left: 10px;
+
+  border-bottom: 1px solid rgba(150, 200, 230, 0.15);
+  padding-bottom: 4px;
+}
+
+/* ---------------------------------------- */
+/* CATEGORY LIST */
+/* ---------------------------------------- */
+.skill-category ul {
+  list-style: none;
+  padding-left: 18px;
+  margin: 0;
+}
+
+/* ---------------------------------------- */
+/* SKILL ITEM ROW — tightened */
+/* ---------------------------------------- */
+.skill-item {
+  display: flex;
+  align-items: center;
+  gap: 0px;     /* remove natural flex spacing */
+  padding: 1px 0;
+  min-width: 0;
+}
+
+/* Bullet — reduced spacing */
+.skill-item::before {
+  content: "›";
+  margin-right: 3px;  /* small spacing */
+  color: #6fc7ff;
+}
+
+/* Skill name — minimal spacing before bar */
+.skill-name {
+  flex: 1 1 auto;
+  min-width: 0;
+
+  color: #9bb8c7;
+  font-size: 13px;
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  margin-right: 3px; /* reduced gap to XP bar */
+}
+
+/* XP BAR */
+.skill-bar {
+  flex: 0 0 120px;
+  height: 6px;
+
+  background: rgba(120, 180, 220, 0.1);
+  border: 1px solid #375a71;
+  border-radius: 4px;
+  overflow: hidden;
+
+  box-shadow: inset 0 0 6px #1c2a38aa;
+}
+
+/* XP BAR FILL */
+.skill-bar-fill {
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    #4aa4ff,
+    #8fd4ff,
+    #4aa4ff
+  );
+  box-shadow: 0 0 6px #6fc7ffaa;
+  transition: width 0.25s ease-out;
+}
+
+/* XP % TEXT */
+.skill-percent {
+  flex-shrink: 0;
+  width: 30px;
+  color: #b4cfe9;
+  font-size: 12px;
+  text-align: right;
+}
+
+/* ---------------------------------------- */
+/* HOVER EFFECT */
+/* ---------------------------------------- */
+.skill-item:hover .skill-name {
+  color: #d2e8f5;
+}
+
+/* ---------------------------------------- */
+/* SCROLLBAR */
+/* ---------------------------------------- */
+.skill-category::-webkit-scrollbar {
+  width: 6px;
+}
+.skill-category::-webkit-scrollbar-track {
+  background: #0b0f14;
+}
+.skill-category::-webkit-scrollbar-thumb {
+  background-color: #2a4354;
+  border-radius: 2px;
+  border: 1px solid #6fc7ff55;
+  box-shadow: 0 0 4px #6fc7ff55;
+}
