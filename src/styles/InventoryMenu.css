@@ -1,8 +1,8 @@
 /* --- INVENTORY GRID --- */
 .inventory-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  grid-template-rows: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
+  grid-template-rows: repeat(6, 1fr);
   gap: 8px;
   padding: 12px;
 
@@ -17,8 +17,8 @@
 
 /* --- INVENTORY SLOT (cyberpunk matte) --- */
 .inventory-slot {
-  width: 55px;
-  height: 55px;
+  width: 35px;
+  height: 35px;
   position: relative;
 
   display: flex;

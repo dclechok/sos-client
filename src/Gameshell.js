@@ -2,14 +2,16 @@
 import "./styles/Gameshell.css";
 import { useState, useEffect, useRef } from "react";
 import { useGameSocket } from "./hooks/useGameSocket";
-import chatArrow from "./img/chatarrow.png";
 
 function Gameshell({ character }) {
   const [sceneData, setSceneData] = useState(null);
   const [terminalLines, setTerminalLines] = useState([]);
   const [bootComplete, setBootComplete] = useState(false);
-
+  const [command, setCommand] = useState("");
+  
   const textRef = useRef(null);
+  const inputRef = useRef(null);
+
 
   const { send, isReady } = useGameSocket((msg) => {
     setSceneData(msg);
@@ -76,15 +78,18 @@ function Gameshell({ character }) {
         await addLine("Available exits:");
         await addLine("   " + Object.keys(sceneData.exits).join(", "));
       }
-      await addLine("The wind shifts across the Slagline, carrying with it the metallic tang of ozone and the distant clatter of decaying machinery. Ahead, the terrain drops into a basin of abandoned industrial ruins—collapsed gantries, twisted conveyors, and shattered concrete silos half-swallowed by creeping black moss. Broken drones lie scattered like the bones of mechanical carrion, their lenses cracked and dim, long since scavenged for anything of value. The sky overhead flickers with the dying pulse of the city’s grid, faint neon reflections rippling across a blanket of smoke thick enough to taste. Somewhere beneath the rubble, a coolant line hisses a slow, rhythmic exhale, like the last breath of a forgotten giant. Every step echoes across the hollow expanse, stirring clouds of toxic dust that shimmer faintly under the moonlight. A rusted warning sign, barely legible, hangs by a single bolt: “BIOHAZARD CONTAINMENT—AUTHORIZED ENTRY ONLY.” The rest of the text has been eaten away by corrosion, leaving only deep claw-like gouges across the metal. Far in the distance, just beyond the reach of the fog, the silhouette of a mag-rail tower flickers with intermittent life, its guiding beacon snapping on and off as if struggling to remember its purpose. The air hums with static, and for a moment you swear you hear a whispered transmission—half a syllable, maybe less—before it fades into the oppressive cold. Nothing moves, yet the entire place feels haunted by the weight of old machinery waiting to wake again.")
-      await addLine("The wind shifts across the Slagline, carrying with it the metallic tang of ozone and the distant clatter of decaying machinery. Ahead, the terrain drops into a basin of abandoned industrial ruins—collapsed gantries, twisted conveyors, and shattered concrete silos half-swallowed by creeping black moss. Broken drones lie scattered like the bones of mechanical carrion, their lenses cracked and dim, long since scavenged for anything of value. The sky overhead flickers with the dying pulse of the city’s grid, faint neon reflections rippling across a blanket of smoke thick enough to taste. Somewhere beneath the rubble, a coolant line hisses a slow, rhythmic exhale, like the last breath of a forgotten giant. Every step echoes across the hollow expanse, stirring clouds of toxic dust that shimmer faintly under the moonlight. A rusted warning sign, barely legible, hangs by a single bolt: “BIOHAZARD CONTAINMENT—AUTHORIZED ENTRY ONLY.” The rest of the text has been eaten away by corrosion, leaving only deep claw-like gouges across the metal. Far in the distance, just beyond the reach of the fog, the silhouette of a mag-rail tower flickers with intermittent life, its guiding beacon snapping on and off as if struggling to remember its purpose. The air hums with static, and for a moment you swear you hear a whispered transmission—half a syllable, maybe less—before it fades into the oppressive cold. Nothing moves, yet the entire place feels haunted by the weight of old machinery waiting to wake again.")
-      await addLine("The wind shifts across the Slagline, carrying with it the metallic tang of ozone and the distant clatter of decaying machinery. Ahead, the terrain drops into a basin of abandoned industrial ruins—collapsed gantries, twisted conveyors, and shattered concrete silos half-swallowed by creeping black moss. Broken drones lie scattered like the bones of mechanical carrion, their lenses cracked and dim, long since scavenged for anything of value. The sky overhead flickers with the dying pulse of the city’s grid, faint neon reflections rippling across a blanket of smoke thick enough to taste. Somewhere beneath the rubble, a coolant line hisses a slow, rhythmic exhale, like the last breath of a forgotten giant. Every step echoes across the hollow expanse, stirring clouds of toxic dust that shimmer faintly under the moonlight. A rusted warning sign, barely legible, hangs by a single bolt: “BIOHAZARD CONTAINMENT—AUTHORIZED ENTRY ONLY.” The rest of the text has been eaten away by corrosion, leaving only deep claw-like gouges across the metal. Far in the distance, just beyond the reach of the fog, the silhouette of a mag-rail tower flickers with intermittent life, its guiding beacon snapping on and off as if struggling to remember its purpose. The air hums with static, and for a moment you swear you hear a whispered transmission—half a syllable, maybe less—before it fades into the oppressive cold. Nothing moves, yet the entire place feels haunted by the weight of old machinery waiting to wake again.")
 
       setBootComplete(true);
     };
 
     revealScene();
   }, [sceneData, bootComplete]);
+
+  useEffect(() => {
+  if (bootComplete && inputRef.current) {
+    inputRef.current.focus();
+  }
+}, [bootComplete]);
 
   return (
     <div className="scene-info-cont">
@@ -100,7 +105,23 @@ function Gameshell({ character }) {
                 </div>
               ))}
 
-              {bootComplete && <div className="terminal-cursor">█</div>}
+{bootComplete && (
+  <div className="terminal-input-line" onClick={() => inputRef.current.focus()}>
+    <span className="terminal-typed">{command}</span>
+    <span className="terminal-cursor">█</span>
+
+    {/* Hidden input captures keystrokes */}
+    <input
+      ref={inputRef}
+      className="terminal-hidden-input"
+      value={command}
+      onChange={(e) => setCommand(e.target.value)}
+      autoFocus
+    />
+  </div>
+)}
+
+
             </div>
           </div>
         </div>

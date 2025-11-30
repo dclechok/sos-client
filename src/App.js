@@ -46,7 +46,7 @@ function useWindowSize() {
 // MAIN APP COMPONENT
 // --------------------------------------------------
 function App() {
-  console.log(process.env.REACT_APP_API_BASE_URL);
+
   const [account, setAccount] = useState(undefined); // undefined = loading
   const [character, setCharacter] = useState(undefined);
 

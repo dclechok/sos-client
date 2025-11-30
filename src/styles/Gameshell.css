@@ -212,3 +212,12 @@
   border: 1px solid #00c8b0;
   box-shadow: 0 0 4px #00ffe4aa;
 }
+
+.terminal-hidden-input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  height: 0;
+  width: 0;
+  caret-color: transparent;
+}

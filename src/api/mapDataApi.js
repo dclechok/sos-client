@@ -56,6 +56,27 @@ export async function getSceneByCoords(regionId, x, y) {
   }
 }
 
+export async function getAllScenes() {
+  try {
+    const response = await fetch(`${BASE_URL}/scenes`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
 
-/**
- * Optional: Fetch*
+    if (!response.ok) {
+      console.error("Failed to fetch all scenes:", response.status);
+      return [];
+    }
+
+    const json = await response.json();
+    return json.scenes || [];
+  } catch (error) {
+    console.error("Error fetching scenes:", error);
+    return [];
+  }
+}
+
+
+
