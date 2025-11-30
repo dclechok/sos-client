@@ -8,42 +8,48 @@ function Gameshell({ character }) {
   const [terminalLines, setTerminalLines] = useState([]);
   const [bootComplete, setBootComplete] = useState(false);
   const [command, setCommand] = useState("");
-  
+
   const textRef = useRef(null);
   const inputRef = useRef(null);
-
 
   const { send, isReady } = useGameSocket((msg) => {
     setSceneData(msg);
   });
 
-  // Auto-scroll to bottom when new text appears
+  /* ------------------------------------------------------
+     Auto-scroll when terminal output or input changes
+     ------------------------------------------------------ */
   useEffect(() => {
     if (textRef.current) {
       textRef.current.scrollTop = textRef.current.scrollHeight;
     }
-  }, [terminalLines, bootComplete]);
+  }, [terminalLines, bootComplete, command]);
 
-  // typing beep
+  /* ------------------------------------------------------
+     Typewriter sound
+     ------------------------------------------------------ */
   const playTypeSound = () => {
     const audio = new Audio("/sounds/type1.mp3");
     audio.volume = 0.25;
     audio.play().catch(() => {});
   };
 
-  // add line w/ delay
-  const addLine = (line, delay = 300) => {
-    return new Promise((resolve) => {
+  /* ------------------------------------------------------
+     Add line with delay (boot sequence style)
+     ------------------------------------------------------ */
+  const addLine = (line, delay = 300) =>
+    new Promise((resolve) => {
       setTimeout(() => {
-      const timestamp = `[${new Date().toLocaleTimeString()}] `;
-      setTerminalLines((prev) => [...prev, timestamp + line]);
+        const timestamp = `[${new Date().toLocaleTimeString()}] `;
+        setTerminalLines((prev) => [...prev, timestamp + line]);
         playTypeSound();
         resolve();
       }, delay);
     });
-  };
 
-  // Boot sequence
+  /* ------------------------------------------------------
+     Boot sequence
+     ------------------------------------------------------ */
   useEffect(() => {
     if (!character || !isReady) return;
 
@@ -62,7 +68,37 @@ function Gameshell({ character }) {
     runBoot();
   }, [character, isReady, send]);
 
-  // Reveal scene data
+  /* ------------------------------------------------------
+     Handle Enter key (submit command)
+     ------------------------------------------------------ */
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+
+      // Add the command to the terminal output
+      setTerminalLines((prev) => [
+        ...prev,
+        `[${new Date().toLocaleTimeString()}] ${command}`,
+      ]);
+
+      // (Optional) send command to server
+      // send("command", { text: command });
+
+      // Clear input
+      setCommand("");
+
+      // Auto-scroll
+      setTimeout(() => {
+        if (textRef.current) {
+          textRef.current.scrollTop = textRef.current.scrollHeight;
+        }
+      }, 10);
+    }
+  };
+
+  /* ------------------------------------------------------
+     Reveal scene data (after boot)
+     ------------------------------------------------------ */
   useEffect(() => {
     if (!sceneData || bootComplete) return;
 
@@ -85,19 +121,25 @@ function Gameshell({ character }) {
     revealScene();
   }, [sceneData, bootComplete]);
 
+  /* ------------------------------------------------------
+     Always keep input focused once boot completes
+     ------------------------------------------------------ */
   useEffect(() => {
-  if (bootComplete && inputRef.current) {
-    inputRef.current.focus();
-  }
-}, [bootComplete]);
+    if (bootComplete && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [bootComplete]);
 
+  /* ------------------------------------------------------
+     RENDER
+     ------------------------------------------------------ */
   return (
     <div className="scene-info-cont">
       <div className="scene-info-scroll">
         <div className="scene-info">
-          {/* border + CRT effects */}
           <div className="terminal-frame crt-scanlines crt-flicker boot-glow">
-            {/* inner scrolling text */}
+
+            {/* Scrollable output */}
             <div className="terminal-text" ref={textRef}>
               {terminalLines.map((line, i) => (
                 <div key={i} className="terminal-line">
@@ -105,32 +147,30 @@ function Gameshell({ character }) {
                 </div>
               ))}
 
-{bootComplete && (
-  <div className="terminal-input-line" onClick={() => inputRef.current.focus()}>
-    <span className="terminal-typed">{command}</span>
-    <span className="terminal-cursor">█</span>
+              {/* Input line directly under last line */}
+              {bootComplete && (
+                <div
+                  className="terminal-input-line"
+                  onClick={() => inputRef.current?.focus()}
+                >
+                  <span className="terminal-typed">{command}</span>
+                  <span className="terminal-cursor">█</span>
 
-    {/* Hidden input captures keystrokes */}
-    <input
-      ref={inputRef}
-      className="terminal-hidden-input"
-      value={command}
-      onChange={(e) => setCommand(e.target.value)}
-      autoFocus
-    />
-  </div>
-)}
-
-
+                  {/* Hidden real input */}
+                  <input
+                    ref={inputRef}
+                    className="terminal-hidden-input"
+                    value={command}
+                    onChange={(e) => setCommand(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                  />
+                </div>
+              )}
             </div>
+
           </div>
         </div>
       </div>
-
-      {/* <div className="input-wrapper">
-        <input className="main-text-input" />
-        <img className="arrow-icon" src={chatArrow} alt="Send" />
-      </div> */}
     </div>
   );
 }

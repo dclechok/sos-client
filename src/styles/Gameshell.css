@@ -1,4 +1,4 @@
-/* --- DO NOT TOUCH EXISTING LAYOUT CONTAINERS --- */
+/* --- LAYOUT CONTAINERS --- */
 
 .scene-info-cont {
   display: flex;
@@ -7,20 +7,19 @@
   min-height: 0;
 }
 
-/* must NOT hide overflow */
 .scene-info-scroll {
   flex: 1 1 auto;
   min-height: 0;
   max-height: 100%;
-  overflow-y: hidden !;
+  overflow-y: hidden;
 }
 
 .scene-info {
   padding: 0;
   flex: 0 0 auto;
 
-  /* FINAL PERFECT HEIGHT */
-  height: calc(67vh - 55px) !important;
+  /* restore the nice fixed height */
+  height: calc(60vh - 55px) !important;
   max-height: calc(67vh - 55px) !important;
 
   background-color: rgb(2, 2, 8);
@@ -28,17 +27,21 @@
   min-height: 0;
 }
 
+/* --- CRT SCANLINES --- */
+
+.crt-scanlines {
+  position: relative;
+}
 
 .crt-scanlines::after {
   content: "";
   position: absolute;
   inset: 0;
 
-  /* important fixes */
   height: 100%;
   width: 100%;
   pointer-events: none;
-  z-index: 1;              /* should NOT be higher than the frame’s border */
+  z-index: 1;
   overflow: hidden;
 
   background: repeating-linear-gradient(
@@ -51,8 +54,7 @@
   opacity: 0.35;
 }
 
-
-/* --- TERMINAL FRAME (BORDER) --- */
+/* --- TERMINAL FRAME --- */
 
 .terminal-frame {
   width: 100%;
@@ -68,13 +70,14 @@
   box-sizing: border-box;
 
   overflow: hidden;
-  min-height: 0; /* ABSOLUTELY REQUIRED */
+  min-height: 0;
 }
 
 /* --- SCROLLING TEXT AREA --- */
 
 .terminal-text {
   padding: 15px;
+  padding-bottom: 20px;
 
   overflow-y: auto;
   flex: 1 1 auto;
@@ -89,8 +92,6 @@
 
   text-shadow: 0 0 4px #00f2ffa8;
   background: transparent;
-
-  padding-bottom: 40px; /* allows full scroll */
 }
 
 /* --- TERMINAL LINES --- */
@@ -99,7 +100,7 @@
   position: relative;
   padding-left: 14px;
   margin: 4px 0;
-  white-space: pre-wrap;
+  white-space: pre-wrap;      /* wraps long descriptions */
   border-left: 2px solid #00f6d2;
   text-shadow: 0 0 4px #00f6d2aa;
 }
@@ -114,6 +115,31 @@
   background: #00f6d2;
 }
 
+/* --- INPUT LINE (inside scroll, wraps like text) --- */
+
+.terminal-input-line {
+  padding-left: 14px;
+  margin: 4px 0;
+  text-align: left !important;
+
+  /* allow wrapping inside the same width as the shell */
+  white-space: normal;
+  word-break: break-word;
+}
+
+/* Visible typed text */
+.terminal-typed {
+  color: #00f6d2;
+  font-family: "Courier New", monospace;
+  font-size: 13px;
+  text-shadow: 0 0 4px #00f6d2aa;
+  letter-spacing: 0.5px;
+
+  display: inline;
+  white-space: normal;
+  word-break: break-word;
+}
+
 /* --- BLINKING CURSOR --- */
 
 .terminal-cursor {
@@ -123,6 +149,8 @@
   font-size: 14px;
   text-shadow: 0 0 6px #00f6d2cc;
   animation: blink 1s step-end infinite;
+  position: relative;
+  z-index: 5;
 }
 
 @keyframes blink {
@@ -130,11 +158,23 @@
   50% { opacity: 1; }
 }
 
-/* --- CRT SCANLINES --- */
+/* --- HIDDEN REAL INPUT --- */
 
-.crt-scanlines {
-  position: relative;
+.terminal-hidden-input {
+  position: absolute;
+  left: 0;
+  top: 0;
+
+  width: 1px;
+  height: 1px;
+
+  opacity: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  caret-color: transparent;
 }
+
 /* --- FLICKER --- */
 
 .crt-flicker {
@@ -164,38 +204,6 @@
   100% { box-shadow: inset 0 0 10px #001a18, 0 0 8px #00ffd5aa; }
 }
 
-/* --- INPUT FIELD --- */
-
-.input-wrapper {
-  position: relative;
-  width: 95%;
-  margin: 15px auto 0;
-}
-
-.main-text-input {
-  width: 100%;
-  padding-left: 28px;
-
-  background-color: #00070c;
-  border: 1px solid #00c8b0;
-  color: #00ffe4;
-  font-family: "Courier New", monospace;
-
-  outline: none;
-  text-shadow: 0 0 4px #00ffe4aa;
-}
-
-.arrow-icon {
-  position: absolute;
-  left: 10px;
-  top: 55%;
-  transform: translateY(-50%);
-  width: 16px;
-  height: 16px;
-  filter: drop-shadow(0 0 4px #00ffe4aa) brightness(1.6);
-  opacity: 0.9;
-}
-
 /* --- NEON SCROLLBAR --- */
 
 .terminal-text::-webkit-scrollbar {
@@ -211,13 +219,4 @@
   border-radius: 2px;
   border: 1px solid #00c8b0;
   box-shadow: 0 0 4px #00ffe4aa;
-}
-
-.terminal-hidden-input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
-  height: 0;
-  width: 0;
-  caret-color: transparent;
 }
