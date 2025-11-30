@@ -16,10 +16,10 @@
 
 .scene-info {
   padding: 0;
-  flex: 0 0 auto;
+  flex: 1 1 auto !important;
 
   /* restore the nice fixed height */
-  height: calc(60vh - 55px) !important;
+  height: calc(67vh - 55px) !important;
   max-height: calc(67vh - 55px) !important;
 
   background-color: rgb(2, 2, 8);
@@ -92,6 +92,8 @@
 
   text-shadow: 0 0 4px #00f2ffa8;
   background: transparent;
+
+   padding-bottom: 60px !important; /* makes room above the status bar */
 }
 
 /* --- TERMINAL LINES --- */

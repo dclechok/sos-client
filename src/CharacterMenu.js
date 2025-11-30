@@ -65,10 +65,10 @@ function CharacterMenu({ account, character }){
                 </div>
 
                 <div 
-                    className={`tab ${activeTab === "stats2" ? "tab-active" : ""}`} 
-                    onClick={() => handleTabClick("stats2")}
+                    className={`tab ${activeTab === "skills" ? "tab-active" : ""}`} 
+                    onClick={() => handleTabClick("skills")}
                 >
-                    Stats2
+                    Skills
                 </div>
 
             </div>

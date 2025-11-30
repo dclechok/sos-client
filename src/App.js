@@ -17,6 +17,7 @@ import CharacterSelection from "./CharacterSelection";
 import LogoutButton from "./LogoutButton";
 
 import { loadStoredSession, verifyToken } from "./utils/session";
+import StatusBar from "./StatusBar";
 
 // --------------------------------------------------
 // Window-size hook (must NOT be conditional)
@@ -142,6 +143,7 @@ function App() {
         <div className="center-container">
           <MainImg />
           <Gameshell character={character} setCharacter={setCharacter} />
+          <StatusBar />
         </div>
 
         <div className="column-right">
@@ -151,6 +153,7 @@ function App() {
         </div>
 
       </div>
+
     </div>
   );
 }
