@@ -66,9 +66,22 @@
 }
 
 .chat-user{
-    color: rgb(64, 131, 255);
+    color: rgb(218, 69, 255);
 }
 
 .chat-text{
     color: rgb(230, 230, 230);
+}
+
+.chat-messages::-webkit-scrollbar {
+  width: 6px;
+}
+.chat-messages::-webkit-scrollbar-track {
+  background: #0b0f14;
+}
+.chat-messages::-webkit-scrollbar-thumb {
+  background-color: #2a4354;
+  border-radius: 2px;
+  border: 1px solid #6fc7ff55;
+  box-shadow: 0 0 4px #6fc7ff55;
 }
