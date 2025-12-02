@@ -58,7 +58,7 @@ export async function getSceneByCoords(regionId, x, y) {
 
 export async function getAllScenes() {
   try {
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("pd_token");
 
     const response = await fetch(`${BASE_URL}/scenes`, {
       method: "GET",
