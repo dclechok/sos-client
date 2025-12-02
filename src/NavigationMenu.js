@@ -67,7 +67,7 @@ function NavigationMenu() {
         cx: size.w / 2 + (x - playerX) * NODE_SPACING,
         cy: size.h / 2 + (playerY - y) * NODE_SPACING
     });
-    console.log(currentScene)
+
     // Build connection list (div lines instead of SVG)
     const connections = [];
     if (size.w > 0 && size.h > 0) {
