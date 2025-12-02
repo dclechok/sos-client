@@ -57,7 +57,7 @@
     linear-gradient(90deg, rgba(63, 255, 239, 0.05) 1px, transparent 1px);
   background-size: 14px 14px;
   background-position: center center;
-  border: 2px solid rgb(36, 37, 46);
+  border: 1px solid rgb(36, 37, 46);
   border-radius: 4px;
 }
 
