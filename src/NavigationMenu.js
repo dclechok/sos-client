@@ -118,7 +118,7 @@ function NavigationMenu() {
             {/* HEADER WITH SECURITY (unchanged!) */}
             <div className="nav-content">
                 <span className="nav-location">
-                    World · Region · Area · {currentScene?.name} ([{playerX}, {playerY}])<br />
+                    System: Reverie<br/> Region: Test<br/>Node: {currentScene?.name}<br/>  ([ <span className="coords">{playerX}, {playerY}</span> ])<br />
                     Security: [ <span style={{ color: secValue.color }}>{secValue.label}</span> ]
                 </span>
             </div>
@@ -147,14 +147,25 @@ function NavigationMenu() {
                         const isPlayer = scene.x === playerX && scene.y === playerY;
 
                         return (
-                            <div
-                                key={scene._id}
-                                className={isPlayer ? "player-node" : "map-node"}
-                                style={{
-                                    left: `${cx}px`,
-                                    top: `${cy}px`
-                                }}
-                            ></div>
+<div
+    key={scene._id}
+    style={{
+        left: `${cx}px`,
+        top: `${cy}px`,
+        position: "absolute",
+        transform: "translate(-50%, -50%)",
+    }}
+>
+    {isPlayer ? (
+        <div className="player-wrapper active-node">
+            <div className="player-node"></div>
+        </div>
+    ) : (
+        <div className="map-node"></div>
+    )}
+</div>
+
+
                         );
                     })}
 
