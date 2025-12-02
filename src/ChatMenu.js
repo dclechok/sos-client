@@ -8,7 +8,7 @@ function ChatMenu({ character }) {
     const [input, setInput] = useState("");
     const bottomRef = useRef(null);
     const region = "slagline";
-    console.log(character)
+
     // Join region ONCE
     useEffect(() => {
         if (!socket) return;
