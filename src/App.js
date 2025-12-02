@@ -137,7 +137,7 @@ function App() {
           <div className="box-container map-overview">
             <NavigationMenu />
           </div>
-          <ChatMenu />
+          <ChatMenu character={character}/>
         </div>
 
         <div className="center-container">

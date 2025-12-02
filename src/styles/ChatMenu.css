@@ -1,7 +1,74 @@
-.chat-container{
-    text-align: left;
-    position: relative;
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600&display=swap');
+
+.chat-container {
     display: flex;
-    width: 100px;
-    background-color: blue;
+    flex-direction: column;
+    background-color: rgb(15, 18, 27); 
+    border: 1px solid rgb(21, 22, 26); 
+    border-radius: 4px;             
+    width: 100%;
+    height: 250px;                  
+    margin-top: 5px;
+    overflow: hidden;
+    font-family: "Montserrat", sans-serif;
+    color: white;
+}
+
+/* HEADER */
+.chat-header {
+    padding: 8px 10px;
+    background-color: rgb(2, 2, 8); 
+    font-size: 11px;
+    color: #93ffdf;
+    letter-spacing: 0.35px;
+    text-shadow:
+        0 0 2px rgba(176, 108, 255, 0.45),
+        0 0 6px rgba(176, 108, 255, 0.25);
+}
+
+/* MESSAGE AREA */
+.chat-messages {
+    flex: 1;
+    padding: 10px;
+    font-size: 11px;
+    overflow-y: auto;
+    text-align: left;
+
+    background: rgba(5, 8, 14, 0.75);  
+    border-top: 1px solid rgba(60, 90, 120, 0.35);
+    box-shadow:
+        inset 0 0 10px rgba(0, 255, 200, 0.08),
+        inset 0 0 3px rgba(0, 255, 200, 0.04);
+}
+
+/* INPUT BAR */
+.chat-input-wrapper {
+    padding: 8px;
+    background: rgba(3, 5, 10, 0.9);  /* more opaque */
+    border-top: 1px solid rgba(70, 100, 140, 0.4);
+}
+
+.chat-input {
+    width: 100%;
+    padding: 6px 8px;
+
+    background: rgba(0, 10, 20, 0.75);
+    border: 1px solid rgba(80, 120, 160, 0.4);
+    border-radius: 3px;
+
+    font-size: 11px;
+    color: #93ffdf;
+    outline: none;
+}
+
+.chat-input::placeholder {
+    color: rgba(147, 255, 223, 0.35);
+}
+
+.chat-user{
+    color: rgb(64, 131, 255);
+}
+
+.chat-text{
+    color: rgb(230, 230, 230);
 }

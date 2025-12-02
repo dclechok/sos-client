@@ -1,69 +1,47 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { io } from "socket.io-client";
+import socket from "./socket";
 
-export function useGameSocket(onMessage) {
-  const socketRef = useRef(null);
-  const onMessageRef = useRef(onMessage);
-  const [isReady, setIsReady] = useState(false);
+export function useGameSocket() {
+  const [isReady, setIsReady] = useState(socket.connected);
 
-  // Determine WebSocket URL
-  const WS_URL =
-    process.env.REACT_APP_WS_URL ||
-    (window.location.hostname === "localhost"
-      ? "ws://localhost:5000"
-      : "wss://mud-project-server-2.onrender.com");
-
-  // Keep callback fresh
+  // Track connection state
   useEffect(() => {
-    onMessageRef.current = onMessage;
-  }, [onMessage]);
+    const onConnect = () => setIsReady(true);
+    const onDisconnect = () => setIsReady(false);
 
-  useEffect(() => {
-    console.log("🔌 Connecting to WebSocket:", WS_URL);
-
-    const socket = io(WS_URL, {
-      transports: ["websocket"],
-      reconnection: true,
-      reconnectionAttempts: Infinity,
-      reconnectionDelay: 500,
-      reconnectionDelayMax: 3000,
-      timeout: 5000,
-      autoConnect: true,
-    });
-
-    socketRef.current = socket;
-
-    socket.on("connect", () => {
-      console.log("🔗 Socket connected to:", WS_URL);
-      setIsReady(true);
-    });
-
-    socket.on("disconnect", (reason) => {
-      console.warn("⚠️ Socket disconnected:", reason);
-      setIsReady(false);
-    });
-
-    socket.on("mapData", (msg) => {
-      onMessageRef.current(msg);
-    });
-
-    socket.on("connect_error", (err) => {
-      console.warn("❌ Connection error:", err.message);
-    });
+    socket.on("connect", onConnect);
+    socket.on("disconnect", onDisconnect);
 
     return () => {
-      console.log("🔌 Cleaning up socket...");
-      socket.disconnect();
+      socket.off("connect", onConnect);
+      socket.off("disconnect", onDisconnect);
     };
-  }, [WS_URL]);
-
-  const send = useCallback((eventName, data) => {
-    if (!socketRef.current || !socketRef.current.connected) {
-      console.warn("❌ Attempted to send but socket not connected");
-      return;
-    }
-    socketRef.current.emit(eventName, data);
   }, []);
 
-  return { send, isReady };
+  // SAFE SEND
+  const send = useCallback((event, data) => {
+    if (!socket.connected) {
+      console.warn("❌ Tried sending but socket is not connected");
+      return;
+    }
+    socket.emit(event, data);
+  }, []);
+
+  // LISTENER HOOK
+  const useSocketEvent = (eventName, callback) => {
+    const cbRef = useRef(callback);
+
+    useEffect(() => {
+      cbRef.current = callback;
+    }, [callback]);
+
+    useEffect(() => {
+      const handler = (data) => cbRef.current(data);
+
+      socket.on(eventName, handler);
+      return () => socket.off(eventName, handler);
+    }, [eventName]);
+  };
+
+  return { send, useSocketEvent, isReady, socket };
 }
