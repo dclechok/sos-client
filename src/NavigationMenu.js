@@ -119,7 +119,7 @@ function NavigationMenu() {
             <div className="nav-content">
                 <span className="nav-location">
                     World · Region · Area · {currentScene?.name} ([{playerX}, {playerY}])<br />
-                    Security:<span style={{ color: secValue.color }}> {secValue.label}</span>
+                    Security: [ <span style={{ color: secValue.color }}>{secValue.label}</span> ]
                 </span>
             </div>
 
