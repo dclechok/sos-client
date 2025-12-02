@@ -23,8 +23,13 @@
     background-color: rgb(2, 2, 8);
 }
 .nav-location {
-    color: #2ec1e6;
     font-size: 11px;
+  color: #B06CFF;
+  letter-spacing: 0.35px;
+
+  text-shadow:
+    0 0 2px rgba(176, 108, 255, 0.45),
+    0 0 6px rgba(176, 108, 255, 0.25);
 }
 
 /* MAP WRAPPER */
