@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import socket from "./socket";
 
-export function useGameSocket() {
+export function useGameSocket(onSceneData) {
   const [isReady, setIsReady] = useState(socket.connected);
 
-  // Track connection state
+  /* ------------------------------------------------------
+     Track connection state
+  ------------------------------------------------------ */
   useEffect(() => {
     const onConnect = () => setIsReady(true);
     const onDisconnect = () => setIsReady(false);
@@ -18,7 +20,21 @@ export function useGameSocket() {
     };
   }, []);
 
-  // SAFE SEND
+  /* ------------------------------------------------------
+     Attach sceneData listener (if callback provided)
+  ------------------------------------------------------ */
+  useEffect(() => {
+    if (!onSceneData) return;
+
+    const handler = (data) => onSceneData(data);
+    socket.on("sceneData", handler);
+
+    return () => socket.off("sceneData", handler);
+  }, [onSceneData]);
+
+  /* ------------------------------------------------------
+     SAFE SEND
+  ------------------------------------------------------ */
   const send = useCallback((event, data) => {
     if (!socket.connected) {
       console.warn("❌ Tried sending but socket is not connected");
@@ -27,7 +43,9 @@ export function useGameSocket() {
     socket.emit(event, data);
   }, []);
 
-  // LISTENER HOOK
+  /* ------------------------------------------------------
+     LISTENER HOOK (unchanged)
+  ------------------------------------------------------ */
   const useSocketEvent = (eventName, callback) => {
     const cbRef = useRef(callback);
 

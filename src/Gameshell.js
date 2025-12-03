@@ -95,7 +95,7 @@ function Gameshell({ character }) {
       }, 10);
     }
   };
-
+  console.log(sceneData)
   /* ------------------------------------------------------
      Reveal scene data (after boot)
      ------------------------------------------------------ */
