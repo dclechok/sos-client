@@ -6,7 +6,11 @@ import { useGameSocket } from "./hooks/useGameSocket";
 function Gameshell({ character }) {
   const [sceneData, setSceneData] = useState(null);
   const [terminalLines, setTerminalLines] = useState([]);
-  const [bootComplete, setBootComplete] = useState(false);
+  const [bootComplete, setBootComplete] = useState(
+    sessionStorage.getItem("reverie_boot_done") === "1"
+  );
+
+  const [sceneRevealed, setSceneRevealed] = useState(false);
   const [command, setCommand] = useState("");
 
   const textRef = useRef(null);
@@ -17,8 +21,34 @@ function Gameshell({ character }) {
   });
 
   /* ------------------------------------------------------
-     Auto-scroll when terminal output or input changes
-     ------------------------------------------------------ */
+     LOAD terminal history on mount
+  ------------------------------------------------------ */
+  useEffect(() => {
+    const saved = sessionStorage.getItem("reverie_terminal_log");
+
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      setTerminalLines(parsed);
+
+      // If the terminal already has content, treat boot as complete
+      if (parsed.length > 0) {
+        setBootComplete(true);
+        setSceneRevealed(true);
+        sessionStorage.setItem("reverie_boot_done", "1");
+      }
+    }
+  }, []);
+
+  /* ------------------------------------------------------
+     SAVE terminal history on every update
+  ------------------------------------------------------ */
+  useEffect(() => {
+    sessionStorage.setItem("reverie_terminal_log", JSON.stringify(terminalLines));
+  }, [terminalLines]);
+
+  /* ------------------------------------------------------
+     Auto-scroll
+  ------------------------------------------------------ */
   useEffect(() => {
     if (textRef.current) {
       textRef.current.scrollTop = textRef.current.scrollHeight;
@@ -27,7 +57,7 @@ function Gameshell({ character }) {
 
   /* ------------------------------------------------------
      Typewriter sound
-     ------------------------------------------------------ */
+  ------------------------------------------------------ */
   const playTypeSound = () => {
     const audio = new Audio("/sounds/type1.mp3");
     audio.volume = 0.25;
@@ -35,8 +65,8 @@ function Gameshell({ character }) {
   };
 
   /* ------------------------------------------------------
-     Add line with delay (boot sequence style)
-     ------------------------------------------------------ */
+     Add terminal line
+  ------------------------------------------------------ */
   const addLine = (line, delay = 300) =>
     new Promise((resolve) => {
       setTimeout(() => {
@@ -48,10 +78,10 @@ function Gameshell({ character }) {
     });
 
   /* ------------------------------------------------------
-     Boot sequence
-     ------------------------------------------------------ */
+     Boot sequence (only if no saved history)
+  ------------------------------------------------------ */
   useEffect(() => {
-    if (!character || !isReady) return;
+    if (!character || !isReady || bootComplete) return;
 
     const runBoot = async () => {
       await addLine("Initializing Reverie Terminal Interface...");
@@ -66,41 +96,32 @@ function Gameshell({ character }) {
     };
 
     runBoot();
-  }, [character, isReady, send]);
+
+  }, [character, isReady, send, bootComplete]);
+
 
   /* ------------------------------------------------------
-     Handle Enter key (submit command)
-     ------------------------------------------------------ */
+     Handle Enter submission
+  ------------------------------------------------------ */
   const handleKeyDown = (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
+    if (e.key !== "Enter") return;
+    e.preventDefault();
 
-      // Add the command to the terminal output
-      setTerminalLines((prev) => [
-        ...prev,
-        `[${new Date().toLocaleTimeString()}] ${command}`,
-      ]);
+    const timestamp = `[${new Date().toLocaleTimeString()}] `;
 
-      // (Optional) send command to server
-      // send("command", { text: command });
+    // Echo command
+    setTerminalLines((prev) => [...prev, timestamp + command]);
 
-      // Clear input
-      setCommand("");
+    send("command", command);   // send raw input to backend
 
-      // Auto-scroll
-      setTimeout(() => {
-        if (textRef.current) {
-          textRef.current.scrollTop = textRef.current.scrollHeight;
-        }
-      }, 10);
-    }
+    setCommand("");
   };
-  console.log(sceneData)
+
   /* ------------------------------------------------------
-     Reveal scene data (after boot)
-     ------------------------------------------------------ */
+     Scene reveal (only first login)
+  ------------------------------------------------------ */
   useEffect(() => {
-    if (!sceneData || bootComplete) return;
+    if (!sceneData || sceneRevealed) return;
 
     const revealScene = async () => {
       await addLine(`Region: ${sceneData.region || "Unknown Sector"}`, 250);
@@ -115,39 +136,59 @@ function Gameshell({ character }) {
         await addLine("   " + Object.keys(sceneData.exits).join(", "));
       }
 
+      setSceneRevealed(true);
       setBootComplete(true);
     };
 
     revealScene();
-  }, [sceneData, bootComplete]);
+  }, [sceneData, sceneRevealed]);
 
   /* ------------------------------------------------------
-     Always keep input focused once boot completes
-     ------------------------------------------------------ */
+     Auto-focus
+  ------------------------------------------------------ */
   useEffect(() => {
     if (bootComplete && inputRef.current) {
       inputRef.current.focus();
     }
   }, [bootComplete]);
 
+  console.log(sceneData);
+
   /* ------------------------------------------------------
-     RENDER
-     ------------------------------------------------------ */
+   Print backend command results to terminal
+------------------------------------------------------ */
+useEffect(() => {
+  if (!sceneData) return;
+
+  const timestamp = `[${new Date().toLocaleTimeString()}] `;
+
+  // If backend returned an error like "You can't go that way"
+  if (sceneData.error) {
+    setTerminalLines((prev) => [...prev, timestamp + sceneData.error]);
+    return;
+  }
+
+  // If backend returned a message (like movement)
+  if (sceneData.message) {
+    setTerminalLines((prev) => [...prev, timestamp + sceneData.message]);
+  }
+
+}, [sceneData]);
+
+  /* ------------------------------------------------------
+     Render
+  ------------------------------------------------------ */
   return (
     <div className="scene-info-cont">
       <div className="scene-info-scroll">
         <div className="scene-info">
           <div className="terminal-frame crt-scanlines crt-flicker boot-glow">
 
-            {/* Scrollable output */}
             <div className="terminal-text" ref={textRef}>
               {terminalLines.map((line, i) => (
-                <div key={i} className="terminal-line">
-                  {line}
-                </div>
+                <div key={i} className="terminal-line">{line}</div>
               ))}
 
-              {/* Input line directly under last line */}
               {bootComplete && (
                 <div
                   className="terminal-input-line"
@@ -156,7 +197,6 @@ function Gameshell({ character }) {
                   <span className="terminal-typed">{command}</span>
                   <span className="terminal-cursor">█</span>
 
-                  {/* Hidden real input */}
                   <input
                     ref={inputRef}
                     className="terminal-hidden-input"

@@ -19,6 +19,8 @@ import LogoutButton from "./LogoutButton";
 import { loadStoredSession, verifyToken } from "./utils/session";
 import StatusBar from "./StatusBar";
 
+import socket from "./hooks/socket"; 
+
 // --------------------------------------------------
 // Window-size hook (must NOT be conditional)
 // --------------------------------------------------
@@ -87,6 +89,20 @@ function App() {
 
     init();
   }, []);
+
+  // --------------------------------------------------
+  // IDENTIFY PLAYER TO SOCKET SERVER
+  // --------------------------------------------------
+  useEffect(() => {
+    if (!character) return; // Only run when character is chosen
+
+    console.log("🔗 Identifying player to server:", character._id || character.id);
+
+    socket.emit("identify", {
+      characterId: character._id || character.id
+    });
+
+  }, [character]);
 
   // --------------------------------------------------
   // SIZE CHECK
