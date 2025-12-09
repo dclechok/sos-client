@@ -2,12 +2,12 @@ import { getAllScenes } from './api/mapDataApi';
 import './styles/NavigationMenu.css';
 import { useState, useEffect, useRef } from 'react';
 
-function NavigationMenu() {
+function NavigationMenu({ playerLoc }) {
+
     const [sceneList, setSceneList] = useState([]);
 
-    // TEMP player position
-    const playerX = 0;
-    const playerY = 0;
+    const playerX = playerLoc.x;
+    const playerY = playerLoc.y;
 
     // Distance between nodes (px)
     const NODE_SPACING = 30;

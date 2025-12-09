@@ -52,6 +52,8 @@ function App() {
 
   const [account, setAccount] = useState(undefined); // undefined = loading
   const [character, setCharacter] = useState(undefined);
+  const [playerLoc, setPlayerLoc] = useState({ x: 0, y: 0 });
+
 
   useButtonClickSound();
   const { width, height } = useWindowSize();
@@ -151,14 +153,17 @@ function App() {
 
         <div className="column-left">
           <div className="box-container map-overview">
-            <NavigationMenu />
+            <NavigationMenu playerLoc={playerLoc} />
           </div>
           <ChatMenu character={character}/>
         </div>
 
         <div className="center-container">
           <MainImg />
-          <Gameshell character={character} setCharacter={setCharacter} />
+          <Gameshell
+            character={character}
+            setPlayerLoc={setPlayerLoc}
+          />
           <StatusBar />
         </div>
 

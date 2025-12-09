@@ -3,7 +3,7 @@ import "./styles/Gameshell.css";
 import { useState, useEffect, useRef } from "react";
 import { useGameSocket } from "./hooks/useGameSocket";
 
-function Gameshell({ character }) {
+function Gameshell({ character, setPlayerLoc }) {
   const [sceneData, setSceneData] = useState(null);
   const [terminalLines, setTerminalLines] = useState([]);
   const [bootComplete, setBootComplete] = useState(
@@ -99,6 +99,13 @@ function Gameshell({ character }) {
 
   }, [character, isReady, send, bootComplete]);
 
+  useEffect(() => {
+    if (!sceneData) return;
+
+    if (sceneData.x !== undefined && sceneData.y !== undefined) {
+      setPlayerLoc({ x: sceneData.x, y: sceneData.y });
+    }
+  }, [sceneData]);
 
   /* ------------------------------------------------------
      Handle Enter submission
@@ -152,7 +159,7 @@ function Gameshell({ character }) {
     }
   }, [bootComplete]);
 
-  console.log(sceneData);
+  console.log(sceneData, "test");
 
   /* ------------------------------------------------------
    Print backend command results to terminal
