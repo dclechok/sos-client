@@ -39,6 +39,13 @@ function Gameshell({ character, setPlayerLoc }) {
     }
   }, []);
 
+  // Always force-focus terminal input after any change
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [terminalLines, sceneData, bootComplete]);
+
   /* ------------------------------------------------------
      SAVE terminal history on every update
   ------------------------------------------------------ */
@@ -101,11 +108,17 @@ function Gameshell({ character, setPlayerLoc }) {
 
   useEffect(() => {
     if (!sceneData) return;
+    if (!sceneRevealed) return;
 
+    // movement = update player location
     if (sceneData.x !== undefined && sceneData.y !== undefined) {
       setPlayerLoc({ x: sceneData.x, y: sceneData.y });
+
+      // Print new scene info AFTER movement
+      printSceneInfo(sceneData);
     }
   }, [sceneData]);
+
 
   /* ------------------------------------------------------
      Handle Enter submission
@@ -132,7 +145,11 @@ function Gameshell({ character, setPlayerLoc }) {
 
     const revealScene = async () => {
       await addLine(`Region: ${sceneData.region || "Unknown Sector"}`, 250);
-      await addLine(`Node: (${sceneData.x}, ${sceneData.y})`, 200);
+      await addLine(
+        `Node: [ <span class="coords">${sceneData.x},${sceneData.y}</span> ]`,
+        200
+        );
+
       await addLine("Loading environmental data...");
       await addLine(" ");
       await addLine(sceneData.entranceDesc, 350);
@@ -140,7 +157,11 @@ function Gameshell({ character, setPlayerLoc }) {
       if (sceneData.exits) {
         await addLine(" ");
         await addLine("Available exits:");
-        await addLine("   " + Object.keys(sceneData.exits).join(", "));
+        const exitList = Object.keys(sceneData.exits)
+          .map(dir => `<span class="exit-tag">[${dir.toUpperCase()}]</span>`)
+          .join(" ");
+
+        await addLine("   " + exitList);
       }
 
       setSceneRevealed(true);
@@ -167,6 +188,8 @@ function Gameshell({ character, setPlayerLoc }) {
 useEffect(() => {
   if (!sceneData) return;
 
+  if (!sceneRevealed) return;
+
   const timestamp = `[${new Date().toLocaleTimeString()}] `;
 
   // If backend returned an error like "You can't go that way"
@@ -182,6 +205,31 @@ useEffect(() => {
 
 }, [sceneData]);
 
+
+  const printSceneInfo = async (scene) => {
+    await addLine(`Region: ${scene.region || "Unknown Sector"}`, 250);
+      await addLine(
+        `Node: [ <span class="coords">${sceneData.x},${sceneData.y}</span> ]`,
+        200
+        );
+    await addLine("Loading environmental data...");
+    await addLine(" ");
+    await addLine(`<span class="entrance-desc">${scene.entranceDesc}</span>`, 350);
+
+
+    if (scene.exits) {
+      await addLine(" ");
+      await addLine("Available exits:");
+
+      const exitList = Object.keys(scene.exits)
+        .map(dir => `<span class="exit-tag">[${dir.toUpperCase()}]</span>`)
+        .join(" ");
+
+      await addLine("   " + exitList);
+    }
+
+  };
+
   /* ------------------------------------------------------
      Render
   ------------------------------------------------------ */
@@ -193,7 +241,11 @@ useEffect(() => {
 
             <div className="terminal-text" ref={textRef}>
               {terminalLines.map((line, i) => (
-                <div key={i} className="terminal-line">{line}</div>
+                <div
+                  key={i}
+                  className="terminal-line"
+                  dangerouslySetInnerHTML={{ __html: line }}
+                ></div>
               ))}
 
               {bootComplete && (
@@ -210,6 +262,7 @@ useEffect(() => {
                     value={command}
                     onChange={(e) => setCommand(e.target.value)}
                     onKeyDown={handleKeyDown}
+                    autoFocus
                   />
                 </div>
               )}
