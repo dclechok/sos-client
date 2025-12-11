@@ -9,7 +9,7 @@ import useButtonClickSound from "./hooks/useButtonClickSound";
 import Login from "./Login";
 import NavBar from "./NavBar";
 import MainImg from "./MainImg";
-import Gameshell from "./Gameshell";
+import Gameshell from "./gameshell/Gameshell";
 import ChatMenu from "./ChatMenu";
 import NavigationMenu from "./NavigationMenu";
 import CharacterMenu from "./CharacterMenu";

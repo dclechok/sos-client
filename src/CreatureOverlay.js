@@ -1,41 +1,29 @@
-import { useEffect, useState } from "react";
-import './styles/CreatureOverlay.css';
+import "./styles/CreatureOverlay.css";
 
-const CLASS_Y_BANDS = {
-  vermin: 80,      // bottom 20%
-  humanoid: 55,    // mid-lower
-  beast: 65,       // heavy creatures
-  flyer: 30,       // upper-mid air
-  boss: 50         // center
+// Each classification gets a MIN% and MAX% band.
+const CLASS_Y_RANGES = {
+  vermin:   [70, 80],   // rats, roaches, slimes
+  humanoid: [45, 55],   // bandits, miners, workers
+  beast:    [55, 70],   // bigger creatures sit lower
+  flyer:    [20, 35],   // drones, bats, floating entities
+  boss:     [40, 50]
 };
 
-function CreatureOverlay({ creatures }) {
-  const [positions, setPositions] = useState({});
+// Helper — pick random value inside the percentage range.
+function randomPercent(min, max) {
+  return Math.random() * (max - min) + min;
+}
 
-  useEffect(() => {
-    setPositions(prev => {
-      const updated = { ...prev };
-
-      creatures.forEach(c => {
-        // Only assign a random position once per creature instance
-        if (!updated[c.instanceId]) {
-          updated[c.instanceId] = {
-            x: randomX(window.innerWidth),   // random packed horizontal position
-          };
-        }
-      });
-
-      return updated;
-    });
-  }, [creatures]);
-
+function CreatureOverlay({ creatures = [] }) {
   return (
     <div className="creature-overlay">
-      {creatures.map(c => {
-        const band = CLASS_Y_BANDS[c.classification];
-        const yPos = band ? `${band}%` : `${c.y}px`;
+      {creatures.map((c) => {
+        const range = CLASS_Y_RANGES[c.classification];
 
-        const pos = positions[c.instanceId] || { x: c.x };
+        // If classification has a range: pick a random Y ONCE per instance
+        const yPos = range
+          ? `${randomPercent(range[0], range[1])}%`
+          : `${c.y}px`; // fallback to server Y if no category
 
         return (
           <img
@@ -43,20 +31,15 @@ function CreatureOverlay({ creatures }) {
             src={`/art/items/sprites/${c.creatureId}.png`}
             className="creature-sprite"
             style={{
-              left: `${pos.x}px`,
-              top: yPos,
-              transform: "translate(-50%, -50%)"
+              left: `${c.x}px`,   // server-authoritative X
+              top: yPos,          // random vertical range per category
+              transform: `translate(-50%, -50%) scaleX(${c.facing || 1})`
             }}
           />
         );
       })}
     </div>
   );
-}
-
-// Utility function
-function randomX(maxWidth, spriteWidth = 64) {
-  return Math.floor(Math.random() * (maxWidth - spriteWidth));
 }
 
 export default CreatureOverlay;
