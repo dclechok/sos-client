@@ -1,7 +1,7 @@
 .scenepic {
-  flex: 0 0 auto;     /* don't let it shrink vertically */
-  /* optional: cap its height so it doesn't dominate */
-  max-height: 33vh;
+  width: 100%;
+  display: block;           /* ensures correct stacking */
+  max-height: 55vh;
   border: 2px solid rgba(8, 8, 8, 0.2);
   border-radius: 4px;
   box-shadow:

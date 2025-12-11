@@ -23,9 +23,13 @@
   width: 60%;
   flex: 1 1 auto;    
   min-height: 0;    
-  overflow: visible;
+  overflow: hidden;
 }
 
+.mainimg-wrapper {
+  position: relative;    
+  width: 100%;
+}
 .column-left,.column-right{
   flex-basis: 20%;
   flex-grow:0;

@@ -3,8 +3,8 @@ import "./styles/Gameshell.css";
 import { useState, useEffect, useRef } from "react";
 import { useGameSocket } from "./hooks/useGameSocket";
 
-function Gameshell({ character, setPlayerLoc }) {
-    const [sceneData, setSceneData] = useState(null);
+function Gameshell({ character, setPlayerLoc, setSceneData, sceneData }) {
+
     const [terminalLines, setTerminalLines] = useState([]);
     const [bootComplete, setBootComplete] = useState(false);
     const [firstScenePrinted, setFirstScenePrinted] = useState(false);
@@ -28,7 +28,7 @@ function Gameshell({ character, setPlayerLoc }) {
         sessionStorage.removeItem("reverie_terminal_log");
         sessionStorage.removeItem("reverie_boot_done");
     }, [character?._id]);
-    console.log(sceneData, sceneData)
+
     /* ---------------------------------------------------------
        SOCKET LISTENER
     --------------------------------------------------------- */

@@ -20,6 +20,7 @@ import { loadStoredSession, verifyToken } from "./utils/session";
 import StatusBar from "./StatusBar";
 
 import socket from "./hooks/socket"; 
+import CreatureOverlay from "./CreatureOverlay";
 
 // --------------------------------------------------
 // Window-size hook (must NOT be conditional)
@@ -53,6 +54,7 @@ function App() {
   const [account, setAccount] = useState(undefined); // undefined = loading
   const [character, setCharacter] = useState(undefined);
   const [playerLoc, setPlayerLoc] = useState({ x: 0, y: 0 });
+  const [sceneData, setSceneData] = useState(null);
 
   useButtonClickSound();
   const { width, height } = useWindowSize();
@@ -118,7 +120,6 @@ function App() {
   // --------------------------------------------------
   // ROUTING LOGIC (your exact flow)
   // --------------------------------------------------
-  console.log(playerLoc)
   // Not logged in → Login screen
   if (account === null) {
     return <Login setAccount={setAccount} />;
@@ -158,12 +159,18 @@ function App() {
         </div>
 
         <div className="center-container">
-          <MainImg />
+          <div className="mainimg-wrapper">
+            <MainImg />
+            <CreatureOverlay creatures={sceneData?.creatures || []}/>
+            <StatusBar />
+          </div>
           <Gameshell
             character={character}
             setPlayerLoc={setPlayerLoc}
+            setSceneData={setSceneData}
+            sceneData={sceneData}
           />
-          <StatusBar />
+
         </div>
 
         <div className="column-right">

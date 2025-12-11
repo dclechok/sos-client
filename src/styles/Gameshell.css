@@ -19,8 +19,8 @@
   flex: 1 1 auto !important;
 
   /* restore the nice fixed height */
-  height: calc(67vh - 55px) !important;
-  max-height: calc(67vh - 55px) !important;
+  height: calc(46vh - 55px) !important; 
+  max-height: calc(46vh - 55px) !important;
 
   background-color: rgb(2, 2, 8);
   display: flex;
