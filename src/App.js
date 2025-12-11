@@ -54,7 +54,6 @@ function App() {
   const [character, setCharacter] = useState(undefined);
   const [playerLoc, setPlayerLoc] = useState({ x: 0, y: 0 });
 
-
   useButtonClickSound();
   const { width, height } = useWindowSize();
 
@@ -119,7 +118,7 @@ function App() {
   // --------------------------------------------------
   // ROUTING LOGIC (your exact flow)
   // --------------------------------------------------
-
+  console.log(playerLoc)
   // Not logged in → Login screen
   if (account === null) {
     return <Login setAccount={setAccount} />;

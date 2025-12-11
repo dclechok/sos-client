@@ -4,275 +4,264 @@ import { useState, useEffect, useRef } from "react";
 import { useGameSocket } from "./hooks/useGameSocket";
 
 function Gameshell({ character, setPlayerLoc }) {
-  const [sceneData, setSceneData] = useState(null);
-  const [terminalLines, setTerminalLines] = useState([]);
-  const [bootComplete, setBootComplete] = useState(
-    sessionStorage.getItem("reverie_boot_done") === "1"
-  );
+    const [sceneData, setSceneData] = useState(null);
+    const [terminalLines, setTerminalLines] = useState([]);
+    const [bootComplete, setBootComplete] = useState(false);
+    const [firstScenePrinted, setFirstScenePrinted] = useState(false);
+    const [command, setCommand] = useState("");
 
-  const [sceneRevealed, setSceneRevealed] = useState(false);
-  const [command, setCommand] = useState("");
+    const textRef = useRef(null);
+    const inputRef = useRef(null);
+    const lastCoords = useRef({ x: null, y: null });
 
-  const textRef = useRef(null);
-  const inputRef = useRef(null);
 
-  const { send, isReady } = useGameSocket((msg) => {
-    setSceneData(msg);
-  });
+    /* ---------------------------------------------------------
+       RESET TERMINAL WHEN USER CHANGES CHARACTER
+    --------------------------------------------------------- */
+    useEffect(() => {
+        if (!character) return;
 
-  /* ------------------------------------------------------
-     LOAD terminal history on mount
-  ------------------------------------------------------ */
-  useEffect(() => {
-    const saved = sessionStorage.getItem("reverie_terminal_log");
+        setBootComplete(false);
+        setFirstScenePrinted(false);
+        setTerminalLines([]);
 
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      setTerminalLines(parsed);
+        sessionStorage.removeItem("reverie_terminal_log");
+        sessionStorage.removeItem("reverie_boot_done");
+    }, [character?._id]);
+    console.log(sceneData, sceneData)
+    /* ---------------------------------------------------------
+       SOCKET LISTENER
+    --------------------------------------------------------- */
+    const { send, isReady, socket } = useGameSocket((msg) => {
+        setSceneData(msg);
 
-      // If the terminal already has content, treat boot as complete
-      if (parsed.length > 0) {
-        setBootComplete(true);
-        setSceneRevealed(true);
-        sessionStorage.setItem("reverie_boot_done", "1");
-      }
-    }
-  }, []);
+        const nx = msg?.currentLoc?.x ?? msg?.x;
+        const ny = msg?.currentLoc?.y ?? msg?.y;
 
-  // Always force-focus terminal input after any change
-  useEffect(() => {
-    if (inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, [terminalLines, sceneData, bootComplete]);
-
-  /* ------------------------------------------------------
-     SAVE terminal history on every update
-  ------------------------------------------------------ */
-  useEffect(() => {
-    sessionStorage.setItem("reverie_terminal_log", JSON.stringify(terminalLines));
-  }, [terminalLines]);
-
-  /* ------------------------------------------------------
-     Auto-scroll
-  ------------------------------------------------------ */
-  useEffect(() => {
-    if (textRef.current) {
-      textRef.current.scrollTop = textRef.current.scrollHeight;
-    }
-  }, [terminalLines, bootComplete, command]);
-
-  /* ------------------------------------------------------
-     Typewriter sound
-  ------------------------------------------------------ */
-  const playTypeSound = () => {
-    const audio = new Audio("/sounds/type1.mp3");
-    audio.volume = 0.25;
-    audio.play().catch(() => {});
-  };
-
-  /* ------------------------------------------------------
-     Add terminal line
-  ------------------------------------------------------ */
-  const addLine = (line, delay = 300) =>
-    new Promise((resolve) => {
-      setTimeout(() => {
-        const timestamp = `[${new Date().toLocaleTimeString()}] `;
-        setTerminalLines((prev) => [...prev, timestamp + line]);
-        playTypeSound();
-        resolve();
-      }, delay);
+        if (nx !== undefined && ny !== undefined) {
+            setPlayerLoc({ x: nx, y: ny });
+        }
     });
 
-  /* ------------------------------------------------------
-     Boot sequence (only if no saved history)
-  ------------------------------------------------------ */
-  useEffect(() => {
-    if (!character || !isReady || bootComplete) return;
-
-    const runBoot = async () => {
-      await addLine("Initializing Reverie Terminal Interface...");
-      await addLine("Establishing uplink...");
-      await addLine(`Authenticated as: ${character.name}`);
-      await addLine("Fetching region data...");
-
-      send("loadScene", {
-        x: character.currentLoc.x,
-        y: character.currentLoc.y,
-      });
+    /* ---------------------------------------------------------
+       ADD LINE (instant print, not typewriter)
+    --------------------------------------------------------- */
+    const addLine = (html) => {
+        const ts = `<span class="ts">[${new Date().toLocaleTimeString()}]</span> `;
+        setTerminalLines((prev) => [...prev, ts + html]);
     };
 
-    runBoot();
+    /* ---------------------------------------------------------
+       TYPEWRITER EFFECT (used for scene + boot)
+    --------------------------------------------------------- */
+    const typeLine = (text, speed = 10) =>
+        new Promise((resolve) => {
+            const timestamp = `<span class="ts">[${new Date().toLocaleTimeString()}]</span> `;
+            let buffer = timestamp;
+            let i = 0;
 
-  }, [character, isReady, send, bootComplete]);
+            // create empty line we mutate into
+            setTerminalLines((prev) => [...prev, timestamp]);
 
-  useEffect(() => {
-    if (!sceneData) return;
-    if (!sceneRevealed) return;
+            const interval = setInterval(() => {
+                buffer += text[i];
+                setTerminalLines((prev) => {
+                    const clone = [...prev];
+                    clone[clone.length - 1] = buffer;
+                    return clone;
+                });
 
-    // movement = update player location
-    if (sceneData.x !== undefined && sceneData.y !== undefined) {
-      setPlayerLoc({ x: sceneData.x, y: sceneData.y });
+                i++;
+                if (i >= text.length) {
+                    clearInterval(interval);
+                    resolve();
+                }
+            }, speed);
+        });
 
-      // Print new scene info AFTER movement
-      printSceneInfo(sceneData);
-    }
-  }, [sceneData]);
-
-
-  /* ------------------------------------------------------
-     Handle Enter submission
-  ------------------------------------------------------ */
-  const handleKeyDown = (e) => {
-    if (e.key !== "Enter") return;
-    e.preventDefault();
-
-    const timestamp = `[${new Date().toLocaleTimeString()}] `;
-
-    // Echo command
-    setTerminalLines((prev) => [...prev, timestamp + command]);
-
-    send("command", command);   // send raw input to backend
-
-    setCommand("");
-  };
-
-  /* ------------------------------------------------------
-     Scene reveal (only first login)
-  ------------------------------------------------------ */
-  useEffect(() => {
-    if (!sceneData || sceneRevealed) return;
-
-    const revealScene = async () => {
-      await addLine(`Region: ${sceneData.region || "Unknown Sector"}`, 250);
-      await addLine(
-        `Node: [ <span class="coords">${sceneData.x},${sceneData.y}</span> ]`,
-        200
+    /* ---------------------------------------------------------
+       PRINT SCENE (always typewriter)
+    --------------------------------------------------------- */
+    const printScene = async (scene) => {
+        await typeLine(`Region: ${scene.region || "Unknown Sector"}`);
+        await typeLine(`Node: [ <span class="coords">${scene.currentLoc.x},${scene.currentLoc.y}</span> ]`);
+        await typeLine("Loading environmental data...");
+        await typeLine("&nbsp;");
+        await typeLine(
+            `<span class="entrance-desc">${scene.entranceDesc || "No description."}</span>`
         );
 
-      await addLine("Loading environmental data...");
-      await addLine(" ");
-      await addLine(sceneData.entranceDesc, 350);
+        if (scene.exits) {
+            await typeLine("&nbsp;");
+            await typeLine("Available exits:");
+            const EXIT_ORDER = ["N", "S", "E", "W"];
+            const exits = EXIT_ORDER
+                .filter((dir) => scene.exits[dir]) 
+                .map((dir) => `<span class="exit-tag">[${dir.toUpperCase()}]</span>`)
+                .join(" ");
 
-      if (sceneData.exits) {
-        await addLine(" ");
-        await addLine("Available exits:");
-        const exitList = Object.keys(sceneData.exits)
-          .map(dir => `<span class="exit-tag">[${dir.toUpperCase()}]</span>`)
-          .join(" ");
-
-        await addLine("   " + exitList);
-      }
-
-      setSceneRevealed(true);
-      setBootComplete(true);
+            await typeLine("&nbsp;&nbsp;" + exits);
+        }
     };
 
-    revealScene();
-  }, [sceneData, sceneRevealed]);
+    /* ---------------------------------------------------------
+       CREATURE & TERMINAL MESSAGES (instant print)
+    --------------------------------------------------------- */
+    useEffect(() => {
+        if (!isReady) return;
 
-  /* ------------------------------------------------------
-     Auto-focus
-  ------------------------------------------------------ */
-  useEffect(() => {
-    if (bootComplete && inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, [bootComplete]);
+        const push = (txt) => addLine(txt);
 
-  console.log(sceneData, "test");
+        socket.on("terminal_message", push);
+        socket.on("creature_spawned", (c) => c?.entranceDesc && push(c.entranceDesc));
+        socket.on("creature_respawned", (c) => c?.entranceDesc && push(c.entranceDesc));
 
-  /* ------------------------------------------------------
-   Print backend command results to terminal
------------------------------------------------------- */
-useEffect(() => {
-  if (!sceneData) return;
+        return () => {
+            socket.off("terminal_message", push);
+            socket.off("creature_spawned");
+            socket.off("creature_respawned");
+        };
+    }, [isReady]);
 
-  if (!sceneRevealed) return;
+    /* ---------------------------------------------------------
+       BOOT SEQUENCE — TYPEWRITER REVEAL
+    --------------------------------------------------------- */
+    useEffect(() => {
+        if (!character || !isReady || bootComplete) return;
 
-  const timestamp = `[${new Date().toLocaleTimeString()}] `;
+        const boot = async () => {
+            await typeLine("Initializing Reverie Terminal Interface...");
+            await typeLine("Establishing uplink...");
+            await typeLine(`Authenticated as: ${character.name}`);
+            await typeLine("Fetching region data...");
 
-  // If backend returned an error like "You can't go that way"
-  if (sceneData.error) {
-    setTerminalLines((prev) => [...prev, timestamp + sceneData.error]);
-    return;
-  }
+            send("loadScene", {
+                x: character.currentLoc.x,
+                y: character.currentLoc.y,
+            });
+        };
 
-  // If backend returned a message (like movement)
-  if (sceneData.message) {
-    setTerminalLines((prev) => [...prev, timestamp + sceneData.message]);
-  }
+        boot();
+    }, [character, isReady, send, bootComplete]);
 
-}, [sceneData]);
+    /* ---------------------------------------------------------
+       FIRST SCENE ON LOGIN — TYPEWRITER
+    --------------------------------------------------------- */
+    useEffect(() => {
+        if (!sceneData) return;
+        if (firstScenePrinted) return;
+        if (!sceneData.currentLoc) return;
 
-
-  const printSceneInfo = async (scene) => {
-    await addLine(`Region: ${scene.region || "Unknown Sector"}`, 250);
-      await addLine(
-        `Node: [ <span class="coords">${sceneData.x},${sceneData.y}</span> ]`,
-        200
-        );
-    await addLine("Loading environmental data...");
-    await addLine(" ");
-    await addLine(`<span class="entrance-desc">${scene.entranceDesc}</span>`, 350);
+        const { x, y } = sceneData.currentLoc || {};
+        if (x == null || y == null) return;
 
 
-    if (scene.exits) {
-      await addLine(" ");
-      await addLine("Available exits:");
+        const print = async () => {
+            await printScene(sceneData);
+            lastCoords.current = { x: sceneData.currentLoc.x, y: sceneData.currentLoc.y };
+            setBootComplete(true);
+            setFirstScenePrinted(true);
+            sessionStorage.setItem("reverie_boot_done", "1");
+        };
 
-      const exitList = Object.keys(scene.exits)
-        .map(dir => `<span class="exit-tag">[${dir.toUpperCase()}]</span>`)
-        .join(" ");
+        print();
+    }, [sceneData, firstScenePrinted]);
 
-      await addLine("   " + exitList);
-    }
+    /* ---------------------------------------------------------
+       MOVEMENT — ONLY PRINT WHEN COORDS CHANGE
+    --------------------------------------------------------- */
+    useEffect(() => {
+        if (!sceneData) return;
+        if (!bootComplete) return;
 
-  };
+        // error packets
+        if (sceneData.error) {
+            addLine(`<span class="error">${sceneData.error}</span>`);
+            return;
+        }
 
-  /* ------------------------------------------------------
-     Render
-  ------------------------------------------------------ */
-  return (
-    <div className="scene-info-cont">
-      <div className="scene-info-scroll">
-        <div className="scene-info">
-          <div className="terminal-frame crt-scanlines crt-flicker boot-glow">
+        // message packets
+        if (sceneData.message) {
+            addLine(sceneData.message);
+            // DO NOT RETURN — movement packets also have messages now
+        }
 
-            <div className="terminal-text" ref={textRef}>
-              {terminalLines.map((line, i) => (
-                <div
-                  key={i}
-                  className="terminal-line"
-                  dangerouslySetInnerHTML={{ __html: line }}
-                ></div>
-              ))}
+        // must have a valid location object
+        if (!sceneData.currentLoc) return;
 
-              {bootComplete && (
-                <div
-                  className="terminal-input-line"
-                  onClick={() => inputRef.current?.focus()}
-                >
-                  <span className="terminal-typed">{command}</span>
-                  <span className="terminal-cursor">█</span>
+        const { x, y } = sceneData.currentLoc;
 
-                  <input
-                    ref={inputRef}
-                    className="terminal-hidden-input"
-                    value={command}
-                    onChange={(e) => setCommand(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    autoFocus
-                  />
+        // only fire when moving
+        if (x !== lastCoords.current.x || y !== lastCoords.current.y) {
+            lastCoords.current = { x, y };
+            printScene(sceneData); // typewriter scene print
+        }
+    }, [sceneData, bootComplete]);
+
+    /* ---------------------------------------------------------
+       COMMAND INPUT
+    --------------------------------------------------------- */
+    const handleKeyDown = (e) => {
+        if (e.key !== "Enter") return;
+        e.preventDefault();
+
+        addLine(`<span class="cmd">${command}</span>`);
+        send("command", command);
+        setCommand("");
+    };
+
+    /* ---------------------------------------------------------
+       AUTO SCROLL + AUTO FOCUS
+    --------------------------------------------------------- */
+    useEffect(() => {
+        textRef.current?.scrollTo(0, textRef.current.scrollHeight);
+    }, [terminalLines]);
+
+    useEffect(() => {
+        inputRef.current?.focus();
+    }, [terminalLines, sceneData]);
+
+    /* ---------------------------------------------------------
+       RENDER TERMINAL UI
+    --------------------------------------------------------- */
+    return (
+        <div className="scene-info-cont">
+            <div className="scene-info-scroll">
+                <div className="scene-info">
+                    <div className="terminal-frame crt-scanlines crt-flicker boot-glow">
+                        <div className="terminal-text" ref={textRef}>
+                            {terminalLines.map((line, i) => (
+                                <div
+                                    key={i}
+                                    className="terminal-line"
+                                    dangerouslySetInnerHTML={{ __html: line }}
+                                ></div>
+                            ))}
+
+                            {bootComplete && (
+                                <div
+                                    className="terminal-input-line"
+                                    onClick={() => inputRef.current?.focus()}
+                                >
+                                    <span className="terminal-typed">{command}</span>
+                                    <span className="terminal-cursor">█</span>
+
+                                    <input
+                                        ref={inputRef}
+                                        className="terminal-hidden-input"
+                                        value={command}
+                                        onChange={(e) => setCommand(e.target.value)}
+                                        onKeyDown={handleKeyDown}
+                                        autoFocus
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
-              )}
             </div>
-
-          </div>
         </div>
-      </div>
-    </div>
-  );
+    );
 }
 
 export default Gameshell;
