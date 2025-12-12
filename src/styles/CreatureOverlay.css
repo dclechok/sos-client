@@ -5,22 +5,27 @@
   z-index: 50;
 }
 
-.creature-sprite {
+/* Wrapper handles animation + absolute positioning */
+.creature-wrapper {
   position: absolute;
+  transform: translate(-50%, -50%);
+  animation: creatureFloat 2.6s ease-in-out infinite;
+}
+
+/* Sprite ONLY handles flipping, nothing else */
+.creature-sprite {
   width: 64px;
   height: 64px;
   image-rendering: pixelated;
   pointer-events: auto;
-  animation: creatureFloat 2.6s ease-in-out infinite;
 }
 
 .creature-sprite:hover {
   filter: drop-shadow(0 0 2px #5e83fc) drop-shadow(0 0 4px #5e83fc);
 }
 
-
 @keyframes creatureFloat {
-  0%   { transform: translateY(0); }
-  50%  { transform: translateY(-4px); }
-  100% { transform: translateY(0); }
+  0%   { transform: translate(-50%, -50%) translateY(0); }
+  50%  { transform: translate(-50%, -50%) translateY(-4px); }
+  100% { transform: translate(-50%, -50%) translateY(0); }
 }

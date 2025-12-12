@@ -238,3 +238,8 @@
 .creature-color{
   color: rgb(255, 0, 0);
 }
+
+.you-see-color {
+  color: #ffffff !important;
+  text-shadow: 0 0 4px rgba(255,255,255,0.6) !important;
+}
