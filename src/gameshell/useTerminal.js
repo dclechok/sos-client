@@ -11,28 +11,42 @@ export function useTerminal() {
         setTerminalLines(prev => [...prev, ts + html]);
     };
 
-    const typeLine = (text, speed = 10) =>
-        new Promise((resolve) => {
-            const ts = `<span class="ts">[${new Date().toLocaleTimeString()}]</span> `;
-            let buffer = ts;
-            let i = 0;
+const typeLine = (text, speed = 10) =>
+    new Promise((resolve) => {
 
-            setTerminalLines(prev => [...prev, ts]);
+        // Always force text into a usable string
+        text = text ?? "";
+        text = String(text);
 
-            const id = setInterval(() => {
-                buffer += text[i];
-                setTerminalLines(prev => {
-                    const arr = [...prev];
-                    arr[arr.length - 1] = buffer;
-                    return arr;
-                });
+        const ts = `<span class="ts">[${new Date().toLocaleTimeString()}]</span> `;
+        let buffer = ts;
+        let i = 0;
 
-                if (++i >= text.length) {
-                    clearInterval(id);
-                    resolve();
-                }
-            }, speed);
-        });
+        // Start the new line
+        setTerminalLines(prev => [...prev, ts]);
+
+        const id = setInterval(() => {
+            const char = text[i];
+
+            // If no more characters, finish cleanly
+            if (char === undefined) {
+                clearInterval(id);
+                resolve();
+                return;
+            }
+
+            buffer += char;
+
+            setTerminalLines(prev => {
+                const arr = [...prev];
+                arr[arr.length - 1] = buffer;
+                return arr;
+            });
+
+            i++;
+        }, speed);
+    });
+
 
     // Auto-scroll
     useEffect(() => {

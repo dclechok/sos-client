@@ -1,10 +1,17 @@
-import './styles/MainImg.css';
+import "./styles/MainImg.css";
 
-import scenepic from './/scenepic/0-0.png';
+function MainImg({ x, y }) {
+    let src;
 
-function MainImg(){
+    try {
+        // Dynamically load the matching scene picture
+        src = require(`./scenepic/${x}-${y}.png`);
+    } catch (err) {
+        // Fallback image if scene picture doesn't exist
+        src = require("./scenepic/default.png");
+    }
 
-    return <img className="scenepic" src={scenepic}/>
+    return <img className="scenepic" src={src} alt={`Scene ${x},${y}`} />;
 }
 
 export default MainImg;

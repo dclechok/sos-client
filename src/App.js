@@ -160,7 +160,12 @@ function App() {
 
         <div className="center-container">
           <div className="mainimg-wrapper">
-            <MainImg />
+          {sceneData?.currentLoc && (
+              <MainImg 
+                  x={sceneData.currentLoc.x} 
+                  y={sceneData.currentLoc.y} 
+              />
+          )}
             <CreatureOverlay creatures={sceneData?.creatures || []}/>
             <StatusBar />
           </div>

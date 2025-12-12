@@ -21,8 +21,8 @@ export async function printScene(scene, typeLine) {
         for (const [name, count] of Object.entries(counts)) {
             const txt =
                 count === 1
-                    ? `<span style="color:#ffffff; text-shadow:0 0 4px rgba(255,255,255,0.6)">You see a</span> <span style="color:#ff4a4a; text-shadow:0 0 4px rgba(255,255,255,0.6);">${name}.</span>`
-                    : `<span style="color:#ffffff; text-shadow:0 0 4px rgba(255,255,255,0.6)">You see [ ${count} ]</span> <span style="color:#ff4a4a; text-shadow:0 0 4px rgba(255,255,255,0.6);">${name}s.</span>`;
+                    ? `You see a<span style="color:#ff4a4a; ">${name}.</span>`
+                    : `You see [ ${count} ]<span style="color:#ff4a4a;"> ${name}s.</span>`;
             await typeLine(txt);
         }
     }

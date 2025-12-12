@@ -2,7 +2,7 @@
 export function TerminalView({ terminalLines, command, setCommand, handleKeyDown, textRef, inputRef, bootComplete }) {
     return (
         <div className="terminal-frame crt-scanlines crt-flicker boot-glow">
-            <div className="terminal-text" ref={textRef}>
+            <div className="terminal-text" ref={textRef} onClick={() => inputRef.current?.focus()}>
                 {terminalLines.map((line, i) => (
                     <div key={i} className="terminal-line"
                         dangerouslySetInnerHTML={{ __html: line }} />
