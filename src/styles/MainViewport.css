@@ -1,0 +1,11 @@
+.main-viewport {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+  background: black;
+}
+.main-viewport canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+}

@@ -8,19 +8,13 @@ import useButtonClickSound from "./hooks/useButtonClickSound";
 
 import Login from "./Login";
 import NavBar from "./NavBar";
-import MainImg from "./MainImg";
-import Gameshell from "./gameshell/Gameshell";
-import ChatMenu from "./ChatMenu";
-import NavigationMenu from "./NavigationMenu";
-import CharacterMenu from "./CharacterMenu";
 import CharacterSelection from "./CharacterSelection";
 import LogoutButton from "./LogoutButton";
 
 import { loadStoredSession, verifyToken } from "./utils/session";
-import StatusBar from "./StatusBar";
 
 import socket from "./hooks/socket"; 
-import CreatureOverlay from "./CreatureOverlay";
+import MainViewport from "./MainViewport";
 
 // --------------------------------------------------
 // Window-size hook (must NOT be conditional)
@@ -148,44 +142,7 @@ function App() {
       <LogoutButton setAccount={setAccount} setCharacter={setCharacter} />
 
       <NavBar account={account} />
-
-      <div className="game-shell">
-
-        <div className="column-left">
-          <div className="box-container map-overview">
-            <NavigationMenu playerLoc={playerLoc} />
-          </div>
-          <ChatMenu character={character}/>
-        </div>
-
-        <div className="center-container">
-          <div className="mainimg-wrapper">
-          {sceneData?.currentLoc && (
-              <MainImg 
-                  x={sceneData.currentLoc.x} 
-                  y={sceneData.currentLoc.y} 
-              />
-          )}
-            <CreatureOverlay creatures={sceneData?.creatures || []}/>
-            <StatusBar />
-          </div>
-          <Gameshell
-            character={character}
-            setPlayerLoc={setPlayerLoc}
-            setSceneData={setSceneData}
-            sceneData={sceneData}
-          />
-
-        </div>
-
-        <div className="column-right">
-          <div className="box-container char">
-            <CharacterMenu account={account} character={character} />
-          </div>
-        </div>
-
-      </div>
-
+      <MainViewport />
     </div>
   );
 }
