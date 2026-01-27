@@ -733,7 +733,7 @@ export default function MainViewport({worldSeed}) {
       window.removeEventListener("resize", resize);
       window.removeEventListener("mousemove", onMouseMove);
     };
-  }, []);
+  }, [worldSeed]);
 
   return (
     <div className="main-viewport">
