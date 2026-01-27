@@ -15,6 +15,7 @@ import { loadStoredSession, verifyToken } from "./utils/session";
 
 import socket from "./hooks/socket"; 
 import MainViewport from "./MainViewport";
+import ChatMenu from "./ChatMenu";
 
 // --------------------------------------------------
 // Window-size hook (must NOT be conditional)
@@ -140,9 +141,9 @@ function App() {
   return (
     <div className="App">
       <LogoutButton setAccount={setAccount} setCharacter={setCharacter} />
-
       <NavBar account={account} />
       <MainViewport />
+      <ChatMenu character={character} />
     </div>
   );
 }

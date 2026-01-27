@@ -85,8 +85,8 @@ function makeSeamlessNebulaTile({ size = 1024, seed = 1337 }) {
       const cu = Math.cos(ang);
       const su = Math.sin(ang);
 
-      const uu = (u * freq) * cu - (v * freq) * su;
-      const vv = (u * freq) * su + (v * freq) * cu;
+      const uu = u * freq * cu - v * freq * su;
+      const vv = u * freq * su + v * freq * cu;
 
       const nu = uu - Math.floor(uu);
       const nv = vv - Math.floor(vv);
@@ -122,8 +122,7 @@ function makeSeamlessNebulaTile({ size = 1024, seed = 1337 }) {
       n = Math.pow(clamp01(n), 1.8);
 
       const ridge =
-        1.0 -
-        Math.abs(2.0 * fbm((u + 0.11) % 1, (v + 0.53) % 1) - 1.0);
+        1.0 - Math.abs(2.0 * fbm((u + 0.11) % 1, (v + 0.53) % 1) - 1.0);
       const wisps = Math.pow(clamp01(ridge), 2.2);
 
       const density = clamp01(n * 0.85 + wisps * 0.55);
@@ -191,7 +190,6 @@ export default function MainViewport() {
     const NEBULA_ALPHA_MIN = 0.018;
     const NEBULA_ALPHA_MAX = 0.16;
 
-
     const NEBULA_SIZE_MIN = 380;
     const NEBULA_SIZE_MAX = 1200;
 
@@ -202,11 +200,17 @@ export default function MainViewport() {
     // Optional tiny camera coupling (set 0 to fully independent)
     const NEBULA_CAM_COUPLE = 0.0;
 
-    // --- NEW: interior breakup controls (these create black voids + varied pockets) ---
+    // --- Interior breakup controls ---
     const NEBULA_PUFFS_MIN = 5; // fewer = more voids
     const NEBULA_PUFFS_MAX = 12;
     const NEBULA_HOLES_MIN = 3; // more holes = more black gaps inside
     const NEBULA_HOLES_MAX = 10;
+
+    // --- NEW (SUBTLE): “push back” without changing alpha much ---
+    // These soften micro-contrast (the splotchy look) so it reads like distance.
+    const NEBULA_BUF_BLUR_PX = 1.15; // 0.8..1.6 (keep subtle)
+    const NEBULA_CONTRAST_WASH = 0.055; // 0.03..0.08 (tiny dark wash inside buffer)
+    const NEBULA_DRAW_BLUR_PX = 0.35; // was 0.5; slightly less “in your face”
 
     // -----------------------------
     // Canvas sizing
@@ -261,7 +265,6 @@ export default function MainViewport() {
       mctx.globalCompositeOperation = "source-over";
       mctx.filter = `blur(${Math.max(3, size * 0.012)}px)`;
 
-      // Big lumpy core field: blobs distributed within the overall radius
       const blobCount = puffs * 3 + Math.floor(r() * 8);
       for (let i = 0; i < blobCount; i++) {
         const ang = r() * Math.PI * 2;
@@ -299,8 +302,7 @@ export default function MainViewport() {
         mctx.fillRect(x - outer, y - outer, outer * 2, outer * 2);
       }
 
-      // 3) Apply the OUTER radial boundary (you said the radiant is fine overall)
-      // This keeps the cloud's silhouette soft, but interior stays broken up.
+      // 3) Apply the OUTER radial boundary (overall silhouette stays soft)
       mctx.globalCompositeOperation = "destination-in";
       mctx.filter = "none";
 
@@ -487,7 +489,6 @@ export default function MainViewport() {
         const ang = randRange(0, Math.PI * 2);
         const spd = randRange(NEBULA_SPEED_MIN, NEBULA_SPEED_MAX);
 
-        // interior breakup per-cloud
         const puffCount =
           (NEBULA_PUFFS_MIN +
             Math.floor(nebulaRand() * (NEBULA_PUFFS_MAX - NEBULA_PUFFS_MIN + 1))) |
@@ -497,7 +498,6 @@ export default function MainViewport() {
             Math.floor(nebulaRand() * (NEBULA_HOLES_MAX - NEBULA_HOLES_MIN + 1))) |
           0;
 
-        // stable-ish seed per cloud
         const maskSeed = (777 ^ (i * 2654435761)) >>> 0;
 
         nebulae.push({
@@ -531,9 +531,6 @@ export default function MainViewport() {
       const jx = Math.sin(t * 0.04 + cloud.phase) * cloud.driftJitter;
       const jy = Math.cos(t * 0.03 + cloud.phase) * cloud.driftJitter;
 
-      // --- NEW: stamp multiple “puffs” of the tile into the buffer ---
-      // This creates random interior density + different sized pockets,
-      // then the irregular mask punches black voids through it.
       const rr = mulberry32(cloud.maskSeed ^ 0x9e3779b9);
 
       cloudBufCtx.globalCompositeOperation = "source-over";
@@ -542,7 +539,7 @@ export default function MainViewport() {
       // base puff (full size)
       cloudBufCtx.drawImage(tile, jx, jy, size, size);
 
-      // extra puffs (smaller + offset + slightly rotated by scaling tricks)
+      // extra puffs (smaller + offset)
       const puffs = cloud.puffCount;
       for (let i = 0; i < puffs; i++) {
         const sx = 0.55 + rr() * 0.55; // 0.55..1.10
@@ -553,19 +550,11 @@ export default function MainViewport() {
         const ox = (rr() - 0.5) * size * 0.55;
         const oy = (rr() - 0.5) * size * 0.55;
 
-        // slightly lower alpha on extra puffs so black gaps survive
         cloudBufCtx.globalAlpha = 0.55 + rr() * 0.35;
-
-        cloudBufCtx.drawImage(
-          tile,
-          jx + ox,
-          jy + oy,
-          w2,
-          h2
-        );
+        cloudBufCtx.drawImage(tile, jx + ox, jy + oy, w2, h2);
       }
 
-      // --- NEW: apply irregular interior mask WITH holes (black space inside) ---
+      // apply irregular interior mask WITH holes (black space inside)
       cloudBufCtx.globalCompositeOperation = "destination-in";
       cloudBufCtx.globalAlpha = 1;
 
@@ -577,15 +566,35 @@ export default function MainViewport() {
       );
       cloudBufCtx.drawImage(mask, 0, 0);
 
-      // 3) draw buffer onto main canvas (keep your look; you can swap to "screen" to push it back)
+      // -----------------------------
+      // NEW (SUBTLE): soften micro-contrast inside the buffer
+      // (this is what pushes it “back” without killing the alpha/colors)
+      // -----------------------------
+      cloudBufCtx.globalCompositeOperation = "source-over";
+      cloudBufCtx.globalAlpha = 1;
+
+      // 1) tiny blur pass (merges splotches into haze)
+      cloudBufCtx.filter = `blur(${NEBULA_BUF_BLUR_PX}px)`;
+      cloudBufCtx.drawImage(cloudBuf, 0, 0);
+      cloudBufCtx.filter = "none";
+
+      // 2) tiny black wash (compresses contrast, keeps vibe)
+      cloudBufCtx.globalCompositeOperation = "source-atop";
+      cloudBufCtx.globalAlpha = NEBULA_CONTRAST_WASH;
+      cloudBufCtx.fillStyle = "black";
+      cloudBufCtx.fillRect(0, 0, size, size);
+      cloudBufCtx.globalAlpha = 1;
+      cloudBufCtx.globalCompositeOperation = "source-over";
+
+      // draw buffer onto main canvas
       const breath = 1 + Math.sin(t * cloud.breathe + cloud.phase) * 0.10;
 
       ctx.save();
       ctx.globalCompositeOperation = "lighter"; // keep your vibe
       ctx.globalAlpha = cloud.a * breath;
 
-      // tiny blur helps "distance" and hides mask edges (cheap enough)
-      ctx.filter = "blur(0.5px)";
+      // tiny draw blur (just to keep distance feel; subtle)
+      ctx.filter = `blur(${NEBULA_DRAW_BLUR_PX}px)`;
       ctx.drawImage(cloudBuf, x - r, y - r, size, size);
 
       ctx.restore();
@@ -593,11 +602,9 @@ export default function MainViewport() {
 
     function drawNebulae(dt, t) {
       for (const n of nebulae) {
-        // drift, optional tiny camera coupling
         n.x += n.vx * dt - camX * NEBULA_CAM_COUPLE * dt;
         n.y += n.vy * dt - camY * NEBULA_CAM_COUPLE * dt;
 
-        // wrap with padding
         const pad = n.r + 40;
         if (n.x < -pad) n.x = w + pad;
         if (n.y < -pad) n.y = h + pad;
@@ -641,7 +648,6 @@ export default function MainViewport() {
       const dt = lastMs ? (nowMs - lastMs) * 0.001 : 0;
       lastMs = nowMs;
 
-      // clear
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = "source-over";
       ctx.fillStyle = "#000";
