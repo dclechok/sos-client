@@ -3,6 +3,7 @@ import socket from "./socket";
 
 export function useGameSocket(onSceneData) {
   const [isReady, setIsReady] = useState(socket.connected);
+  const [worldSeed,  setWorldSeed] = useState(null);
 
   /* ------------------------------------------------------
      Track connection state
@@ -18,6 +19,17 @@ export function useGameSocket(onSceneData) {
       socket.off("connect", onConnect);
       socket.off("disconnect", onDisconnect);
     };
+  }, []);
+
+  //world init listener, getting worldSeed (for background rendering/nebula)
+    useEffect(() => {
+    const handler = (payload) => {
+      if (!payload || !Number.isFinite(payload.worldSeed)) return;
+      setWorldSeed(payload.worldSeed);
+    };
+
+    socket.on("world:init", handler);
+    return () => socket.off("world:init", handler);
   }, []);
 
   /* ------------------------------------------------------

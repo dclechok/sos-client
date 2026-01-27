@@ -167,7 +167,7 @@ function makeSeamlessNebulaTile({ size = 1024, seed = 1337 }) {
   return tile;
 }
 
-export default function MainViewport() {
+export default function MainViewport({worldSeed}) {
   const canvasRef = useRef(null);
 
   useEffect(() => {
@@ -175,6 +175,29 @@ export default function MainViewport() {
     if (!canvas) return;
 
     const ctx = canvas.getContext("2d", { alpha: false });
+
+    // -----------------------------
+    // FIX #1: Stable world seed (persists across remounts + matches other clients if shared)
+    // Later: replace localStorage with server-provided seed on login.
+    // -----------------------------
+    const WORLD_SEED_KEY = "space_world_seed_v1";
+
+    // ✅ prefer server seed if provided
+    let WORLD_SEED = Number.isFinite(worldSeed)
+    ? worldSeed
+    : Number(localStorage.getItem(WORLD_SEED_KEY));
+
+    // fallback for offline/dev
+    if (!Number.isFinite(WORLD_SEED)) {
+    WORLD_SEED = (Math.random() * 2 ** 32) >>> 0;
+    localStorage.setItem(WORLD_SEED_KEY, String(WORLD_SEED));
+    }
+
+    // optional: store server seed locally so refresh stays consistent
+    if (Number.isFinite(worldSeed)) {
+    localStorage.setItem(WORLD_SEED_KEY, String(worldSeed));
+    }
+
 
     // -----------------------------
     // Tunables
@@ -384,6 +407,7 @@ export default function MainViewport() {
       return stars;
     }
 
+    // (unchanged stars; you can seed these too later if you want)
     const farStars = makeStars(111, 900, 10);
     const nearStars = makeStars(222, 520, 12);
 
@@ -469,10 +493,17 @@ export default function MainViewport() {
     // -----------------------------
     // Nebula clouds
     // -----------------------------
-    const gasTileA = makeSeamlessNebulaTile({ size: 1024, seed: 999 });
-    const gasTileB = makeSeamlessNebulaTile({ size: 1024, seed: 1337 });
+    // FIX #2: Seed tiles + nebula RNG from WORLD_SEED so every client with the same seed matches.
+    const gasTileA = makeSeamlessNebulaTile({
+      size: 1024,
+      seed: (WORLD_SEED ^ 0x0a11ce) >>> 0,
+    });
+    const gasTileB = makeSeamlessNebulaTile({
+      size: 1024,
+      seed: (WORLD_SEED ^ 0x0badc0de) >>> 0,
+    });
 
-    const nebulaRand = mulberry32(777);
+    const nebulaRand = mulberry32((WORLD_SEED ^ 0x77777777) >>> 0);
     let nebulae = [];
 
     function randRange(a, b) {
@@ -482,8 +513,14 @@ export default function MainViewport() {
     function resetNebulae() {
       nebulae = [];
 
-      const sMin = Math.max(260, Math.min(NEBULA_SIZE_MIN, Math.min(w, h) * 0.55));
-      const sMax = Math.max(sMin + 160, Math.min(NEBULA_SIZE_MAX, Math.max(w, h) * 1.2));
+      const sMin = Math.max(
+        260,
+        Math.min(NEBULA_SIZE_MIN, Math.min(w, h) * 0.55)
+      );
+      const sMax = Math.max(
+        sMin + 160,
+        Math.min(NEBULA_SIZE_MAX, Math.max(w, h) * 1.2)
+      );
 
       for (let i = 0; i < NEBULA_COUNT; i++) {
         const r = randRange(sMin, sMax);
@@ -493,13 +530,20 @@ export default function MainViewport() {
 
         const puffCount =
           (NEBULA_PUFFS_MIN +
-            Math.floor(nebulaRand() * (NEBULA_PUFFS_MAX - NEBULA_PUFFS_MIN + 1))) | 0;
+            Math.floor(
+              nebulaRand() * (NEBULA_PUFFS_MAX - NEBULA_PUFFS_MIN + 1)
+            )) |
+          0;
 
         const holeCount =
           (NEBULA_HOLES_MIN +
-            Math.floor(nebulaRand() * (NEBULA_HOLES_MAX - NEBULA_HOLES_MIN + 1))) | 0;
+            Math.floor(
+              nebulaRand() * (NEBULA_HOLES_MAX - NEBULA_HOLES_MIN + 1)
+            )) |
+          0;
 
-        const maskSeed = (777 ^ (i * 2654435761)) >>> 0;
+        // FIX #3: maskSeed derived from WORLD_SEED too (stable)
+        const maskSeed = (WORLD_SEED ^ (i * 2654435761)) >>> 0;
 
         nebulae.push({
           x: randRange(0, w),
@@ -559,7 +603,12 @@ export default function MainViewport() {
       cloudBufCtx.globalCompositeOperation = "destination-in";
       cloudBufCtx.globalAlpha = 1;
 
-      const mask = getNebulaMask(size, cloud.maskSeed, cloud.puffCount, cloud.holeCount);
+      const mask = getNebulaMask(
+        size,
+        cloud.maskSeed,
+        cloud.puffCount,
+        cloud.holeCount
+      );
       cloudBufCtx.drawImage(mask, 0, 0);
 
       // soften micro-contrast inside the buffer
@@ -627,7 +676,9 @@ export default function MainViewport() {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.imageSmoothingEnabled = true;
 
-      resetNebulae();
+      // FIX #4: Do NOT respawn nebulae on resize/tab/layout changes.
+      // Only create once per mount; keeps the same layout.
+      if (nebulae.length === 0) resetNebulae();
     }
 
     // -----------------------------

@@ -1,87 +1,188 @@
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600&display=swap");
 
-.chat-container {
-    display: flex;
-    flex-direction: column;
-    background-color: rgb(15, 18, 27); 
-    border: 1px solid rgb(21, 22, 26); 
-    border-radius: 4px;             
-    width: 100%;
-    height: 250px;                  
-    margin-top: 5px;
-    overflow: hidden;
-    font-family: "Montserrat", sans-serif;
-    color: white;
+/* =========================
+   CHAT CONTAINER (CLEAR GLASS)
+   ========================= */
+.chat-container{
+  position: fixed;
+  left: 8px;
+  bottom: 8px;
+  z-index: 9999;
+
+  display: flex;
+  flex-direction: column;
+
+  width: 24%;
+  height: 250px;
+
+  /* VERY LIGHT tint so stars remain visible */
+  background: rgba(10, 16, 26, 0.06);
+
+  /* No blur (blur kills tiny stars) */
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+
+  border: 1px solid rgba(120, 160, 200, 0.20);
+  border-radius: 6px;
+  overflow: hidden;
+
+  font-family: "Montserrat", sans-serif;
+  color: #fff;
+
+  /* subtle HUD rim */
+  box-shadow:
+    0 0 14px rgba(120, 60, 255, 0.08),
+    inset 0 0 10px rgba(0, 255, 200, 0.04);
 }
 
-/* HEADER */
-.chat-header {
-    padding: 8px 10px;
-    background-color: rgb(2, 2, 8); 
-    font-size: 11px;
-    color: #93ffdf;
-    letter-spacing: 0.35px;
-    text-shadow:
-        0 0 2px rgba(176, 108, 255, 0.45),
-        0 0 6px rgba(176, 108, 255, 0.25);
+/* =========================
+   HEADER / MESSAGES / INPUT WRAPPER
+   (keep them transparent so they don't stack darkness)
+   ========================= */
+.chat-header,
+.chat-messages,
+.chat-input-wrapper{
+  background: transparent;
 }
 
-/* MESSAGE AREA */
-.chat-messages {
-    flex: 1;
-    padding: 10px;
-    font-size: 11px;
-    overflow-y: auto;
-    text-align: left;
+/* =========================
+   HEADER
+   ========================= */
+.chat-header{
+  padding: 9px 10px;
+  text-align: center;
 
-    background: rgba(5, 8, 14, 0.75);  
-    border-top: 1px solid rgba(60, 90, 120, 0.35);
-    box-shadow:
-        inset 0 0 10px rgba(0, 255, 200, 0.08),
-        inset 0 0 3px rgba(0, 255, 200, 0.04);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+
+  /* not pure white */
+  color: rgba(235, 240, 245, 0.9);
+
+  /* ultra subtle glass band */
+  background: linear-gradient(
+    to bottom,
+    rgba(10, 14, 22, 0.18),
+    rgba(10, 14, 22, 0.04)
+  );
+
+  border-bottom: 1px solid rgba(120, 150, 180, 0.18);
+
+  /* THIS is what makes it not look default */
+  text-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.9),   /* emboss edge */
+    0 0 6px rgba(140, 180, 220, 0.18); /* faint HUD glow */
 }
 
-/* INPUT BAR */
-.chat-input-wrapper {
-    padding: 8px;
-    background: rgba(3, 5, 10, 0.9);  /* more opaque */
-    border-top: 1px solid rgba(70, 100, 140, 0.4);
+
+/* thin “commlink” accent line */
+.chat-header::after{
+  content: "";
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 0;
+  height: 1px;
+
+  background: linear-gradient(
+    to right,
+    transparent,
+    rgba(120, 200, 255, 0.35),
+    rgba(176, 108, 255, 0.22),
+    transparent
+  );
+  opacity: 0.7;
 }
 
-.chat-input {
-    width: 100%;
-    padding: 6px 8px;
+/* =========================
+   MESSAGES AREA (MOST SEE-THROUGH)
+   ========================= */
+.chat-messages{
+  flex: 1;
+  padding: 10px;
 
-    background: rgba(0, 10, 20, 0.75);
-    border: 1px solid rgba(80, 120, 160, 0.4);
-    border-radius: 3px;
+  font-size: 12px;
+  overflow-y: auto;
+  text-align: left;
 
-    font-size: 11px;
-    color: #93ffdf;
-    outline: none;
+  /* almost clear; stars show through */
+  background: rgba(5, 8, 14, 0.015);
+
+  box-shadow:
+    inset 0 0 10px rgba(0,255,200,0.035),
+    inset 0 0 2px rgba(0,255,200,0.02);
 }
 
-.chat-input::placeholder {
-    color: rgba(147, 255, 223, 0.35);
+.chat-line{
+  line-height: 1.35;
+  margin-bottom: 2px;
 }
 
+/* =========================
+   INPUT WRAPPER
+   ========================= */
+.chat-input-wrapper{
+  padding: 8px;
+
+  background: rgba(3, 5, 10, 0.045);
+  border-top: 1px solid rgba(70, 100, 140, 0.18);
+}
+
+/* =========================
+   INPUT
+   ========================= */
+.chat-input{
+  width: 100%;
+  padding: 6px 8px;
+
+  background: rgba(0, 10, 20, 0.08);
+  border: 1px solid rgba(80, 120, 160, 0.32);
+  border-radius: 3px;
+
+  font-size: 12px;
+  color: #93ffdf;
+  outline: none;
+
+  /* crisp over bright stars */
+  text-shadow: 0 0 2px rgba(0,0,0,0.95);
+}
+
+.chat-input::placeholder{
+  color: rgba(147, 255, 223, 0.35);
+}
+
+/* =========================
+   TEXT (FULLY OPAQUE)
+   ========================= */
 .chat-user{
-    color: rgb(218, 69, 255);
+  color: rgb(218, 69, 255);
+  text-shadow:
+    0 0 3px rgba(0,0,0,0.90),
+    0 0 6px rgba(218,69,255,0.30);
 }
 
 .chat-text{
-    color: rgb(230, 230, 230);
+  color: rgb(235, 235, 235);
+  text-shadow:
+    0 0 2px rgba(0,0,0,0.95),
+    0 0 6px rgba(0,0,0,0.55);
 }
 
-.chat-messages::-webkit-scrollbar {
+/* =========================
+   SCROLLBAR
+   ========================= */
+.chat-messages::-webkit-scrollbar{
   width: 6px;
 }
-.chat-messages::-webkit-scrollbar-track {
-  background: #0b0f14;
+
+.chat-messages::-webkit-scrollbar-track{
+  background: rgba(11, 15, 20, 0.12);
 }
-.chat-messages::-webkit-scrollbar-thumb {
-  background-color: #2a4354;
+
+.chat-messages::-webkit-scrollbar-thumb{
+  background-color: rgba(42, 67, 84, 0.50);
   border-radius: 2px;
-  border: 1px solid #6fc7ff55;
-  box-shadow: 0 0 4px #6fc7ff55;
+  border: 1px solid rgba(111, 199, 255, 0.22);
+  box-shadow: 0 0 4px rgba(111, 199, 255, 0.16);
 }

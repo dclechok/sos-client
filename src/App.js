@@ -48,6 +48,7 @@ function App() {
 
   const [account, setAccount] = useState(undefined); // undefined = loading
   const [character, setCharacter] = useState(undefined);
+  const [worldSeed, setWorldSeed] = useState(null);
   // const [playerLoc, setPlayerLoc] = useState({ x: 0, y: 0 });
   // const [sceneData, setSceneData] = useState(null);
 
@@ -86,6 +87,19 @@ function App() {
     }
 
     init();
+  }, []);
+
+  //Receive world seed from server once
+
+    useEffect(() => {
+    const handler = (payload) => {
+      const seed = payload?.worldSeed;
+      if (!Number.isFinite(seed)) return;
+      setWorldSeed(seed);
+    };
+
+    socket.on("world:init", handler);
+    return () => socket.off("world:init", handler);
   }, []);
 
   // --------------------------------------------------
@@ -139,10 +153,10 @@ function App() {
 
   // Logged in + character selected → Game UI
   return (
-    <div className="App">
+    <div className="App" onContextMenu={(e) => e.preventDefault()}>
       <LogoutButton setAccount={setAccount} setCharacter={setCharacter} />
       <NavBar account={account} />
-      <MainViewport />
+      <MainViewport worldSeed={worldSeed} />
       <ChatMenu character={character} />
     </div>
   );

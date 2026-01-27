@@ -47,7 +47,7 @@ function ChatMenu({ character }) {
 
     return (
         <div className="chat-container">
-            <div className="chat-header">Regional CommLink</div>
+            <div className="chat-header">[ Regional ] CommLink</div>
 
             <div className="chat-messages">
                 {messages.map((msg, i) => (
