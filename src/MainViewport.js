@@ -4,12 +4,13 @@ import "./styles/MainViewport.css";
 
 /**
  * LAYERS (back -> front)
- * 1) Far stars (slow parallax + twinkle)
+ * 1) Far stars (slow parallax + twinkle + VERY subtle global pulse)
  * 2) Space dust / micro-debris (unique: tiny tinted specks, very faint, independent drift)
  * 3) Nebula clouds (DISCRETE pockets, not full-screen; slow drift; black space between)
  *    - OUTER: radial falloff (overall "cloud boundary" stays soft)
  *    - INNER: irregular lumpy mask + punched holes (random black voids inside)
  *    - INNER: multiple “puffs” of the tile stamped at offsets/scales (varied interior density)
+ *    - SUBTLE push-back: micro-contrast soften in buffer + tiny draw blur
  * 4) Near stars (faster parallax + a few glow stars + twinkle)
  */
 
@@ -176,7 +177,7 @@ export default function MainViewport() {
     const ctx = canvas.getContext("2d", { alpha: false });
 
     // -----------------------------
-    // Tunables (keep yours — these are close)
+    // Tunables
     // -----------------------------
     const WORLD = 7000;
 
@@ -200,17 +201,24 @@ export default function MainViewport() {
     // Optional tiny camera coupling (set 0 to fully independent)
     const NEBULA_CAM_COUPLE = 0.0;
 
-    // --- Interior breakup controls ---
+    // Interior breakup controls
     const NEBULA_PUFFS_MIN = 5; // fewer = more voids
     const NEBULA_PUFFS_MAX = 12;
     const NEBULA_HOLES_MIN = 3; // more holes = more black gaps inside
     const NEBULA_HOLES_MAX = 10;
 
-    // --- NEW (SUBTLE): “push back” without changing alpha much ---
-    // These soften micro-contrast (the splotchy look) so it reads like distance.
-    const NEBULA_BUF_BLUR_PX = 1.15; // 0.8..1.6 (keep subtle)
-    const NEBULA_CONTRAST_WASH = 0.055; // 0.03..0.08 (tiny dark wash inside buffer)
-    const NEBULA_DRAW_BLUR_PX = 0.35; // was 0.5; slightly less “in your face”
+    // “Push back” without killing alpha/colors
+    const NEBULA_BUF_BLUR_PX = 1.15; // 0.8..1.6
+    const NEBULA_CONTRAST_WASH = 0.055; // 0.03..0.08
+    const NEBULA_DRAW_BLUR_PX = 0.35;
+
+    // -----------------------------
+    // NEW: Far starfield global pulse (very subtle)
+    // -----------------------------
+    const FAR_PULSE_ENABLED = true;
+    const FAR_PULSE_AMP = 0.06; // 0.02..0.08
+    const FAR_PULSE_SPEED = 0.06; // 0.03..0.09 (slow)
+    const FAR_PULSE_PHASE = 0.0;
 
     // -----------------------------
     // Canvas sizing
@@ -241,7 +249,7 @@ export default function MainViewport() {
     }
 
     // -----------------------------
-    // Nebula mask cache (HUGE perf win)
+    // Nebula mask cache (perf win)
     // -----------------------------
     const maskCache = new Map(); // key => canvas
 
@@ -260,7 +268,7 @@ export default function MainViewport() {
       const cx = size * 0.5;
       const cy = size * 0.5;
 
-      // 1) Build interior "lumpy" alpha from many soft blobs (NOT a circle)
+      // 1) Interior lumpy alpha
       mctx.clearRect(0, 0, size, size);
       mctx.globalCompositeOperation = "source-over";
       mctx.filter = `blur(${Math.max(3, size * 0.012)}px)`;
@@ -268,7 +276,7 @@ export default function MainViewport() {
       const blobCount = puffs * 3 + Math.floor(r() * 8);
       for (let i = 0; i < blobCount; i++) {
         const ang = r() * Math.PI * 2;
-        const rad = (r() ** 0.55) * (size * 0.33);
+        const rad = r() ** 0.55 * (size * 0.33);
         const x = cx + Math.cos(ang) * rad;
         const y = cy + Math.sin(ang) * rad;
 
@@ -282,13 +290,13 @@ export default function MainViewport() {
         mctx.fillRect(x - outer, y - outer, outer * 2, outer * 2);
       }
 
-      // 2) Punch holes (black voids inside the cloud)
+      // 2) Punch holes
       mctx.globalCompositeOperation = "destination-out";
       mctx.filter = `blur(${Math.max(2, size * 0.010)}px)`;
 
       for (let i = 0; i < holes; i++) {
         const ang = r() * Math.PI * 2;
-        const rad = (r() ** 0.6) * (size * 0.34);
+        const rad = r() ** 0.6 * (size * 0.34);
         const x = cx + Math.cos(ang) * rad;
         const y = cy + Math.sin(ang) * rad;
 
@@ -302,7 +310,7 @@ export default function MainViewport() {
         mctx.fillRect(x - outer, y - outer, outer * 2, outer * 2);
       }
 
-      // 3) Apply the OUTER radial boundary (overall silhouette stays soft)
+      // 3) Outer radial boundary
       mctx.globalCompositeOperation = "destination-in";
       mctx.filter = "none";
 
@@ -459,7 +467,7 @@ export default function MainViewport() {
     }
 
     // -----------------------------
-    // Nebula clouds (offscreen masked)
+    // Nebula clouds
     // -----------------------------
     const gasTileA = makeSeamlessNebulaTile({ size: 1024, seed: 999 });
     const gasTileB = makeSeamlessNebulaTile({ size: 1024, seed: 1337 });
@@ -474,14 +482,8 @@ export default function MainViewport() {
     function resetNebulae() {
       nebulae = [];
 
-      const sMin = Math.max(
-        260,
-        Math.min(NEBULA_SIZE_MIN, Math.min(w, h) * 0.55)
-      );
-      const sMax = Math.max(
-        sMin + 160,
-        Math.min(NEBULA_SIZE_MAX, Math.max(w, h) * 1.2)
-      );
+      const sMin = Math.max(260, Math.min(NEBULA_SIZE_MIN, Math.min(w, h) * 0.55));
+      const sMax = Math.max(sMin + 160, Math.min(NEBULA_SIZE_MAX, Math.max(w, h) * 1.2));
 
       for (let i = 0; i < NEBULA_COUNT; i++) {
         const r = randRange(sMin, sMax);
@@ -491,12 +493,11 @@ export default function MainViewport() {
 
         const puffCount =
           (NEBULA_PUFFS_MIN +
-            Math.floor(nebulaRand() * (NEBULA_PUFFS_MAX - NEBULA_PUFFS_MIN + 1))) |
-          0;
+            Math.floor(nebulaRand() * (NEBULA_PUFFS_MAX - NEBULA_PUFFS_MIN + 1))) | 0;
+
         const holeCount =
           (NEBULA_HOLES_MIN +
-            Math.floor(nebulaRand() * (NEBULA_HOLES_MAX - NEBULA_HOLES_MIN + 1))) |
-          0;
+            Math.floor(nebulaRand() * (NEBULA_HOLES_MAX - NEBULA_HOLES_MIN + 1))) | 0;
 
         const maskSeed = (777 ^ (i * 2654435761)) >>> 0;
 
@@ -542,7 +543,7 @@ export default function MainViewport() {
       // extra puffs (smaller + offset)
       const puffs = cloud.puffCount;
       for (let i = 0; i < puffs; i++) {
-        const sx = 0.55 + rr() * 0.55; // 0.55..1.10
+        const sx = 0.55 + rr() * 0.55;
         const sy = 0.55 + rr() * 0.55;
         const w2 = size * sx;
         const h2 = size * sy;
@@ -558,18 +559,10 @@ export default function MainViewport() {
       cloudBufCtx.globalCompositeOperation = "destination-in";
       cloudBufCtx.globalAlpha = 1;
 
-      const mask = getNebulaMask(
-        size,
-        cloud.maskSeed,
-        cloud.puffCount,
-        cloud.holeCount
-      );
+      const mask = getNebulaMask(size, cloud.maskSeed, cloud.puffCount, cloud.holeCount);
       cloudBufCtx.drawImage(mask, 0, 0);
 
-      // -----------------------------
-      // NEW (SUBTLE): soften micro-contrast inside the buffer
-      // (this is what pushes it “back” without killing the alpha/colors)
-      // -----------------------------
+      // soften micro-contrast inside the buffer
       cloudBufCtx.globalCompositeOperation = "source-over";
       cloudBufCtx.globalAlpha = 1;
 
@@ -578,7 +571,7 @@ export default function MainViewport() {
       cloudBufCtx.drawImage(cloudBuf, 0, 0);
       cloudBufCtx.filter = "none";
 
-      // 2) tiny black wash (compresses contrast, keeps vibe)
+      // 2) tiny black wash (compresses contrast)
       cloudBufCtx.globalCompositeOperation = "source-atop";
       cloudBufCtx.globalAlpha = NEBULA_CONTRAST_WASH;
       cloudBufCtx.fillStyle = "black";
@@ -590,10 +583,9 @@ export default function MainViewport() {
       const breath = 1 + Math.sin(t * cloud.breathe + cloud.phase) * 0.10;
 
       ctx.save();
-      ctx.globalCompositeOperation = "lighter"; // keep your vibe
+      ctx.globalCompositeOperation = "lighter";
       ctx.globalAlpha = cloud.a * breath;
 
-      // tiny draw blur (just to keep distance feel; subtle)
       ctx.filter = `blur(${NEBULA_DRAW_BLUR_PX}px)`;
       ctx.drawImage(cloudBuf, x - r, y - r, size, size);
 
@@ -653,7 +645,20 @@ export default function MainViewport() {
       ctx.fillStyle = "#000";
       ctx.fillRect(0, 0, w, h);
 
-      drawStars(farStars, FAR_SCALE, t);
+      // Far stars (with very subtle global pulse)
+      if (FAR_PULSE_ENABLED) {
+        const pulse =
+          1 +
+          Math.sin((t + FAR_PULSE_PHASE) * Math.PI * 2 * FAR_PULSE_SPEED) *
+            FAR_PULSE_AMP;
+        ctx.save();
+        ctx.globalAlpha *= pulse; // multiplies the per-star alpha (subtle "breathing")
+        drawStars(farStars, FAR_SCALE, t);
+        ctx.restore();
+      } else {
+        drawStars(farStars, FAR_SCALE, t);
+      }
+
       drawDust(dt);
       drawNebulae(dt, t);
       drawStars(nearStars, NEAR_SCALE, t);
