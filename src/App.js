@@ -47,8 +47,8 @@ function App() {
 
   const [account, setAccount] = useState(undefined); // undefined = loading
   const [character, setCharacter] = useState(undefined);
-  const [playerLoc, setPlayerLoc] = useState({ x: 0, y: 0 });
-  const [sceneData, setSceneData] = useState(null);
+  // const [playerLoc, setPlayerLoc] = useState({ x: 0, y: 0 });
+  // const [sceneData, setSceneData] = useState(null);
 
   useButtonClickSound();
   const { width, height } = useWindowSize();
