@@ -195,10 +195,10 @@ export default function MainViewport({ worldSeed, cameraX = 0, cameraY = 0 }) {
     const WORLD = 7000;
 
     // VERY strong parallax (fast flight feel)
-    const FAR_SCALE    = 0.216;
-    const DUST_SCALE   = 0.353;
-    const NEBULA_SCALE = 0.274;
-    const NEAR_SCALE   = 0.549;
+    const FAR_SCALE    = 0.616;
+    const DUST_SCALE   = 0.953;
+    const NEBULA_SCALE = 0.374;
+    const NEAR_SCALE   = 2.949;
 
     const DUST_ALPHA = 0.1;
 

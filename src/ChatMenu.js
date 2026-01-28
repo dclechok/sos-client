@@ -7,7 +7,6 @@ function ChatMenu({ character }) {
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState("");
     const bottomRef = useRef(null);
-    const region = "slagline";
 
     // Listen for full history
     useSocketEvent("chatHistory", (history) => {
@@ -30,7 +29,6 @@ function ChatMenu({ character }) {
         if (!input.trim()) return;
 
         send("sendMessage", {
-            region,
             user: character.charName,
             message: input
         });
