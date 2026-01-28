@@ -167,7 +167,7 @@ function makeSeamlessNebulaTile({ size = 1024, seed = 1337 }) {
   return tile;
 }
 
-export default function MainViewport({worldSeed}) {
+export default function MainViewport({worldSeed, cameraX = 0, cameraY = 0 }) {
   const canvasRef = useRef(null);
 
   useEffect(() => {
@@ -251,9 +251,10 @@ export default function MainViewport({worldSeed}) {
       h = 0,
       dpr = 1;
 
-    // Camera (swap with real player later)
-    let camX = 0;
-    let camY = 0;
+    // Camera
+    let camX = cameraX;
+    let camY = cameraY;
+
 
     // -----------------------------
     // Offscreen cloud buffer (feather + mask)
@@ -717,13 +718,7 @@ export default function MainViewport({worldSeed}) {
       raf = requestAnimationFrame(frame);
     }
 
-    function onMouseMove(e) {
-      camX = (e.clientX - w / 2) * 4;
-      camY = (e.clientY - h / 2) * 4;
-    }
-
     window.addEventListener("resize", resize);
-    window.addEventListener("mousemove", onMouseMove);
 
     resize();
     raf = requestAnimationFrame(frame);
@@ -731,7 +726,6 @@ export default function MainViewport({worldSeed}) {
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", resize);
-      window.removeEventListener("mousemove", onMouseMove);
     };
   }, [worldSeed]);
 

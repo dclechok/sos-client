@@ -13,10 +13,10 @@ import LogoutButton from "./LogoutButton";
 
 import { loadStoredSession, verifyToken } from "./utils/session";
 
-import socket from "./hooks/socket";
 import { useGameSocket } from "./hooks/useGameSocket";
 import MainViewport from "./MainViewport";
 import ChatMenu from "./ChatMenu";
+import PlayerRenderer from "./PlayerRenderer";
 
 // --------------------------------------------------
 // Window-size hook (must NOT be conditional)
@@ -29,7 +29,7 @@ function useWindowSize() {
       setSize({ width: window.innerWidth, height: window.innerHeight });
     };
 
-    handler(); // set initial size after mount
+    handler();
     window.addEventListener("resize", handler);
     return () => window.removeEventListener("resize", handler);
   }, []);
@@ -37,26 +37,39 @@ function useWindowSize() {
   return size;
 }
 
-
 // --------------------------------------------------
 // MAIN APP COMPONENT
 // --------------------------------------------------
 function App() {
-  const { worldSeed } = useGameSocket;
   const [account, setAccount] = useState(undefined); // undefined = loading
   const [character, setCharacter] = useState(undefined);
-  // const [playerLoc, setPlayerLoc] = useState({ x: 0, y: 0 });
-  // const [sceneData, setSceneData] = useState(null);
 
   useButtonClickSound();
   const { width, height } = useWindowSize();
+
+  // ✅ Call the hook (this gives you socket + worldSeed + myId + players)
+  const {
+    socket,
+    isReady,
+    worldSeed,
+    myId,
+    players,
+    me,
+    identify,
+    loadScene,
+    // send, useSocketEvent  // still available if other components use them
+  } = useGameSocket({
+    // optional: if you still use sceneData anywhere
+    // onSceneData: (data) => console.log("sceneData:", data),
+  });
 
   // --------------------------------------------------
   // Restore local session + verify token cleanly
   // --------------------------------------------------
   useEffect(() => {
     async function init() {
-      const { account: storedAccount, character: storedChar } = loadStoredSession();
+      const { account: storedAccount, character: storedChar } =
+        loadStoredSession();
 
       if (!storedAccount?.token) {
         setAccount(null);
@@ -64,11 +77,9 @@ function App() {
         return;
       }
 
-      // Attempt to verify token
       const valid = await verifyToken(storedAccount.token);
 
       if (!valid) {
-        // Token invalid → wipe storage
         localStorage.removeItem("pd_token");
         localStorage.removeItem("pd_account");
         localStorage.removeItem("pd_character");
@@ -77,7 +88,6 @@ function App() {
         return;
       }
 
-      // Token valid → restore full session
       setAccount(valid);
       setCharacter(storedChar || null);
     }
@@ -86,18 +96,23 @@ function App() {
   }, []);
 
   // --------------------------------------------------
-  // IDENTIFY PLAYER TO SOCKET SERVER
+  // IDENTIFY + LOAD SCENE (after socket is ready AND character chosen)
   // --------------------------------------------------
   useEffect(() => {
-    if (!character) return; // Only run when character is chosen
+    if (!isReady) return;
+    if (!character) return;
 
-    console.log("🔗 Identifying player to server:", character._id || character.id);
+    const characterId = character._id || character.id;
+    if (!characterId) return;
 
-    socket.emit("identify", {
-      characterId: character._id || character.id
-    });
+    console.log("🔗 identify ->", characterId);
 
-  }, [character]);
+    // ✅ new hook API (still emits to socket)
+    identify(characterId);
+
+    // ✅ loadScene after identify so server will accept player:input
+    loadScene();
+  }, [isReady, character, identify, loadScene]);
 
   if (width === 0 || height === 0) return <Spinner />;
   if (width < 1100 || height < 700) return <DisplayCheck />;
@@ -105,12 +120,10 @@ function App() {
   // --------------------------------------------------
   // ROUTING LOGIC (your exact flow)
   // --------------------------------------------------
-  // Not logged in → Login screen
   if (account === null) {
     return <Login setAccount={setAccount} />;
   }
 
-  // Logged in but no character chosen → Character Selection
   if (character === null) {
     return (
       <>
@@ -132,7 +145,18 @@ function App() {
     <div className="App" onContextMenu={(e) => e.preventDefault()}>
       <LogoutButton setAccount={setAccount} setCharacter={setCharacter} />
       <NavBar account={account} />
-      <MainViewport worldSeed={worldSeed} />
+
+      {/* ✅ background uses same worldSeed, and camera uses server-authoritative me.x/me.y */}
+      <MainViewport
+        worldSeed={worldSeed}
+        cameraX={me?.x ?? 0}
+        cameraY={me?.y ?? 0}
+      />
+
+      {/* ✅ ships render from server snapshots */}
+      <PlayerRenderer socket={socket} myId={myId} players={players} />
+
+      {/* ChatMenu can keep using old send/useSocketEvent if it needs */}
       <ChatMenu character={character} />
     </div>
   );
