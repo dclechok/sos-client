@@ -93,7 +93,7 @@ function App() {
   }, [isReady, character, identify, loadScene]);
 
   if (width === 0 || height === 0) return <Spinner />;
-  if (width < 1100 || height < 700) return <DisplayCheck />;
+  if (width < 800 || height < 500) return <DisplayCheck />;
 
   if (account === null) return <Login setAccount={setAccount} />;
 
