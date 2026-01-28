@@ -5,12 +5,8 @@ import "./styles/MainViewport.css";
 /**
  * LAYERS (back -> front)
  * 1) Far stars (slow parallax + twinkle + VERY subtle global pulse)
- * 2) Space dust / micro-debris (unique: tiny tinted specks, very faint, independent drift)
- * 3) Nebula clouds (DISCRETE pockets, not full-screen; slow drift; black space between)
- *    - OUTER: radial falloff (overall "cloud boundary" stays soft)
- *    - INNER: irregular lumpy mask + punched holes (random black voids inside)
- *    - INNER: multiple “puffs” of the tile stamped at offsets/scales (varied interior density)
- *    - SUBTLE push-back: micro-contrast soften in buffer + tiny draw blur
+ * 2) Space dust / micro-debris (unique: tiny tinted specks, very faint, independent drift)  ✅ now scrolls with camera
+ * 3) Nebula clouds (DISCRETE pockets, not full-screen; slow drift; black space between)     ✅ now scrolls with camera
  * 4) Near stars (faster parallax + a few glow stars + twinkle)
  */
 
@@ -80,7 +76,6 @@ function makeSeamlessNebulaTile({ size = 1024, seed = 1337 }) {
     let amp = 0.55;
     let freq = 1.0;
 
-    // 5 octaves: good look, cheaper
     for (let i = 0; i < 5; i++) {
       const ang = 0.35 * i;
       const cu = Math.cos(ang);
@@ -139,7 +134,6 @@ function makeSeamlessNebulaTile({ size = 1024, seed = 1337 }) {
         lerp(p.b[0], p.b[1], density) * (1 - t) +
         lerp(p2.b[0], p2.b[1], density) * t;
 
-      // texture alpha (kept moderate)
       const A = Math.pow(density, 1.2) * 255;
 
       const i = (y * size + x) * 4;
@@ -157,7 +151,7 @@ function makeSeamlessNebulaTile({ size = 1024, seed = 1337 }) {
   const dd = img2.data;
   const rd = mulberry32(seed ^ 0xc0ffee);
   for (let i = 0; i < dd.length; i += 4) {
-    const n = (rd() - 0.5) * 10; // -5..5
+    const n = (rd() - 0.5) * 10;
     dd[i] = Math.max(0, Math.min(255, dd[i] + n));
     dd[i + 1] = Math.max(0, Math.min(255, dd[i + 1] + n));
     dd[i + 2] = Math.max(0, Math.min(255, dd[i + 2] + n));
@@ -167,8 +161,13 @@ function makeSeamlessNebulaTile({ size = 1024, seed = 1337 }) {
   return tile;
 }
 
-export default function MainViewport({worldSeed, cameraX = 0, cameraY = 0 }) {
+export default function MainViewport({ worldSeed, cameraX = 0, cameraY = 0 }) {
   const canvasRef = useRef(null);
+
+  // ✅ camera refs so the animation loop always uses latest values
+  const camRef = useRef({ x: cameraX, y: cameraY });
+  camRef.current.x = cameraX;
+  camRef.current.y = cameraY;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -176,89 +175,67 @@ export default function MainViewport({worldSeed, cameraX = 0, cameraY = 0 }) {
 
     const ctx = canvas.getContext("2d", { alpha: false });
 
-    // -----------------------------
-    // FIX #1: Stable world seed (persists across remounts + matches other clients if shared)
-    // Later: replace localStorage with server-provided seed on login.
-    // -----------------------------
+    // Stable world seed
     const WORLD_SEED_KEY = "space_world_seed_v1";
-
-    // ✅ prefer server seed if provided
     let WORLD_SEED = Number.isFinite(worldSeed)
-    ? worldSeed
-    : Number(localStorage.getItem(WORLD_SEED_KEY));
+      ? worldSeed
+      : Number(localStorage.getItem(WORLD_SEED_KEY));
 
-    // fallback for offline/dev
     if (!Number.isFinite(WORLD_SEED)) {
-    WORLD_SEED = (Math.random() * 2 ** 32) >>> 0;
-    localStorage.setItem(WORLD_SEED_KEY, String(WORLD_SEED));
+      WORLD_SEED = (Math.random() * 2 ** 32) >>> 0;
+      localStorage.setItem(WORLD_SEED_KEY, String(WORLD_SEED));
     }
-
-    // optional: store server seed locally so refresh stays consistent
     if (Number.isFinite(worldSeed)) {
-    localStorage.setItem(WORLD_SEED_KEY, String(worldSeed));
+      localStorage.setItem(WORLD_SEED_KEY, String(worldSeed));
     }
-
 
     // -----------------------------
     // Tunables
     // -----------------------------
     const WORLD = 7000;
 
-    const FAR_SCALE = 0.045;
-    const NEAR_SCALE = 0.11;
+    // VERY strong parallax (fast flight feel)
+    const FAR_SCALE    = 0.216;
+    const DUST_SCALE   = 0.353;
+    const NEBULA_SCALE = 0.274;
+    const NEAR_SCALE   = 0.549;
 
     const DUST_ALPHA = 0.1;
 
-    // Nebula: discrete pockets
-    const NEBULA_COUNT = 8; // 6..12
+    // Nebula pockets
+    const NEBULA_COUNT = 8;
     const NEBULA_ALPHA_MIN = 0.018;
     const NEBULA_ALPHA_MAX = 0.16;
 
     const NEBULA_SIZE_MIN = 380;
     const NEBULA_SIZE_MAX = 1200;
 
-    // Drift (px/sec)
+    // Drift (px/sec in “world units”)
     const NEBULA_SPEED_MIN = 2.2;
     const NEBULA_SPEED_MAX = 4.2;
 
-    // Optional tiny camera coupling (set 0 to fully independent)
-    const NEBULA_CAM_COUPLE = 0.0;
-
-    // Interior breakup controls
-    const NEBULA_PUFFS_MIN = 5; // fewer = more voids
+    const NEBULA_PUFFS_MIN = 5;
     const NEBULA_PUFFS_MAX = 12;
-    const NEBULA_HOLES_MIN = 3; // more holes = more black gaps inside
+    const NEBULA_HOLES_MIN = 3;
     const NEBULA_HOLES_MAX = 10;
 
-    // “Push back” without killing alpha/colors
-    const NEBULA_BUF_BLUR_PX = 1.15; // 0.8..1.6
-    const NEBULA_CONTRAST_WASH = 0.055; // 0.03..0.08
+    const NEBULA_BUF_BLUR_PX = 1.15;
+    const NEBULA_CONTRAST_WASH = 0.055;
     const NEBULA_DRAW_BLUR_PX = 0.35;
 
-    // -----------------------------
-    // NEW: Far starfield global pulse (very subtle)
-    // -----------------------------
+    // Far pulse
     const FAR_PULSE_ENABLED = true;
-    const FAR_PULSE_AMP = 0.06; // 0.02..0.08
-    const FAR_PULSE_SPEED = 0.06; // 0.03..0.09 (slow)
+    const FAR_PULSE_AMP = 0.06;
+    const FAR_PULSE_SPEED = 0.06;
     const FAR_PULSE_PHASE = 0.0;
 
-    // -----------------------------
     // Canvas sizing
-    // -----------------------------
     let raf = 0;
     let w = 0,
       h = 0,
       dpr = 1;
 
-    // Camera
-    let camX = cameraX;
-    let camY = cameraY;
-
-
-    // -----------------------------
-    // Offscreen cloud buffer (feather + mask)
-    // -----------------------------
+    // Offscreen cloud buffer
     const cloudBuf = document.createElement("canvas");
     const cloudBufCtx = cloudBuf.getContext("2d");
     let cloudBufSize = 0;
@@ -272,10 +249,8 @@ export default function MainViewport({worldSeed, cameraX = 0, cameraY = 0 }) {
       cloudBufCtx.imageSmoothingEnabled = true;
     }
 
-    // -----------------------------
-    // Nebula mask cache (perf win)
-    // -----------------------------
-    const maskCache = new Map(); // key => canvas
+    // Mask cache
+    const maskCache = new Map();
 
     function getNebulaMask(size, seed, puffs, holes) {
       const key = `${size}|${seed}|${puffs}|${holes}`;
@@ -292,7 +267,7 @@ export default function MainViewport({worldSeed, cameraX = 0, cameraY = 0 }) {
       const cx = size * 0.5;
       const cy = size * 0.5;
 
-      // 1) Interior lumpy alpha
+      // interior lumpy alpha
       mctx.clearRect(0, 0, size, size);
       mctx.globalCompositeOperation = "source-over";
       mctx.filter = `blur(${Math.max(3, size * 0.012)}px)`;
@@ -314,7 +289,7 @@ export default function MainViewport({worldSeed, cameraX = 0, cameraY = 0 }) {
         mctx.fillRect(x - outer, y - outer, outer * 2, outer * 2);
       }
 
-      // 2) Punch holes
+      // punch holes
       mctx.globalCompositeOperation = "destination-out";
       mctx.filter = `blur(${Math.max(2, size * 0.010)}px)`;
 
@@ -334,18 +309,11 @@ export default function MainViewport({worldSeed, cameraX = 0, cameraY = 0 }) {
         mctx.fillRect(x - outer, y - outer, outer * 2, outer * 2);
       }
 
-      // 3) Outer radial boundary
+      // outer boundary
       mctx.globalCompositeOperation = "destination-in";
       mctx.filter = "none";
 
-      const outer = mctx.createRadialGradient(
-        cx,
-        cy,
-        size * 0.08,
-        cx,
-        cy,
-        size * 0.56
-      );
+      const outer = mctx.createRadialGradient(cx, cy, size * 0.08, cx, cy, size * 0.56);
       outer.addColorStop(0.0, "rgba(255,255,255,1)");
       outer.addColorStop(0.62, "rgba(255,255,255,0.85)");
       outer.addColorStop(1.0, "rgba(255,255,255,0)");
@@ -356,9 +324,7 @@ export default function MainViewport({worldSeed, cameraX = 0, cameraY = 0 }) {
       return m;
     }
 
-    // -----------------------------
-    // Stars
-    // -----------------------------
+    // Stars (world space)
     function makeStars(seed, count, glowCount) {
       const r = mulberry32(seed);
       const stars = [];
@@ -371,7 +337,6 @@ export default function MainViewport({worldSeed, cameraX = 0, cameraY = 0 }) {
         const s = roll < 0.72 ? 1 : 2;
 
         const a = 0.19 + r() * 0.3;
-
         const tint = 238 + Math.floor(r() * 17);
         const c = `rgb(${tint},${tint},255)`;
 
@@ -387,32 +352,26 @@ export default function MainViewport({worldSeed, cameraX = 0, cameraY = 0 }) {
         const y = r() * WORLD;
 
         const a = 0.4 + r() * 0.25;
-
         const twSpeed = 0.25 + r() * 0.65;
         const twPhase = r() * Math.PI * 2;
         const twAmp = 0.07 + r() * 0.11;
 
         stars.push({
-          x,
-          y,
-          s: 2,
-          a,
-          c: "rgb(245,245,255)",
-          glow: true,
-          twSpeed,
-          twPhase,
-          twAmp,
+          x, y, s: 2, a, c: "rgb(245,245,255)",
+          glow: true, twSpeed, twPhase, twAmp
         });
       }
 
       return stars;
     }
 
-    // (unchanged stars; you can seed these too later if you want)
     const farStars = makeStars(111, 900, 10);
     const nearStars = makeStars(222, 520, 12);
 
     function drawStars(stars, scale, t) {
+      const camX = camRef.current.x;
+      const camY = camRef.current.y;
+
       const ox = ((camX * scale) % WORLD + WORLD) % WORLD;
       const oy = ((camY * scale) % WORLD + WORLD) % WORLD;
 
@@ -446,16 +405,14 @@ export default function MainViewport({worldSeed, cameraX = 0, cameraY = 0 }) {
       }
     }
 
-    // -----------------------------
-    // Dust
-    // -----------------------------
+    // Dust (now world-space so it scrolls)
     const dustRand = mulberry32(333);
     const dust = [];
     const DUST_COUNT = 900;
 
     for (let i = 0; i < DUST_COUNT; i++) {
-      const u = dustRand();
-      const v = dustRand();
+      const x = dustRand() * WORLD;
+      const y = dustRand() * WORLD;
 
       const pick = dustRand();
       const col =
@@ -469,32 +426,45 @@ export default function MainViewport({worldSeed, cameraX = 0, cameraY = 0 }) {
       const spd = 0.15 + dustRand() * 0.35;
       const ph = dustRand() * Math.PI * 2;
 
-      dust.push({ u, v, s, col, spd, ph });
+      dust.push({ x, y, s, col, spd, ph });
     }
 
     let dustT = 0;
     function drawDust(dt) {
+      const camX = camRef.current.x;
+      const camY = camRef.current.y;
+
       dustT += dt;
 
       ctx.save();
       ctx.globalCompositeOperation = "source-over";
       ctx.globalAlpha = DUST_ALPHA;
 
+      const ox = ((camX * DUST_SCALE) % WORLD + WORLD) % WORLD;
+      const oy = ((camY * DUST_SCALE) % WORLD + WORLD) % WORLD;
+
       for (const p of dust) {
-        const du = (p.u + Math.cos(dustT * p.spd + p.ph) * 0.002) % 1;
-        const dv = (p.v + Math.sin(dustT * p.spd + p.ph) * 0.002) % 1;
+        // tiny independent drift
+        const jx = Math.cos(dustT * p.spd + p.ph) * 6;
+        const jy = Math.sin(dustT * p.spd + p.ph) * 6;
+
+        let x = p.x + jx - ox;
+        let y = p.y + jy - oy;
+
+        x = ((x % WORLD) + WORLD) % WORLD;
+        y = ((y % WORLD) + WORLD) % WORLD;
+
+        const sx = (x / WORLD) * w;
+        const sy = (y / WORLD) * h;
 
         ctx.fillStyle = p.col;
-        ctx.fillRect(du * w, dv * h, p.s, p.s);
+        ctx.fillRect(sx, sy, p.s, p.s);
       }
 
       ctx.restore();
     }
 
-    // -----------------------------
-    // Nebula clouds
-    // -----------------------------
-    // FIX #2: Seed tiles + nebula RNG from WORLD_SEED so every client with the same seed matches.
+    // Nebula (world-space so it scrolls)
     const gasTileA = makeSeamlessNebulaTile({
       size: 1024,
       seed: (WORLD_SEED ^ 0x0a11ce) >>> 0,
@@ -514,41 +484,28 @@ export default function MainViewport({worldSeed, cameraX = 0, cameraY = 0 }) {
     function resetNebulae() {
       nebulae = [];
 
-      const sMin = Math.max(
-        260,
-        Math.min(NEBULA_SIZE_MIN, Math.min(w, h) * 0.55)
-      );
-      const sMax = Math.max(
-        sMin + 160,
-        Math.min(NEBULA_SIZE_MAX, Math.max(w, h) * 1.2)
-      );
+      const sMin = Math.max(260, Math.min(NEBULA_SIZE_MIN, Math.min(w, h) * 0.55));
+      const sMax = Math.max(sMin + 160, Math.min(NEBULA_SIZE_MAX, Math.max(w, h) * 1.2));
 
       for (let i = 0; i < NEBULA_COUNT; i++) {
         const r = randRange(sMin, sMax);
-
         const ang = randRange(0, Math.PI * 2);
         const spd = randRange(NEBULA_SPEED_MIN, NEBULA_SPEED_MAX);
 
         const puffCount =
           (NEBULA_PUFFS_MIN +
-            Math.floor(
-              nebulaRand() * (NEBULA_PUFFS_MAX - NEBULA_PUFFS_MIN + 1)
-            )) |
-          0;
+            Math.floor(nebulaRand() * (NEBULA_PUFFS_MAX - NEBULA_PUFFS_MIN + 1))) | 0;
 
         const holeCount =
           (NEBULA_HOLES_MIN +
-            Math.floor(
-              nebulaRand() * (NEBULA_HOLES_MAX - NEBULA_HOLES_MIN + 1)
-            )) |
-          0;
+            Math.floor(nebulaRand() * (NEBULA_HOLES_MAX - NEBULA_HOLES_MIN + 1))) | 0;
 
-        // FIX #3: maskSeed derived from WORLD_SEED too (stable)
         const maskSeed = (WORLD_SEED ^ (i * 2654435761)) >>> 0;
 
+        // ✅ world positions
         nebulae.push({
-          x: randRange(0, w),
-          y: randRange(0, h),
+          wx: randRange(0, WORLD),
+          wy: randRange(0, WORLD),
           r,
           vx: Math.cos(ang) * spd,
           vy: Math.sin(ang) * spd,
@@ -564,8 +521,8 @@ export default function MainViewport({worldSeed, cameraX = 0, cameraY = 0 }) {
       }
     }
 
-    function drawNebulaCloud(cloud, t) {
-      const { x, y, r, tile } = cloud;
+    function drawNebulaCloud(cloud, t, screenX, screenY) {
+      const { r, tile } = cloud;
 
       const size = Math.ceil(r * 2);
       ensureCloudBuf(size);
@@ -573,7 +530,6 @@ export default function MainViewport({worldSeed, cameraX = 0, cameraY = 0 }) {
       cloudBufCtx.setTransform(1, 0, 0, 1, 0, 0);
       cloudBufCtx.clearRect(0, 0, cloudBufSize, cloudBufSize);
 
-      // subtle movement so it doesn't feel like a static stamp
       const jx = Math.sin(t * 0.04 + cloud.phase) * cloud.driftJitter;
       const jy = Math.cos(t * 0.03 + cloud.phase) * cloud.driftJitter;
 
@@ -582,10 +538,8 @@ export default function MainViewport({worldSeed, cameraX = 0, cameraY = 0 }) {
       cloudBufCtx.globalCompositeOperation = "source-over";
       cloudBufCtx.globalAlpha = 1;
 
-      // base puff (full size)
       cloudBufCtx.drawImage(tile, jx, jy, size, size);
 
-      // extra puffs (smaller + offset)
       const puffs = cloud.puffCount;
       for (let i = 0; i < puffs; i++) {
         const sx = 0.55 + rr() * 0.55;
@@ -600,28 +554,19 @@ export default function MainViewport({worldSeed, cameraX = 0, cameraY = 0 }) {
         cloudBufCtx.drawImage(tile, jx + ox, jy + oy, w2, h2);
       }
 
-      // apply irregular interior mask WITH holes (black space inside)
       cloudBufCtx.globalCompositeOperation = "destination-in";
       cloudBufCtx.globalAlpha = 1;
 
-      const mask = getNebulaMask(
-        size,
-        cloud.maskSeed,
-        cloud.puffCount,
-        cloud.holeCount
-      );
+      const mask = getNebulaMask(size, cloud.maskSeed, cloud.puffCount, cloud.holeCount);
       cloudBufCtx.drawImage(mask, 0, 0);
 
-      // soften micro-contrast inside the buffer
       cloudBufCtx.globalCompositeOperation = "source-over";
       cloudBufCtx.globalAlpha = 1;
 
-      // 1) tiny blur pass (merges splotches into haze)
       cloudBufCtx.filter = `blur(${NEBULA_BUF_BLUR_PX}px)`;
       cloudBufCtx.drawImage(cloudBuf, 0, 0);
       cloudBufCtx.filter = "none";
 
-      // 2) tiny black wash (compresses contrast)
       cloudBufCtx.globalCompositeOperation = "source-atop";
       cloudBufCtx.globalAlpha = NEBULA_CONTRAST_WASH;
       cloudBufCtx.fillStyle = "black";
@@ -629,37 +574,45 @@ export default function MainViewport({worldSeed, cameraX = 0, cameraY = 0 }) {
       cloudBufCtx.globalAlpha = 1;
       cloudBufCtx.globalCompositeOperation = "source-over";
 
-      // draw buffer onto main canvas
       const breath = 1 + Math.sin(t * cloud.breathe + cloud.phase) * 0.10;
 
       ctx.save();
       ctx.globalCompositeOperation = "lighter";
       ctx.globalAlpha = cloud.a * breath;
-
       ctx.filter = `blur(${NEBULA_DRAW_BLUR_PX}px)`;
-      ctx.drawImage(cloudBuf, x - r, y - r, size, size);
+
+      ctx.drawImage(cloudBuf, screenX - r, screenY - r, size, size);
 
       ctx.restore();
     }
 
     function drawNebulae(dt, t) {
+      const camX = camRef.current.x;
+      const camY = camRef.current.y;
+
+      const ox = ((camX * NEBULA_SCALE) % WORLD + WORLD) % WORLD;
+      const oy = ((camY * NEBULA_SCALE) % WORLD + WORLD) % WORLD;
+
       for (const n of nebulae) {
-        n.x += n.vx * dt - camX * NEBULA_CAM_COUPLE * dt;
-        n.y += n.vy * dt - camY * NEBULA_CAM_COUPLE * dt;
+        // drift in world space
+        n.wx = (n.wx + n.vx * dt + WORLD) % WORLD;
+        n.wy = (n.wy + n.vy * dt + WORLD) % WORLD;
 
-        const pad = n.r + 40;
-        if (n.x < -pad) n.x = w + pad;
-        if (n.y < -pad) n.y = h + pad;
-        if (n.x > w + pad) n.x = -pad;
-        if (n.y > h + pad) n.y = -pad;
+        // camera parallax
+        let x = n.wx - ox;
+        let y = n.wy - oy;
 
-        drawNebulaCloud(n, t);
+        x = ((x % WORLD) + WORLD) % WORLD;
+        y = ((y % WORLD) + WORLD) % WORLD;
+
+        const sx = (x / WORLD) * w;
+        const sy = (y / WORLD) * h;
+
+        drawNebulaCloud(n, t, sx, sy);
       }
     }
 
-    // -----------------------------
     // Resize
-    // -----------------------------
     function resize() {
       const p = canvas.parentElement;
       if (!p) return;
@@ -677,16 +630,11 @@ export default function MainViewport({worldSeed, cameraX = 0, cameraY = 0 }) {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.imageSmoothingEnabled = true;
 
-      // FIX #4: Do NOT respawn nebulae on resize/tab/layout changes.
-      // Only create once per mount; keeps the same layout.
       if (nebulae.length === 0) resetNebulae();
     }
 
-    // -----------------------------
     // Loop
-    // -----------------------------
     let lastMs = 0;
-
     function frame(nowMs) {
       const t = nowMs * 0.001;
       const dt = lastMs ? (nowMs - lastMs) * 0.001 : 0;
@@ -697,14 +645,14 @@ export default function MainViewport({worldSeed, cameraX = 0, cameraY = 0 }) {
       ctx.fillStyle = "#000";
       ctx.fillRect(0, 0, w, h);
 
-      // Far stars (with very subtle global pulse)
+      // Far stars + pulse
       if (FAR_PULSE_ENABLED) {
         const pulse =
           1 +
           Math.sin((t + FAR_PULSE_PHASE) * Math.PI * 2 * FAR_PULSE_SPEED) *
             FAR_PULSE_AMP;
         ctx.save();
-        ctx.globalAlpha *= pulse; // multiplies the per-star alpha (subtle "breathing")
+        ctx.globalAlpha *= pulse;
         drawStars(farStars, FAR_SCALE, t);
         ctx.restore();
       } else {

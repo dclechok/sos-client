@@ -134,6 +134,10 @@ export default function PlayerRenderer({
   const IMG_RENDERING = "auto"; // "pixelated" for strict pixel-art, "auto" for smoother
   const SMOOTHING = "auto";
 
+  const displayX = me ? Math.round(me.x) : 0;
+  const displayY = me ? Math.round(me.y) : 0;
+
+
   return (
     <div
       style={{
@@ -263,6 +267,29 @@ export default function PlayerRenderer({
           />
         </div>
       </div>
+              {/* DEBUG: World Coordinates (bottom-right) */}
+        {me && (
+        <div
+            style={{
+            position: "fixed",
+            right: 12,
+            bottom: 10,
+            fontSize: 11,
+            fontFamily: "monospace",
+            color: "rgba(200,220,255,0.6)",
+            background: "rgba(0,0,0,0.35)",
+            padding: "4px 6px",
+            borderRadius: 4,
+            pointerEvents: "none",
+            zIndex: 10000,
+            textAlign: "right",
+            }}
+        >
+            x: {displayX}
+            <br />
+            y: {displayY}
+        </div>
+        )}
     </div>
   );
 }
