@@ -46,7 +46,6 @@ function App() {
     players,
     me,
     identify,
-    loadScene, // keep ONLY if you still want sceneData payloads
   } = useGameSocket();
 
   useEffect(() => {
@@ -87,10 +86,7 @@ function App() {
 
     identify(characterId);
 
-    // OPTIONAL: only if you still use sceneData for UI/chat/region/etc.
-    // If you’re moving fully to space snapshots, you can remove this.
-    loadScene();
-  }, [isReady, character, identify, loadScene]);
+  }, [isReady, character, identify]);
 
   if (width === 0 || height === 0) return <Spinner />;
   if (width < 800 || height < 500) return <DisplayCheck />;
