@@ -25,8 +25,8 @@ export default function PlayerRenderer({
 
   sendRateHz = 20,
 
-  mySpriteSrc = "/art/items/sprites/Pod.png",
-  otherSpriteSrc = "/art/items/sprites/Pod.png",
+  mySpriteSrc = "/art/items/sprites/pod.png",
+  otherSpriteSrc = "/art/items/sprites/pod.png",
 
   spriteW = 32,
   spriteH = 32,
