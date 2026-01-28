@@ -1,26 +1,17 @@
-// useGameSocket.js
+// useGameSocket.js (OPEN WORLD MMO — robust + production-safe)
+// - Uses a SINGLE shared socket instance (imported from ./socket)
+// - Never "misses" identify() due to timing (queues it until connected)
+// - Handles reconnects by re-identifying automatically
+// - Listens to: world:init, player:self, world:snapshot
+// - Keeps backwards compat: send(), useSocketEvent()
+// - Keeps sendInput() helper
+//
+// NOTE: loadScene() removed (open world)
+
 import { useEffect, useRef, useState, useCallback } from "react";
 import socket from "./socket";
 
-/**
- * Space Multiplayer Socket Hook (BACKWARDS COMPAT)
- *
- * Keeps old API:
- * - send(event, data)
- * - useSocketEvent(eventName, callback)
- *
- * Adds new API:
- * - identify(characterId)
- * - loadScene()
- * - sendInput(thrust, targetAngle)
- *
- * Listens:
- * - world:init        { worldSeed }
- * - player:self       { id, ship }
- * - world:snapshot    { players, t }
- * - sceneData         { ... } (optional)
- */
-export function useGameSocket({ onSceneData } = {}) {
+export function useGameSocket() {
   const [isReady, setIsReady] = useState(socket.connected);
 
   const [worldSeed, setWorldSeed] = useState(null);
@@ -29,11 +20,14 @@ export function useGameSocket({ onSceneData } = {}) {
   // players map: { [socketId]: { x, y, angle } }
   const [players, setPlayers] = useState({});
 
-  // Keep latest players in a ref (handy for callbacks without re-subscribing)
+  // Keep latest players in a ref (optional convenience)
   const playersRef = useRef(players);
   useEffect(() => {
     playersRef.current = players;
   }, [players]);
+
+  // Track the last characterId we should be identified as (survives reconnect)
+  const pendingIdentifyRef = useRef(null);
 
   /* ------------------------------------------------------
      BACKWARDS COMPAT: useSocketEvent(eventName, callback)
@@ -59,6 +53,7 @@ export function useGameSocket({ onSceneData } = {}) {
   ------------------------------------------------------ */
   const send = useCallback((event, data) => {
     if (!socket.connected) {
+      // Don't spam; still useful warning
       console.warn("❌ Tried sending but socket is not connected:", event);
       return;
     }
@@ -66,18 +61,33 @@ export function useGameSocket({ onSceneData } = {}) {
   }, []);
 
   /* ------------------------------------------------------
-     Connection state
+     Core connection lifecycle (handles reconnect re-identify)
   ------------------------------------------------------ */
   useEffect(() => {
-    const onConnect = () => setIsReady(true);
+    const onConnect = () => {
+      setIsReady(true);
+
+      // Re-identify on every (re)connect if we have a characterId queued
+      const characterId = pendingIdentifyRef.current;
+      if (characterId) {
+        socket.emit("identify", { characterId });
+      }
+    };
+
     const onDisconnect = () => setIsReady(false);
+
+    const onConnectError = (e) => {
+      console.log("⚠️ connect_error:", e?.message || e);
+    };
 
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
+    socket.on("connect_error", onConnectError);
 
     return () => {
       socket.off("connect", onConnect);
       socket.off("disconnect", onDisconnect);
+      socket.off("connect_error", onConnectError);
     };
   }, []);
 
@@ -133,31 +143,33 @@ export function useGameSocket({ onSceneData } = {}) {
   }, []);
 
   /* ------------------------------------------------------
-     sceneData -> UI (optional)
+     Server errors (helpful during deployment)
   ------------------------------------------------------ */
   useEffect(() => {
-    if (!onSceneData) return;
-
-    const handler = (data) => onSceneData(data);
-    socket.on("sceneData", handler);
-
-    return () => socket.off("sceneData", handler);
-  }, [onSceneData]);
+    const handler = (e) => console.log("⚠️ server error:", e);
+    socket.on("sceneError", handler); // server may still emit this for auth/identify issues
+    return () => socket.off("sceneError", handler);
+  }, []);
 
   /* ------------------------------------------------------
-     New explicit API (safe + clear)
+     OPEN WORLD API
   ------------------------------------------------------ */
+
+  // ✅ Identify is now robust:
+  // - can be called before connect
+  // - will auto-fire on connect/reconnect
   const identify = useCallback((characterId) => {
-    if (!socket.connected) return;
     if (!characterId) return;
-    socket.emit("identify", { characterId });
+
+    // store for reconnect / late connect
+    pendingIdentifyRef.current = characterId;
+
+    if (socket.connected) {
+      socket.emit("identify", { characterId });
+    }
   }, []);
 
-  const loadScene = useCallback(() => {
-    if (!socket.connected) return;
-    socket.emit("loadScene", {}); // server uses DB currentLoc
-  }, []);
-
+  // Input helper (safe)
   const sendInput = useCallback((thrust, targetAngle) => {
     if (!socket.connected) return;
     socket.emit("player:input", {
@@ -170,23 +182,23 @@ export function useGameSocket({ onSceneData } = {}) {
   const me = myId ? players?.[myId] : null;
 
   return {
-    // core
     socket,
     isReady,
     worldSeed,
 
-    // realtime
     myId,
     players,
     me,
 
-    // backwards compat (so you don't break existing UI)
+    // backwards compat
     send,
     useSocketEvent,
 
-    // new explicit actions
+    // open-world actions
     identify,
-    loadScene,
     sendInput,
+
+    // optional: expose ref for advanced systems
+    playersRef,
   };
 }
