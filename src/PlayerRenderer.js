@@ -116,21 +116,17 @@ export default function PlayerRenderer({
     };
   };
 
-  const getDisplayName = (id) => {
-    const n = playerNames?.[id];
-    if (n && String(n).trim()) return String(n);
-    return `Pilot ${String(id).slice(0, 4)}`;
-  };
+    const getDisplayName = (id, p) => {
+    const fromSnapshot = p?.name;
+    if (fromSnapshot && String(fromSnapshot).trim()) return String(fromSnapshot);
 
-  // ✅ If your sprite looks "overly pixelated", it's usually because:
-  // - you're scaling it up/down to a non-integer size (e.g. 32 -> 37)
-  // - imageRendering: pixelated is forced
-  //
-  // We'll default to crisp-but-not-blocky:
-  // - remove pixelated by default (use "auto")
-  // - keep smoothing enabled
-  //
-  // If you later want true pixel-art crispness, set spriteW/spriteH to integer multiples.
+    const fromMap = playerNames?.[id];
+    if (fromMap && String(fromMap).trim()) return String(fromMap);
+
+    return `Pilot ${String(id).slice(0, 4)}`;
+    };
+
+
   const IMG_RENDERING = "auto"; // "pixelated" for strict pixel-art, "auto" for smoother
   const SMOOTHING = "auto";
 
@@ -195,7 +191,7 @@ export default function PlayerRenderer({
                     textShadow: "0 1px 2px rgba(0,0,0,0.75)",
                   }}
                 >
-                  {getDisplayName(id)}
+                  {getDisplayName(id, p)}
                 </div>
               )}
 
