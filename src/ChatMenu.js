@@ -3,18 +3,11 @@ import { useGameSocket } from "./hooks/useGameSocket";
 import "./styles/ChatMenu.css";
 
 function ChatMenu({ character }) {
-    const { socket, send, useSocketEvent } = useGameSocket(); // <-- use shared socket
+    const { send, useSocketEvent } = useGameSocket(); // <-- use shared socket
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState("");
     const bottomRef = useRef(null);
     const region = "slagline";
-
-    // Join region ONCE
-    useEffect(() => {
-        if (!socket) return;
-        console.log("Joining region:", region);
-        send("joinRegion", region);
-    }, [region, send, socket]);
 
     // Listen for full history
     useSocketEvent("chatHistory", (history) => {
