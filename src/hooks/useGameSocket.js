@@ -73,5 +73,5 @@ export function useGameSocket(onSceneData) {
     }, [eventName]);
   };
 
-  return { send, useSocketEvent, isReady, socket };
+  return { send, useSocketEvent, isReady, socket, worldSeed };
 }

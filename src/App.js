@@ -13,7 +13,8 @@ import LogoutButton from "./LogoutButton";
 
 import { loadStoredSession, verifyToken } from "./utils/session";
 
-import socket from "./hooks/socket"; 
+import socket from "./hooks/socket";
+import { useGameSocket } from "./hooks/useGameSocket";
 import MainViewport from "./MainViewport";
 import ChatMenu from "./ChatMenu";
 
@@ -21,19 +22,14 @@ import ChatMenu from "./ChatMenu";
 // Window-size hook (must NOT be conditional)
 // --------------------------------------------------
 function useWindowSize() {
-  const [size, setSize] = useState({
-    width: window.innerWidth,
-    height: window.innerHeight,
-  });
+  const [size, setSize] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
     const handler = () => {
-      setSize({
-        width: window.innerWidth,
-        height: window.innerHeight,
-      });
+      setSize({ width: window.innerWidth, height: window.innerHeight });
     };
 
+    handler(); // set initial size after mount
     window.addEventListener("resize", handler);
     return () => window.removeEventListener("resize", handler);
   }, []);
@@ -41,14 +37,14 @@ function useWindowSize() {
   return size;
 }
 
+
 // --------------------------------------------------
 // MAIN APP COMPONENT
 // --------------------------------------------------
 function App() {
-
+  const { worldSeed } = useGameSocket;
   const [account, setAccount] = useState(undefined); // undefined = loading
   const [character, setCharacter] = useState(undefined);
-  const [worldSeed, setWorldSeed] = useState(null);
   // const [playerLoc, setPlayerLoc] = useState({ x: 0, y: 0 });
   // const [sceneData, setSceneData] = useState(null);
 
@@ -89,19 +85,6 @@ function App() {
     init();
   }, []);
 
-  //Receive world seed from server once
-
-    useEffect(() => {
-    const handler = (payload) => {
-      const seed = payload?.worldSeed;
-      if (!Number.isFinite(seed)) return;
-      setWorldSeed(seed);
-    };
-
-    socket.on("world:init", handler);
-    return () => socket.off("world:init", handler);
-  }, []);
-
   // --------------------------------------------------
   // IDENTIFY PLAYER TO SOCKET SERVER
   // --------------------------------------------------
@@ -116,15 +99,8 @@ function App() {
 
   }, [character]);
 
-  // --------------------------------------------------
-  // SIZE CHECK
-  // --------------------------------------------------
+  if (width === 0 || height === 0) return <Spinner />;
   if (width < 1100 || height < 700) return <DisplayCheck />;
-
-  // --------------------------------------------------
-  // Still loading session
-  // --------------------------------------------------
-  if (account === undefined) return <Spinner />;
 
   // --------------------------------------------------
   // ROUTING LOGIC (your exact flow)
