@@ -1,24 +1,12 @@
-// MainViewport.js (SMOOTH — no splotchy nebula, no “new blobs” popping while moving)
+// MainViewport.js (SMOOTH + OPTIMIZED + FAR GLOW PULSE + SUBTLE METEORS)
 //
-// What changed vs your file:
-// 1) Nebula textures are baked ONCE (per cloud) instead of rebuilt 8–12x/sec.
-//    This removes the “splotchy / choppy / new nebula spawning” look when the camera moves.
-// 2) Nebula “life” is kept via: (a) breathing alpha, (b) world drift, (c) a tiny smooth draw-time jitter
-//    that does NOT require rebaking buffers.
-// 3) dt is clamped to avoid big jumps if a frame stalls (prevents chunky drift steps).
-//
-// Everything else (stars, dust, masks, tiles, look) stays essentially the same.
+// Fixes in this revision:
+// A) Far layer pulse now works (no longer overridden by ctx.globalAlpha resets in drawStars()).
+// B) Far glow stars "breathe" subtly (slow pulse affects glow only).
+// C) Near/top layer stars reduced in size (fewer 2px stars + smaller glow sprite).
 
 import { useEffect, useRef } from "react";
 import "./styles/MainViewport.css";
-
-/**
- * LAYERS (back -> front)
- * 1) Far stars (slow parallax + twinkle + VERY subtle global pulse)
- * 2) Space dust / micro-debris (unique: tiny tinted specks, very faint, independent drift)
- * 3) Nebula clouds (DISCRETE pockets, not full-screen; slow drift; black space between)
- * 4) Near stars (faster parallax + a few glow stars + twinkle)
- */
 
 function mulberry32(seed) {
   return function () {
@@ -133,16 +121,16 @@ function makeSeamlessNebulaTile({ size = 1024, seed = 1337 }) {
 
       const density = clamp01(n * 0.85 + wisps * 0.55);
 
-      const t = clamp01(n2);
+      const tt = clamp01(n2);
       const R =
-        lerp(p.r[0], p.r[1], density) * (1 - t) +
-        lerp(p2.r[0], p2.r[1], density) * t;
+        lerp(p.r[0], p.r[1], density) * (1 - tt) +
+        lerp(p2.r[0], p2.r[1], density) * tt;
       const Gc =
-        lerp(p.g[0], p.g[1], density) * (1 - t) +
-        lerp(p2.g[0], p2.g[1], density) * t;
+        lerp(p.g[0], p.g[1], density) * (1 - tt) +
+        lerp(p2.g[0], p2.g[1], density) * tt;
       const B =
-        lerp(p.b[0], p.b[1], density) * (1 - t) +
-        lerp(p2.b[0], p2.b[1], density) * t;
+        lerp(p.b[0], p.b[1], density) * (1 - tt) +
+        lerp(p2.b[0], p2.b[1], density) * tt;
 
       const A = Math.pow(density, 1.2) * 255;
 
@@ -174,10 +162,13 @@ function makeSeamlessNebulaTile({ size = 1024, seed = 1337 }) {
 export default function MainViewport({ worldSeed, cameraX = 0, cameraY = 0 }) {
   const canvasRef = useRef(null);
 
-  // camera refs so the animation loop always uses latest values
-  const camRef = useRef({ x: cameraX, y: cameraY });
-  camRef.current.x = cameraX;
-  camRef.current.y = cameraY;
+  // Target camera from props (could be 20Hz / step-y)
+  const camTargetRef = useRef({ x: cameraX, y: cameraY });
+  camTargetRef.current.x = cameraX;
+  camTargetRef.current.y = cameraY;
+
+  // Smoothed camera used by renderer (60Hz)
+  const camSmoothRef = useRef({ x: cameraX, y: cameraY });
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -219,7 +210,6 @@ export default function MainViewport({ worldSeed, cameraX = 0, cameraY = 0 }) {
     const NEBULA_SIZE_MIN = 380;
     const NEBULA_SIZE_MAX = 1200;
 
-    // Drift (px/sec in “world units”)
     const NEBULA_SPEED_MIN = 10;
     const NEBULA_SPEED_MAX = 18.2;
 
@@ -228,20 +218,34 @@ export default function MainViewport({ worldSeed, cameraX = 0, cameraY = 0 }) {
     const NEBULA_HOLES_MIN = 3;
     const NEBULA_HOLES_MAX = 10;
 
-    const NEBULA_BUF_BLUR_PX = 1.15;
+    const NEBULA_BUF_BLUR_PX = 1.35;
     const NEBULA_CONTRAST_WASH = 0.055;
-    const NEBULA_DRAW_BLUR_PX = 0.35;
+    const NEBULA_DRAW_BLUR_PX = 0;
+    const NEBULA_DRAW_JITTER_PX = 6.0;
 
-    // Smooth draw-time drift (no rebake needed)
-    const NEBULA_DRAW_JITTER_PX = 6.0; // 0..10 (purely visual micro-movement)
-
-    // Far pulse
+    // Far layer global pulse (very subtle, applies as multiplier in drawStars)
     const FAR_PULSE_ENABLED = true;
     const FAR_PULSE_AMP = 0.06;
     const FAR_PULSE_SPEED = 0.06;
     const FAR_PULSE_PHASE = 0.0;
 
-    // Canvas sizing
+    // Far glow pulse (ONLY glow stars) — make it noticeable but still subtle
+    const FAR_GLOW_PULSE_SPEED = 0.03; // slow
+    const FAR_GLOW_PULSE_AMP = 0.28; // was too low before; try 0.22–0.35
+
+    const CAMERA_FOLLOW = 18;
+
+    // Meteors
+    const METEOR_ENABLED = true;
+    const METEOR_RATE_PER_SEC = 0.03; // ~1 every 33s avg
+    const METEOR_MAX_ACTIVE = 2;
+    const METEOR_MIN_LEN = 14;
+    const METEOR_MAX_LEN = 40;
+    const METEOR_MIN_SPEED = 520;
+    const METEOR_MAX_SPEED = 920;
+    const METEOR_LIFETIME = 0.55;
+    const METEOR_ALPHA = 0.09;
+
     let raf = 0;
     let w = 0,
       h = 0,
@@ -265,7 +269,6 @@ export default function MainViewport({ worldSeed, cameraX = 0, cameraY = 0 }) {
       const cx = size * 0.5;
       const cy = size * 0.5;
 
-      // interior lumpy alpha
       mctx.clearRect(0, 0, size, size);
       mctx.globalCompositeOperation = "source-over";
       mctx.filter = `blur(${Math.max(3, size * 0.012)}px)`;
@@ -287,7 +290,6 @@ export default function MainViewport({ worldSeed, cameraX = 0, cameraY = 0 }) {
         mctx.fillRect(x - outer, y - outer, outer * 2, outer * 2);
       }
 
-      // punch holes
       mctx.globalCompositeOperation = "destination-out";
       mctx.filter = `blur(${Math.max(2, size * 0.010)}px)`;
 
@@ -307,7 +309,6 @@ export default function MainViewport({ worldSeed, cameraX = 0, cameraY = 0 }) {
         mctx.fillRect(x - outer, y - outer, outer * 2, outer * 2);
       }
 
-      // outer boundary
       mctx.globalCompositeOperation = "destination-in";
       mctx.filter = "none";
 
@@ -329,8 +330,30 @@ export default function MainViewport({ worldSeed, cameraX = 0, cameraY = 0 }) {
       return m;
     }
 
-    // Stars (world space)
-    function makeStars(seed, count, glowCount) {
+    // Cached glow sprite
+    function makeGlowSprite() {
+      const s = document.createElement("canvas");
+      const size = 32;
+      s.width = size;
+      s.height = size;
+      const g = s.getContext("2d");
+
+      const cx = size / 2;
+      const cy = size / 2;
+
+      const grad = g.createRadialGradient(cx, cy, 1, cx, cy, size / 2);
+      grad.addColorStop(0, "rgba(255,255,255,0.80)");
+      grad.addColorStop(0.35, "rgba(245,245,255,0.28)");
+      grad.addColorStop(1, "rgba(245,245,255,0)");
+
+      g.fillStyle = grad;
+      g.fillRect(0, 0, size, size);
+      return s;
+    }
+    const glowSprite = makeGlowSprite();
+
+    // Stars
+    function makeStars(seed, count, glowCount, sizeBias = "far") {
       const r = mulberry32(seed);
       const stars = [];
 
@@ -338,8 +361,16 @@ export default function MainViewport({ worldSeed, cameraX = 0, cameraY = 0 }) {
         const x = r() * WORLD;
         const y = r() * WORLD;
 
+        // Size distribution: near layer gets fewer 2px stars
         const roll = r();
-        const s = roll < 0.72 ? 1 : 2;
+        const s =
+          sizeBias === "near"
+            ? roll < 0.9
+              ? 1
+              : 2
+            : roll < 0.72
+            ? 1
+            : 2;
 
         const a = 0.19 + r() * 0.3;
         const tint = 238 + Math.floor(r() * 17);
@@ -356,15 +387,15 @@ export default function MainViewport({ worldSeed, cameraX = 0, cameraY = 0 }) {
         const x = r() * WORLD;
         const y = r() * WORLD;
 
-        const a = 0.4 + r() * 0.25;
-        const twSpeed = 0.25 + r() * 0.65;
+        const a = 0.36 + r() * 0.22;
+        const twSpeed = 0.22 + r() * 0.55;
         const twPhase = r() * Math.PI * 2;
-        const twAmp = 0.07 + r() * 0.11;
+        const twAmp = 0.06 + r() * 0.10;
 
         stars.push({
           x,
           y,
-          s: 2,
+          s: 1, // keep glow stars from becoming chunky squares
           a,
           c: "rgb(245,245,255)",
           glow: true,
@@ -377,15 +408,18 @@ export default function MainViewport({ worldSeed, cameraX = 0, cameraY = 0 }) {
       return stars;
     }
 
-    const farStars = makeStars(111, 900, 10);
-    const nearStars = makeStars(222, 520, 12);
+    const farStars = makeStars(111, 900, 50, "far");
+    const nearStars = makeStars(222, 520, 12, "near");
 
-    function drawStars(stars, scale, t) {
-      const camX = camRef.current.x;
-      const camY = camRef.current.y;
-
+    // NEW: drawStars takes an explicit alpha multiplier (so pulses can't be overridden)
+    function drawStars(stars, scale, t, camX, camY, layerAlphaMult, isFarLayer) {
       const ox = ((camX * scale) % WORLD + WORLD) % WORLD;
       const oy = ((camY * scale) % WORLD + WORLD) % WORLD;
+
+      // global far-glow pulse (same for all far-glow stars)
+      const farGlowPulse =
+        1 +
+        Math.sin(t * Math.PI * 2 * FAR_GLOW_PULSE_SPEED) * FAR_GLOW_PULSE_AMP;
 
       for (const st of stars) {
         let x = st.x - ox;
@@ -397,30 +431,134 @@ export default function MainViewport({ worldSeed, cameraX = 0, cameraY = 0 }) {
         const sy = (y / WORLD) * h;
 
         const tw = 1 + Math.sin(t * st.twSpeed + st.twPhase) * st.twAmp;
-        const alpha = Math.min(1, Math.max(0, st.a * tw));
-
-        ctx.globalAlpha = alpha;
+        const alpha = Math.min(1, Math.max(0, st.a * tw)) * layerAlphaMult;
 
         if (!st.glow) {
+          ctx.globalAlpha = alpha;
           ctx.fillStyle = st.c;
           ctx.fillRect(sx, sy, st.s, st.s);
         } else {
           ctx.save();
+          ctx.globalCompositeOperation = "lighter";
+
+          // Far layer glow breathes; near layer glow stays tighter
+          const pulse = isFarLayer ? farGlowPulse : 1;
+
+          // Glow sprite — keep near smaller so it doesn't look chunky
+          const baseSize = isFarLayer ? 8 : 5;
+          const glowSize = (baseSize + (tw - 1) * 6) * pulse;
+
+          ctx.globalAlpha = alpha * (isFarLayer ? 0.95 : 0.85) * pulse;
+          ctx.drawImage(
+            glowSprite,
+            sx - glowSize / 2,
+            sy - glowSize / 2,
+            glowSize,
+            glowSize
+          );
+
+          // core dot (tiny)
+          ctx.globalAlpha = alpha;
           ctx.fillStyle = st.c;
-          ctx.shadowColor = st.c;
-          ctx.shadowBlur = 6 + (tw - 1) * 10;
-          ctx.beginPath();
-          ctx.arc(sx, sy, 1.15, 0, Math.PI * 2);
-          ctx.fill();
+          ctx.fillRect(sx, sy, 1, 1);
+
           ctx.restore();
         }
       }
     }
 
-    // Dust (world-space so it scrolls)
+    // Meteors
+    const meteorRand = mulberry32((WORLD_SEED ^ 0x5eed1234) >>> 0);
+    const meteors = [];
+    const rand01 = () => meteorRand();
+    const randBetween = (a, b) => a + (b - a) * rand01();
+
+    function maybeSpawnMeteor(dt) {
+      if (!METEOR_ENABLED) return;
+      if (meteors.length >= METEOR_MAX_ACTIVE) return;
+      if (rand01() >= METEOR_RATE_PER_SEC * dt) return;
+
+      const pad = 80;
+
+      // narrow diagonal spread, subtle
+      const baseAng = Math.PI * (1.15 + (rand01() - 0.5) * 0.18);
+      const vx = Math.cos(baseAng);
+      const vy = Math.sin(baseAng);
+
+      const speed = randBetween(METEOR_MIN_SPEED, METEOR_MAX_SPEED);
+      const len = randBetween(METEOR_MIN_LEN, METEOR_MAX_LEN);
+
+      let x, y;
+      if (rand01() < 0.55) {
+        x = randBetween(-pad, w + pad);
+        y = -pad;
+      } else {
+        x = -pad;
+        y = randBetween(-pad, h * 0.75);
+      }
+
+      meteors.push({
+        x,
+        y,
+        vx,
+        vy,
+        speed,
+        len,
+        age: 0,
+        life: METEOR_LIFETIME * randBetween(0.85, 1.25),
+      });
+    }
+
+    function drawMeteors(dt) {
+      if (!METEOR_ENABLED || meteors.length === 0) return;
+
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      ctx.lineWidth = 1;
+
+      for (let i = meteors.length - 1; i >= 0; i--) {
+        const m = meteors[i];
+        m.age += dt;
+
+        if (m.age >= m.life) {
+          meteors.splice(i, 1);
+          continue;
+        }
+
+        m.x += m.vx * m.speed * dt;
+        m.y += m.vy * m.speed * dt;
+
+        const tt = m.age / m.life;
+        const fade =
+          tt < 0.15 ? tt / 0.15 : tt > 0.75 ? (1 - tt) / 0.25 : 1;
+        const a = METEOR_ALPHA * fade;
+
+        const x2 = m.x - m.vx * m.len;
+        const y2 = m.y - m.vy * m.len;
+
+        const g = ctx.createLinearGradient(m.x, m.y, x2, y2);
+        g.addColorStop(0, `rgba(255,255,255,${a})`);
+        g.addColorStop(1, `rgba(255,255,255,0)`);
+
+        ctx.strokeStyle = g;
+        ctx.beginPath();
+        ctx.moveTo(m.x, m.y);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+
+        ctx.globalAlpha = a * 0.75;
+        ctx.fillStyle = "rgba(255,255,255,1)";
+        ctx.fillRect(m.x, m.y, 1, 1);
+        ctx.globalAlpha = 1;
+      }
+
+      ctx.restore();
+    }
+
+    // Dust
     const dustRand = mulberry32(333);
     const dust = [];
-    const DUST_COUNT = 900;
+    const DUST_COUNT = 750;
 
     for (let i = 0; i < DUST_COUNT; i++) {
       const x = dustRand() * WORLD;
@@ -442,10 +580,7 @@ export default function MainViewport({ worldSeed, cameraX = 0, cameraY = 0 }) {
     }
 
     let dustT = 0;
-    function drawDust(dt) {
-      const camX = camRef.current.x;
-      const camY = camRef.current.y;
-
+    function drawDust(dt, camX, camY) {
       dustT += dt;
 
       ctx.save();
@@ -456,7 +591,6 @@ export default function MainViewport({ worldSeed, cameraX = 0, cameraY = 0 }) {
       const oy = ((camY * DUST_SCALE) % WORLD + WORLD) % WORLD;
 
       for (const p of dust) {
-        // tiny independent drift
         const jx = Math.cos(dustT * p.spd + p.ph) * 6;
         const jy = Math.sin(dustT * p.spd + p.ph) * 6;
 
@@ -493,7 +627,6 @@ export default function MainViewport({ worldSeed, cameraX = 0, cameraY = 0 }) {
       return a + (b - a) * nebulaRand();
     }
 
-    // Build puff layout once (stable per cloud)
     function buildPuffLayout(maskSeed, puffCount, size) {
       const rr = mulberry32(maskSeed ^ 0x9e3779b9);
       const layout = [];
@@ -534,17 +667,14 @@ export default function MainViewport({ worldSeed, cameraX = 0, cameraY = 0 }) {
       cctx.setTransform(1, 0, 0, 1, 0, 0);
       cctx.clearRect(0, 0, size, size);
 
-      // IMPORTANT: bake with STATIC offsets so it doesn't "pop" later
       const jx = cloud.bakeJx;
       const jy = cloud.bakeJy;
 
       cctx.globalCompositeOperation = "source-over";
       cctx.globalAlpha = 1;
 
-      // base tile
       cctx.drawImage(cloud.tile, jx, jy, size, size);
 
-      // puffs (stable layout)
       const layout = cloud.puffLayout;
       for (let i = 0; i < layout.length; i++) {
         const p = layout[i];
@@ -554,20 +684,22 @@ export default function MainViewport({ worldSeed, cameraX = 0, cameraY = 0 }) {
         cctx.drawImage(cloud.tile, jx + p.ox, jy + p.oy, w2, h2);
       }
 
-      // mask
       cctx.globalCompositeOperation = "destination-in";
       cctx.globalAlpha = 1;
-      const mask = getNebulaMask(size, cloud.maskSeed, cloud.puffCount, cloud.holeCount);
+      const mask = getNebulaMask(
+        size,
+        cloud.maskSeed,
+        cloud.puffCount,
+        cloud.holeCount
+      );
       cctx.drawImage(mask, 0, 0);
 
-      // buffer blur
       cctx.globalCompositeOperation = "source-over";
       cctx.globalAlpha = 1;
       cctx.filter = `blur(${NEBULA_BUF_BLUR_PX}px)`;
       cctx.drawImage(cloud.buf, 0, 0);
       cctx.filter = "none";
 
-      // subtle wash
       cctx.globalCompositeOperation = "source-atop";
       cctx.globalAlpha = NEBULA_CONTRAST_WASH;
       cctx.fillStyle = "black";
@@ -598,15 +730,18 @@ export default function MainViewport({ worldSeed, cameraX = 0, cameraY = 0 }) {
 
         const puffCount =
           (NEBULA_PUFFS_MIN +
-            Math.floor(nebulaRand() * (NEBULA_PUFFS_MAX - NEBULA_PUFFS_MIN + 1))) | 0;
+            Math.floor(
+              nebulaRand() * (NEBULA_PUFFS_MAX - NEBULA_PUFFS_MIN + 1)
+            )) | 0;
 
         const holeCount =
           (NEBULA_HOLES_MIN +
-            Math.floor(nebulaRand() * (NEBULA_HOLES_MAX - NEBULA_HOLES_MIN + 1))) | 0;
+            Math.floor(
+              nebulaRand() * (NEBULA_HOLES_MAX - NEBULA_HOLES_MIN + 1)
+            )) | 0;
 
         const maskSeed = (WORLD_SEED ^ (i * 2654435761)) >>> 0;
 
-        // per-cloud stable bake offsets (so pattern never "pops")
         const bakeRand = mulberry32(maskSeed ^ 0x1234abcd);
         const bakeJx = (bakeRand() - 0.5) * 18;
         const bakeJy = (bakeRand() - 0.5) * 18;
@@ -614,7 +749,6 @@ export default function MainViewport({ worldSeed, cameraX = 0, cameraY = 0 }) {
         const phase = randRange(0, Math.PI * 2);
 
         nebulae.push({
-          // world pos
           wx: randRange(0, WORLD),
           wy: randRange(0, WORLD),
 
@@ -625,17 +759,18 @@ export default function MainViewport({ worldSeed, cameraX = 0, cameraY = 0 }) {
 
           tile: nebulaRand() < 0.5 ? gasTileA : gasTileB,
 
-          // breathing + micro-jitter (draw-time only)
           phase,
           breathe: randRange(0.02, 0.05),
           jitterSpeed: randRange(0.12, 0.28),
-          jitterAmp: randRange(NEBULA_DRAW_JITTER_PX * 0.5, NEBULA_DRAW_JITTER_PX),
+          jitterAmp: randRange(
+            NEBULA_DRAW_JITTER_PX * 0.5,
+            NEBULA_DRAW_JITTER_PX
+          ),
 
           maskSeed,
           puffCount,
           holeCount,
 
-          // baked buffer
           buf: null,
           bufCtx: null,
           bufSize: 0,
@@ -647,7 +782,6 @@ export default function MainViewport({ worldSeed, cameraX = 0, cameraY = 0 }) {
         });
       }
 
-      // bake once up-front (no runtime popping)
       for (const n of nebulae) rebuildNebulaTextureOnce(n);
     }
 
@@ -657,35 +791,32 @@ export default function MainViewport({ worldSeed, cameraX = 0, cameraY = 0 }) {
 
       if (!cloud.baked) rebuildNebulaTextureOnce(cloud);
 
-      const breath = 1 + Math.sin(t * cloud.breathe + cloud.phase) * 0.10;
+      const breath = 1 + Math.sin(t * cloud.breathe + cloud.phase) * 0.1;
 
-      // tiny smooth draw-time jitter (doesn't change texture content)
       const jx = Math.sin(t * cloud.jitterSpeed + cloud.phase) * cloud.jitterAmp;
-      const jy = Math.cos(t * (cloud.jitterSpeed * 0.93) + cloud.phase) * cloud.jitterAmp;
+      const jy =
+        Math.cos(t * (cloud.jitterSpeed * 0.93) + cloud.phase) *
+        cloud.jitterAmp;
 
       ctx.save();
       ctx.globalCompositeOperation = "lighter";
       ctx.globalAlpha = cloud.a * breath;
 
-      ctx.filter = `blur(${NEBULA_DRAW_BLUR_PX}px)`;
+      if (NEBULA_DRAW_BLUR_PX > 0) ctx.filter = `blur(${NEBULA_DRAW_BLUR_PX}px)`;
       ctx.drawImage(cloud.buf, screenX - r + jx, screenY - r + jy, size, size);
+      ctx.filter = "none";
 
       ctx.restore();
     }
 
-    function drawNebulae(dt, t) {
-      const camX = camRef.current.x;
-      const camY = camRef.current.y;
-
+    function drawNebulae(dt, t, camX, camY) {
       const ox = ((camX * NEBULA_SCALE) % WORLD + WORLD) % WORLD;
       const oy = ((camY * NEBULA_SCALE) % WORLD + WORLD) % WORLD;
 
       for (const n of nebulae) {
-        // drift in world space
         n.wx = (n.wx + n.vx * dt + WORLD) % WORLD;
         n.wy = (n.wy + n.vy * dt + WORLD) % WORLD;
 
-        // camera parallax
         let x = n.wx - ox;
         let y = n.wy - oy;
 
@@ -699,7 +830,6 @@ export default function MainViewport({ worldSeed, cameraX = 0, cameraY = 0 }) {
       }
     }
 
-    // Resize
     function resize() {
       const p = canvas.parentElement;
       if (!p) return;
@@ -707,7 +837,7 @@ export default function MainViewport({ worldSeed, cameraX = 0, cameraY = 0 }) {
       w = p.clientWidth;
       h = p.clientHeight;
 
-      dpr = Math.min(1.5, window.devicePixelRatio || 1);
+      dpr = Math.min(1.25, window.devicePixelRatio || 1);
 
       canvas.width = Math.floor(w * dpr);
       canvas.height = Math.floor(h * dpr);
@@ -720,37 +850,51 @@ export default function MainViewport({ worldSeed, cameraX = 0, cameraY = 0 }) {
       if (nebulae.length === 0) resetNebulae();
     }
 
-    // Loop
     let lastMs = 0;
     function frame(nowMs) {
       const t = nowMs * 0.001;
 
       const dtRaw = lastMs ? (nowMs - lastMs) * 0.001 : 0;
-      const dt = Math.min(dtRaw, 0.033); // clamp dt to avoid chunky steps
+      const dt = Math.min(dtRaw, 0.033);
       lastMs = nowMs;
+
+      // Camera smoothing
+      const target = camTargetRef.current;
+      const smooth = camSmoothRef.current;
+      const k = 1 - Math.exp(-CAMERA_FOLLOW * dt);
+      smooth.x += (target.x - smooth.x) * k;
+      smooth.y += (target.y - smooth.y) * k;
+
+      const camX = smooth.x;
+      const camY = smooth.y;
 
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = "source-over";
       ctx.fillStyle = "#000";
       ctx.fillRect(0, 0, w, h);
 
-      // Far stars + pulse
+      // Compute a far-layer alpha multiplier (NOT via ctx wrapper)
+      let farLayerMult = 1;
       if (FAR_PULSE_ENABLED) {
-        const pulse =
+        farLayerMult =
           1 +
           Math.sin((t + FAR_PULSE_PHASE) * Math.PI * 2 * FAR_PULSE_SPEED) *
             FAR_PULSE_AMP;
-        ctx.save();
-        ctx.globalAlpha *= pulse;
-        drawStars(farStars, FAR_SCALE, t);
-        ctx.restore();
-      } else {
-        drawStars(farStars, FAR_SCALE, t);
       }
 
-      drawDust(dt);
-      drawNebulae(dt, t);
-      drawStars(nearStars, NEAR_SCALE, t);
+      // Far stars (pulse + far glow breathing)
+      drawStars(farStars, FAR_SCALE, t, camX, camY, farLayerMult, true);
+
+      // Meteors (lowest layer)
+      maybeSpawnMeteor(dt);
+      drawMeteors(dt);
+
+      // Dust + nebula
+      drawDust(dt, camX, camY);
+      drawNebulae(dt, t, camX, camY);
+
+      // Near stars (no big glow, smaller overall)
+      drawStars(nearStars, NEAR_SCALE, t, camX, camY, 1, false);
 
       raf = requestAnimationFrame(frame);
     }
