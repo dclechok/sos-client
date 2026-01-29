@@ -4,25 +4,28 @@ import { useEffect, useRef, useState } from "react";
 /**
  * Multiplayer PlayerRenderer (server-authoritative)
  *
- * - Local ship is ALWAYS drawn at screen center
+ * - Local ship is always drawn at screen center
  * - Rotation comes from server snapshot (players[myId].angle)
- * - Right mouse hold: sends input intent to server
- * - Hover other ships: show name + faint glow
- * - Name label always upright (label is NOT inside rotated element)
+ * - Right mouse:
+ *   - Press: send move-to destination once
+ *   - Hold: continuously updates destination while held (drag-to-move)
+ * - No constant "face mouse" updates
+ * - Hover ships: show name + faint glow (including your own ship)
+ * - Name label always upright (label is not inside rotated element)
  *
- * Required props:
- * - socket
- * - myId
- * - players      // { [id]: { x, y, angle } }
+ * Server expects:
+ * - socket.emit("player:moveTo", { x, y })  // world coords
  *
- * Optional props:
- * - playerNames  // { [id]: "Display Name" }
+ * Optional manual thrust (if you keep it server-side):
+ * - socket.emit("player:input", { thrust: true/false })
  */
+
 export default function PlayerRenderer({
   socket,
   myId,
   players,
 
+  // Controls how often we update move target while holding right click
   sendRateHz = 20,
 
   mySpriteSrc = "/art/items/sprites/pod.png",
@@ -37,66 +40,16 @@ export default function PlayerRenderer({
   renderOthers = true,
   playerNames = {},
 }) {
+  const [hoverId, setHoverId] = useState(null);
+
+  // Holding right mouse updates destination continuously
   const rightDownRef = useRef(false);
+
+  // Track latest mouse position for drag-to-move
   const mouseRef = useRef({
     x: window.innerWidth / 2,
     y: window.innerHeight / 2,
   });
-
-  const [hoverId, setHoverId] = useState(null);
-
-  // mouse listeners
-  useEffect(() => {
-    const onMouseMove = (e) => {
-      mouseRef.current.x = e.clientX;
-      mouseRef.current.y = e.clientY;
-    };
-
-    const onContextMenu = (e) => e.preventDefault();
-
-    const onMouseDown = (e) => {
-      if (e.button === 2) rightDownRef.current = true;
-    };
-
-    const onMouseUp = (e) => {
-      if (e.button === 2) rightDownRef.current = false;
-    };
-
-    window.addEventListener("mousemove", onMouseMove);
-    window.addEventListener("contextmenu", onContextMenu);
-    window.addEventListener("mousedown", onMouseDown);
-    window.addEventListener("mouseup", onMouseUp);
-
-    return () => {
-      window.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("contextmenu", onContextMenu);
-      window.removeEventListener("mousedown", onMouseDown);
-      window.removeEventListener("mouseup", onMouseUp);
-    };
-  }, []);
-
-  // send input intent to server
-  useEffect(() => {
-    if (!socket) return;
-
-    const intervalMs = Math.max(10, Math.floor(1000 / sendRateHz));
-
-    const tick = () => {
-      const cx = window.innerWidth / 2;
-      const cy = window.innerHeight / 2;
-      const dx = mouseRef.current.x - cx;
-      const dy = mouseRef.current.y - cy;
-
-      const targetAngle = Math.atan2(dy, dx);
-      const thrust = rightDownRef.current;
-
-      socket.emit("player:input", { thrust, targetAngle });
-    };
-
-    tick();
-    const id = setInterval(tick, intervalMs);
-    return () => clearInterval(id);
-  }, [socket, sendRateHz]);
 
   const me = myId && players ? players[myId] : null;
 
@@ -116,7 +69,21 @@ export default function PlayerRenderer({
     };
   };
 
-    const getDisplayName = (id, p) => {
+  // Convert screen pos -> world pos relative to me centered
+  const screenToWorld = (clientX, clientY) => {
+    const cx = window.innerWidth / 2;
+    const cy = window.innerHeight / 2;
+
+    if (!me) return { x: 0, y: 0 };
+
+    return {
+      x: Number(me.x || 0) + (clientX - cx),
+      y: Number(me.y || 0) + (clientY - cy),
+    };
+  };
+
+  // Prefers server snapshot "p.name", but keeps playerNames as a fallback.
+  const getDisplayName = (id, p) => {
     const fromSnapshot = p?.name;
     if (fromSnapshot && String(fromSnapshot).trim()) return String(fromSnapshot);
 
@@ -124,8 +91,7 @@ export default function PlayerRenderer({
     if (fromMap && String(fromMap).trim()) return String(fromMap);
 
     return `Pilot ${String(id).slice(0, 4)}`;
-    };
-
+  };
 
   const IMG_RENDERING = "auto"; // "pixelated" for strict pixel-art, "auto" for smoother
   const SMOOTHING = "auto";
@@ -133,6 +99,84 @@ export default function PlayerRenderer({
   const displayX = me ? Math.round(me.x) : 0;
   const displayY = me ? Math.round(me.y) : 0;
 
+  const nameLabelStyle = {
+    position: "absolute",
+    left: "50%",
+    top: -10,
+    transform: "translate(-50%, -100%)",
+    padding: "2px 6px",
+    fontSize: 12,
+    lineHeight: "12px",
+    borderRadius: 6,
+    background: "rgba(0,0,0,0.55)",
+    border: "1px solid rgba(160,220,255,0.25)",
+    color: "rgba(235,245,255,0.95)",
+    whiteSpace: "nowrap",
+    textShadow: "0 1px 2px rgba(0,0,0,0.75)",
+    pointerEvents: "none",
+  };
+
+  // Mouse listeners:
+  // - prevent context menu
+  // - track mouse position
+  // - track right button state
+  // - on right press, send one immediate moveTo
+  useEffect(() => {
+    if (!socket) return;
+
+    const onMouseMove = (e) => {
+      mouseRef.current.x = e.clientX;
+      mouseRef.current.y = e.clientY;
+    };
+
+    const onContextMenu = (e) => e.preventDefault();
+
+    const onMouseDown = (e) => {
+      if (e.button !== 2) return; // right click only
+      e.preventDefault();
+
+      rightDownRef.current = true;
+
+      // Fire immediately on press
+      if (!me) return;
+      const { x, y } = screenToWorld(e.clientX, e.clientY);
+      socket.emit("player:moveTo", { x: Number(x), y: Number(y) });
+    };
+
+    const onMouseUp = (e) => {
+      if (e.button !== 2) return;
+      rightDownRef.current = false;
+    };
+
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("contextmenu", onContextMenu);
+    window.addEventListener("mousedown", onMouseDown);
+    window.addEventListener("mouseup", onMouseUp);
+
+    return () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("contextmenu", onContextMenu);
+      window.removeEventListener("mousedown", onMouseDown);
+      window.removeEventListener("mouseup", onMouseUp);
+    };
+  }, [socket, me]);
+
+  // While holding right click, continuously update move target to current mouse position
+  useEffect(() => {
+    if (!socket || !me) return;
+
+    const intervalMs = Math.max(10, Math.floor(1000 / sendRateHz));
+
+    const tick = () => {
+      if (!rightDownRef.current) return;
+
+      const { x, y } = screenToWorld(mouseRef.current.x, mouseRef.current.y);
+      socket.emit("player:moveTo", { x: Number(x), y: Number(y) });
+    };
+
+    const id = setInterval(tick, intervalMs);
+    return () => clearInterval(id);
+  }, [socket, me, sendRateHz]);
 
   return (
     <div
@@ -164,7 +208,7 @@ export default function PlayerRenderer({
                 top: y,
                 width: spriteW,
                 height: spriteH,
-                transform: "translate(-50%, -50%)", // ✅ translate only (no rotate)
+                transform: "translate(-50%, -50%)",
                 transformOrigin: "50% 50%",
                 pointerEvents: "auto",
                 filter: hovered
@@ -172,30 +216,10 @@ export default function PlayerRenderer({
                   : "none",
               }}
             >
-              {/* ✅ Name label stays upright (parent not rotated) */}
               {hovered && (
-                <div
-                  style={{
-                    position: "absolute",
-                    left: "50%",
-                    top: -10,
-                    transform: "translate(-50%, -100%)",
-                    padding: "2px 6px",
-                    fontSize: 12,
-                    lineHeight: "12px",
-                    borderRadius: 6,
-                    background: "rgba(0,0,0,0.55)",
-                    border: "1px solid rgba(160,220,255,0.25)",
-                    color: "rgba(235,245,255,0.95)",
-                    whiteSpace: "nowrap",
-                    textShadow: "0 1px 2px rgba(0,0,0,0.75)",
-                  }}
-                >
-                  {getDisplayName(id, p)}
-                </div>
+                <div style={nameLabelStyle}>{getDisplayName(id, p)}</div>
               )}
 
-              {/* ✅ Rotate only the ship */}
               <div
                 style={{
                   width: "100%",
@@ -225,16 +249,27 @@ export default function PlayerRenderer({
 
       {/* LOCAL PLAYER (ALWAYS CENTERED) */}
       <div
+        onMouseEnter={() => setHoverId(myId)}
+        onMouseLeave={() => setHoverId((cur) => (cur === myId ? null : cur))}
         style={{
           position: "absolute",
           left: "50%",
           top: "50%",
           width: spriteW,
           height: spriteH,
-          transform: "translate(-50%, -50%)", // ✅ translate only
+          transform: "translate(-50%, -50%)",
           transformOrigin: "50% 50%",
+          pointerEvents: "auto",
+          filter:
+            hoverId === myId
+              ? "drop-shadow(0 0 6px rgba(140, 200, 255, 0.35))"
+              : "none",
         }}
       >
+        {me && hoverId === myId && (
+          <div style={nameLabelStyle}>{getDisplayName(myId, me)}</div>
+        )}
+
         <div
           style={{
             width: "100%",
@@ -263,10 +298,11 @@ export default function PlayerRenderer({
           />
         </div>
       </div>
-              {/* DEBUG: World Coordinates (bottom-right) */}
-        {me && (
+
+      {/* DEBUG */}
+      {me && (
         <div
-            style={{
+          style={{
             position: "fixed",
             right: 12,
             bottom: 10,
@@ -279,13 +315,13 @@ export default function PlayerRenderer({
             pointerEvents: "none",
             zIndex: 10000,
             textAlign: "right",
-            }}
+          }}
         >
-            x: {displayX}
-            <br />
-            y: {displayY}
+          x: {displayX}
+          <br />
+          y: {displayY}
         </div>
-        )}
+      )}
     </div>
   );
 }

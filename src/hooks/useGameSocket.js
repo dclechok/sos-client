@@ -1,12 +1,4 @@
 // useGameSocket.js (OPEN WORLD MMO — robust + production-safe)
-// - Uses a SINGLE shared socket instance (imported from ./socket)
-// - Never "misses" identify() due to timing (queues it until connected)
-// - Handles reconnects by re-identifying automatically
-// - Listens to: world:init, player:self, world:snapshot
-// - Keeps backwards compat: send(), useSocketEvent()
-// - Keeps sendInput() helper
-//
-// NOTE: loadScene() removed (open world)
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import socket from "./socket";
@@ -17,16 +9,13 @@ export function useGameSocket() {
   const [worldSeed, setWorldSeed] = useState(null);
   const [myId, setMyId] = useState(null);
 
-  // players map: { [socketId]: { x, y, angle } }
   const [players, setPlayers] = useState({});
 
-  // Keep latest players in a ref (optional convenience)
   const playersRef = useRef(players);
   useEffect(() => {
     playersRef.current = players;
   }, [players]);
 
-  // Track the last characterId we should be identified as (survives reconnect)
   const pendingIdentifyRef = useRef(null);
 
   /* ------------------------------------------------------
@@ -53,7 +42,6 @@ export function useGameSocket() {
   ------------------------------------------------------ */
   const send = useCallback((event, data) => {
     if (!socket.connected) {
-      // Don't spam; still useful warning
       console.warn("❌ Tried sending but socket is not connected:", event);
       return;
     }
@@ -66,12 +54,8 @@ export function useGameSocket() {
   useEffect(() => {
     const onConnect = () => {
       setIsReady(true);
-
-      // Re-identify on every (re)connect if we have a characterId queued
       const characterId = pendingIdentifyRef.current;
-      if (characterId) {
-        socket.emit("identify", { characterId });
-      }
+      if (characterId) socket.emit("identify", { characterId });
     };
 
     const onDisconnect = () => setIsReady(false);
@@ -147,38 +131,43 @@ export function useGameSocket() {
   ------------------------------------------------------ */
   useEffect(() => {
     const handler = (e) => console.log("⚠️ server error:", e);
-    socket.on("sceneError", handler); // server may still emit this for auth/identify issues
+    socket.on("sceneError", handler);
     return () => socket.off("sceneError", handler);
   }, []);
 
   /* ------------------------------------------------------
      OPEN WORLD API
   ------------------------------------------------------ */
-
-  // ✅ Identify is now robust:
-  // - can be called before connect
-  // - will auto-fire on connect/reconnect
   const identify = useCallback((characterId) => {
     if (!characterId) return;
-
-    // store for reconnect / late connect
     pendingIdentifyRef.current = characterId;
-
-    if (socket.connected) {
-      socket.emit("identify", { characterId });
-    }
+    if (socket.connected) socket.emit("identify", { characterId });
   }, []);
 
-  // Input helper (safe)
-  const sendInput = useCallback((thrust, targetAngle) => {
+  // ✅ Movement change #1:
+  // sendInput is now ONLY manual thrust (no mouse targetAngle).
+  const sendInput = useCallback((thrust) => {
     if (!socket.connected) return;
-    socket.emit("player:input", {
-      thrust: !!thrust,
-      targetAngle: Number.isFinite(targetAngle) ? targetAngle : 0,
-    });
+    socket.emit("player:input", { thrust: !!thrust });
   }, []);
 
-  // derived
+  // ✅ Movement change #2:
+  // Right-click sets a destination ONCE; server handles smooth turning + persistent thrust.
+  const moveTo = useCallback((x, y) => {
+    if (!socket.connected) return;
+    const tx = Number(x);
+    const ty = Number(y);
+    if (!Number.isFinite(tx) || !Number.isFinite(ty)) return;
+
+    socket.emit("player:moveTo", { x: tx, y: ty });
+  }, []);
+
+  // Optional: cancel autopilot (if you add this on server)
+  const cancelMove = useCallback(() => {
+    if (!socket.connected) return;
+    socket.emit("player:moveCancel");
+  }, []);
+
   const me = myId ? players?.[myId] : null;
 
   return {
@@ -190,15 +179,16 @@ export function useGameSocket() {
     players,
     me,
 
-    // backwards compat
     send,
     useSocketEvent,
 
-    // open-world actions
     identify,
-    sendInput,
 
-    // optional: expose ref for advanced systems
+    // ✅ updated movement API
+    sendInput,   // thrust only
+    moveTo,      // right-click destination
+    cancelMove,  // optional
+
     playersRef,
   };
 }

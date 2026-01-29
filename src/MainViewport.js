@@ -1,7 +1,13 @@
-// MainViewport.js (OPTIMIZED — same look, less per-frame work)
-// Key optimization: nebula clouds are *rebuilt* only ~8–12x/sec (cached between rebuilds),
-// while still drawing every frame. This keeps the visual look essentially identical
-// because the internal jitter + blur are slow/soft, but removes the biggest perf spike.
+// MainViewport.js (SMOOTH — no splotchy nebula, no “new blobs” popping while moving)
+//
+// What changed vs your file:
+// 1) Nebula textures are baked ONCE (per cloud) instead of rebuilt 8–12x/sec.
+//    This removes the “splotchy / choppy / new nebula spawning” look when the camera moves.
+// 2) Nebula “life” is kept via: (a) breathing alpha, (b) world drift, (c) a tiny smooth draw-time jitter
+//    that does NOT require rebaking buffers.
+// 3) dt is clamped to avoid big jumps if a frame stalls (prevents chunky drift steps).
+//
+// Everything else (stars, dust, masks, tiles, look) stays essentially the same.
 
 import { useEffect, useRef } from "react";
 import "./styles/MainViewport.css";
@@ -214,8 +220,8 @@ export default function MainViewport({ worldSeed, cameraX = 0, cameraY = 0 }) {
     const NEBULA_SIZE_MAX = 1200;
 
     // Drift (px/sec in “world units”)
-    const NEBULA_SPEED_MIN = 2.2;
-    const NEBULA_SPEED_MAX = 4.2;
+    const NEBULA_SPEED_MIN = 10;
+    const NEBULA_SPEED_MAX = 18.2;
 
     const NEBULA_PUFFS_MIN = 5;
     const NEBULA_PUFFS_MAX = 12;
@@ -226,11 +232,8 @@ export default function MainViewport({ worldSeed, cameraX = 0, cameraY = 0 }) {
     const NEBULA_CONTRAST_WASH = 0.055;
     const NEBULA_DRAW_BLUR_PX = 0.35;
 
-    // ✅ OPT: how often to rebuild each nebula's internal texture (seconds)
-    // Lower = closer to original behavior, higher = faster.
-    // 0.10–0.14 keeps the same “feel” while cutting most heavy work.
-    const NEBULA_REBUILD_INTERVAL_MIN = 0.10;
-    const NEBULA_REBUILD_INTERVAL_MAX = 0.14;
+    // Smooth draw-time drift (no rebake needed)
+    const NEBULA_DRAW_JITTER_PX = 6.0; // 0..10 (purely visual micro-movement)
 
     // Far pulse
     const FAR_PULSE_ENABLED = true;
@@ -490,7 +493,7 @@ export default function MainViewport({ worldSeed, cameraX = 0, cameraY = 0 }) {
       return a + (b - a) * nebulaRand();
     }
 
-    // ✅ OPT: build (and cache) the per-cloud puff layout once, not every rebuild
+    // Build puff layout once (stable per cloud)
     function buildPuffLayout(maskSeed, puffCount, size) {
       const rr = mulberry32(maskSeed ^ 0x9e3779b9);
       const layout = [];
@@ -507,9 +510,11 @@ export default function MainViewport({ worldSeed, cameraX = 0, cameraY = 0 }) {
 
     function ensureCloudCanvas(cloud, size) {
       if (cloud.buf && cloud.bufSize === size) return;
+
       const c = document.createElement("canvas");
       c.width = size;
       c.height = size;
+
       const cctx = c.getContext("2d");
       cctx.imageSmoothingEnabled = true;
 
@@ -517,8 +522,61 @@ export default function MainViewport({ worldSeed, cameraX = 0, cameraY = 0 }) {
       cloud.bufCtx = cctx;
       cloud.bufSize = size;
 
-      // rebuild puff layout based on actual size
       cloud.puffLayout = buildPuffLayout(cloud.maskSeed, cloud.puffCount, size);
+    }
+
+    function rebuildNebulaTextureOnce(cloud) {
+      const r = cloud.r;
+      const size = Math.ceil(r * 2);
+      ensureCloudCanvas(cloud, size);
+
+      const cctx = cloud.bufCtx;
+      cctx.setTransform(1, 0, 0, 1, 0, 0);
+      cctx.clearRect(0, 0, size, size);
+
+      // IMPORTANT: bake with STATIC offsets so it doesn't "pop" later
+      const jx = cloud.bakeJx;
+      const jy = cloud.bakeJy;
+
+      cctx.globalCompositeOperation = "source-over";
+      cctx.globalAlpha = 1;
+
+      // base tile
+      cctx.drawImage(cloud.tile, jx, jy, size, size);
+
+      // puffs (stable layout)
+      const layout = cloud.puffLayout;
+      for (let i = 0; i < layout.length; i++) {
+        const p = layout[i];
+        const w2 = size * p.sx;
+        const h2 = size * p.sy;
+        cctx.globalAlpha = p.a;
+        cctx.drawImage(cloud.tile, jx + p.ox, jy + p.oy, w2, h2);
+      }
+
+      // mask
+      cctx.globalCompositeOperation = "destination-in";
+      cctx.globalAlpha = 1;
+      const mask = getNebulaMask(size, cloud.maskSeed, cloud.puffCount, cloud.holeCount);
+      cctx.drawImage(mask, 0, 0);
+
+      // buffer blur
+      cctx.globalCompositeOperation = "source-over";
+      cctx.globalAlpha = 1;
+      cctx.filter = `blur(${NEBULA_BUF_BLUR_PX}px)`;
+      cctx.drawImage(cloud.buf, 0, 0);
+      cctx.filter = "none";
+
+      // subtle wash
+      cctx.globalCompositeOperation = "source-atop";
+      cctx.globalAlpha = NEBULA_CONTRAST_WASH;
+      cctx.fillStyle = "black";
+      cctx.fillRect(0, 0, size, size);
+
+      cctx.globalAlpha = 1;
+      cctx.globalCompositeOperation = "source-over";
+
+      cloud.baked = true;
     }
 
     function resetNebulae() {
@@ -540,17 +598,20 @@ export default function MainViewport({ worldSeed, cameraX = 0, cameraY = 0 }) {
 
         const puffCount =
           (NEBULA_PUFFS_MIN +
-            Math.floor(
-              nebulaRand() * (NEBULA_PUFFS_MAX - NEBULA_PUFFS_MIN + 1)
-            )) | 0;
+            Math.floor(nebulaRand() * (NEBULA_PUFFS_MAX - NEBULA_PUFFS_MIN + 1))) | 0;
 
         const holeCount =
           (NEBULA_HOLES_MIN +
-            Math.floor(
-              nebulaRand() * (NEBULA_HOLES_MAX - NEBULA_HOLES_MIN + 1)
-            )) | 0;
+            Math.floor(nebulaRand() * (NEBULA_HOLES_MAX - NEBULA_HOLES_MIN + 1))) | 0;
 
         const maskSeed = (WORLD_SEED ^ (i * 2654435761)) >>> 0;
+
+        // per-cloud stable bake offsets (so pattern never "pops")
+        const bakeRand = mulberry32(maskSeed ^ 0x1234abcd);
+        const bakeJx = (bakeRand() - 0.5) * 18;
+        const bakeJy = (bakeRand() - 0.5) * 18;
+
+        const phase = randRange(0, Math.PI * 2);
 
         nebulae.push({
           // world pos
@@ -564,106 +625,50 @@ export default function MainViewport({ worldSeed, cameraX = 0, cameraY = 0 }) {
 
           tile: nebulaRand() < 0.5 ? gasTileA : gasTileB,
 
-          phase: randRange(0, Math.PI * 2),
+          // breathing + micro-jitter (draw-time only)
+          phase,
           breathe: randRange(0.02, 0.05),
-          driftJitter: randRange(8, 22),
+          jitterSpeed: randRange(0.12, 0.28),
+          jitterAmp: randRange(NEBULA_DRAW_JITTER_PX * 0.5, NEBULA_DRAW_JITTER_PX),
 
           maskSeed,
           puffCount,
           holeCount,
 
-          // cached rebuild controls
+          // baked buffer
           buf: null,
           bufCtx: null,
           bufSize: 0,
           puffLayout: null,
+          baked: false,
 
-          nextRebuildAt: 0, // seconds
-          rebuildInterval: randRange(
-            NEBULA_REBUILD_INTERVAL_MIN,
-            NEBULA_REBUILD_INTERVAL_MAX
-          ),
+          bakeJx,
+          bakeJy,
         });
       }
 
-      // Force initial bake
-      for (const n of nebulae) n.nextRebuildAt = 0;
-    }
-
-    // ✅ OPT: heavy nebula composition is done only on rebuild
-    function rebuildNebulaTexture(cloud, t) {
-      const r = cloud.r;
-      const size = Math.ceil(r * 2);
-
-      ensureCloudCanvas(cloud, size);
-
-      const cctx = cloud.bufCtx;
-
-      cctx.setTransform(1, 0, 0, 1, 0, 0);
-      cctx.clearRect(0, 0, size, size);
-
-      const jx = Math.sin(t * 0.04 + cloud.phase) * cloud.driftJitter;
-      const jy = Math.cos(t * 0.03 + cloud.phase) * cloud.driftJitter;
-
-      cctx.globalCompositeOperation = "source-over";
-      cctx.globalAlpha = 1;
-
-      // base tile
-      cctx.drawImage(cloud.tile, jx, jy, size, size);
-
-      // puffs (using cached layout)
-      const layout = cloud.puffLayout;
-      for (let i = 0; i < layout.length; i++) {
-        const p = layout[i];
-        const w2 = size * p.sx;
-        const h2 = size * p.sy;
-
-        cctx.globalAlpha = p.a;
-        cctx.drawImage(cloud.tile, jx + p.ox, jy + p.oy, w2, h2);
-      }
-
-      // mask
-      cctx.globalCompositeOperation = "destination-in";
-      cctx.globalAlpha = 1;
-      const mask = getNebulaMask(size, cloud.maskSeed, cloud.puffCount, cloud.holeCount);
-      cctx.drawImage(mask, 0, 0);
-
-      // buffer blur (keep same)
-      cctx.globalCompositeOperation = "source-over";
-      cctx.globalAlpha = 1;
-      cctx.filter = `blur(${NEBULA_BUF_BLUR_PX}px)`;
-      cctx.drawImage(cloud.buf, 0, 0);
-      cctx.filter = "none";
-
-      // subtle wash (keep same)
-      cctx.globalCompositeOperation = "source-atop";
-      cctx.globalAlpha = NEBULA_CONTRAST_WASH;
-      cctx.fillStyle = "black";
-      cctx.fillRect(0, 0, size, size);
-
-      cctx.globalAlpha = 1;
-      cctx.globalCompositeOperation = "source-over";
+      // bake once up-front (no runtime popping)
+      for (const n of nebulae) rebuildNebulaTextureOnce(n);
     }
 
     function drawNebulaCloud(cloud, t, screenX, screenY) {
       const r = cloud.r;
       const size = Math.ceil(r * 2);
 
-      // rebuild texture only sometimes
-      if (t >= cloud.nextRebuildAt) {
-        rebuildNebulaTexture(cloud, t);
-        cloud.nextRebuildAt = t + cloud.rebuildInterval;
-      }
+      if (!cloud.baked) rebuildNebulaTextureOnce(cloud);
 
       const breath = 1 + Math.sin(t * cloud.breathe + cloud.phase) * 0.10;
+
+      // tiny smooth draw-time jitter (doesn't change texture content)
+      const jx = Math.sin(t * cloud.jitterSpeed + cloud.phase) * cloud.jitterAmp;
+      const jy = Math.cos(t * (cloud.jitterSpeed * 0.93) + cloud.phase) * cloud.jitterAmp;
 
       ctx.save();
       ctx.globalCompositeOperation = "lighter";
       ctx.globalAlpha = cloud.a * breath;
 
-      // keep the same final draw blur
       ctx.filter = `blur(${NEBULA_DRAW_BLUR_PX}px)`;
-      ctx.drawImage(cloud.buf, screenX - r, screenY - r, size, size);
+      ctx.drawImage(cloud.buf, screenX - r + jx, screenY - r + jy, size, size);
 
       ctx.restore();
     }
@@ -702,7 +707,6 @@ export default function MainViewport({ worldSeed, cameraX = 0, cameraY = 0 }) {
       w = p.clientWidth;
       h = p.clientHeight;
 
-      // (Keep your current DPR cap to preserve look)
       dpr = Math.min(1.5, window.devicePixelRatio || 1);
 
       canvas.width = Math.floor(w * dpr);
@@ -714,14 +718,15 @@ export default function MainViewport({ worldSeed, cameraX = 0, cameraY = 0 }) {
       ctx.imageSmoothingEnabled = true;
 
       if (nebulae.length === 0) resetNebulae();
-      // Optional: if you want nebula sizing to react to resize, you can resetNebulae() here.
     }
 
     // Loop
     let lastMs = 0;
     function frame(nowMs) {
       const t = nowMs * 0.001;
-      const dt = lastMs ? (nowMs - lastMs) * 0.001 : 0;
+
+      const dtRaw = lastMs ? (nowMs - lastMs) * 0.001 : 0;
+      const dt = Math.min(dtRaw, 0.033); // clamp dt to avoid chunky steps
       lastMs = nowMs;
 
       ctx.globalAlpha = 1;
