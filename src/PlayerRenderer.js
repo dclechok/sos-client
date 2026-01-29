@@ -1,5 +1,5 @@
 // PlayerRenderer.js
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 
 /**
  * Multiplayer PlayerRenderer (server-authoritative)
@@ -53,6 +53,12 @@ export default function PlayerRenderer({
 
   const me = myId && players ? players[myId] : null;
 
+  // Keep latest me in a ref so listeners/interval always use fresh state
+  const meRef = useRef(null);
+  useEffect(() => {
+    meRef.current = me;
+  }, [me]);
+
   const rotationToCssDeg = (angleRad) =>
     (Number(angleRad || 0) * 180) / Math.PI + spriteFacingOffsetDeg;
 
@@ -69,18 +75,19 @@ export default function PlayerRenderer({
     };
   };
 
-  // Convert screen pos -> world pos relative to me centered
-  const screenToWorld = (clientX, clientY) => {
+  // Stable screen->world (uses meRef so it doesn't need me as a dependency)
+  const screenToWorld = useCallback((clientX, clientY) => {
     const cx = window.innerWidth / 2;
     const cy = window.innerHeight / 2;
 
-    if (!me) return { x: 0, y: 0 };
+    const m = meRef.current;
+    if (!m) return { x: 0, y: 0 };
 
     return {
-      x: Number(me.x || 0) + (clientX - cx),
-      y: Number(me.y || 0) + (clientY - cy),
+      x: Number(m.x || 0) + (clientX - cx),
+      y: Number(m.y || 0) + (clientY - cy),
     };
-  };
+  }, []);
 
   // Prefers server snapshot "p.name", but keeps playerNames as a fallback.
   const getDisplayName = (id, p) => {
@@ -138,7 +145,9 @@ export default function PlayerRenderer({
       rightDownRef.current = true;
 
       // Fire immediately on press
-      if (!me) return;
+      const m = meRef.current;
+      if (!m) return;
+
       const { x, y } = screenToWorld(e.clientX, e.clientY);
       socket.emit("player:moveTo", { x: Number(x), y: Number(y) });
     };
@@ -159,16 +168,19 @@ export default function PlayerRenderer({
       window.removeEventListener("mousedown", onMouseDown);
       window.removeEventListener("mouseup", onMouseUp);
     };
-  }, [socket, me]);
+  }, [socket, screenToWorld]);
 
   // While holding right click, continuously update move target to current mouse position
   useEffect(() => {
-    if (!socket || !me) return;
+    if (!socket) return;
 
     const intervalMs = Math.max(10, Math.floor(1000 / sendRateHz));
 
     const tick = () => {
       if (!rightDownRef.current) return;
+
+      const m = meRef.current;
+      if (!m) return;
 
       const { x, y } = screenToWorld(mouseRef.current.x, mouseRef.current.y);
       socket.emit("player:moveTo", { x: Number(x), y: Number(y) });
@@ -176,7 +188,7 @@ export default function PlayerRenderer({
 
     const id = setInterval(tick, intervalMs);
     return () => clearInterval(id);
-  }, [socket, me, sendRateHz]);
+  }, [socket, sendRateHz, screenToWorld]);
 
   return (
     <div
