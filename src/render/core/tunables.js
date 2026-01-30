@@ -32,11 +32,11 @@ export const TUNABLES = {
     ALPHA_MIN: 0.018,
     ALPHA_MAX: 0.16,
 
-    SIZE_MIN: 380,
+    SIZE_MIN: 308,
     SIZE_MAX: 1200,
 
     SPEED_MIN: 10,
-    SPEED_MAX: 18.2,
+    SPEED_MAX: 28.2,
 
     PUFFS_MIN: 5,
     PUFFS_MAX: 12,

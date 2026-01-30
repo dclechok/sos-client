@@ -38,7 +38,6 @@ export function useViewportRenderer({
     if (!canvas) return;
 
     const ctx = canvas.getContext("2d", { alpha: false });
-
     const WORLD_SEED = getStableWorldSeed(worldSeed);
 
     // Systems
@@ -54,16 +53,36 @@ export function useViewportRenderer({
     let w = 0;
     let h = 0;
 
+    // Prevent resize storms
+    let lastW = 0;
+    let lastH = 0;
+
     function resize() {
       const r = resizeCanvasToParent(canvas, ctx, TUNABLES.DPR_CAP);
       if (!r) return;
 
+      if (r.w === lastW && r.h === lastH) return;
+
+      lastW = r.w;
+      lastH = r.h;
       w = r.w;
       h = r.h;
 
-      // match original behavior: rebuild nebula on resize
-      nebula.reset({ w, h });
+      // IMPORTANT: resize must NOT re-roll / respawn nebula.
+      // It only informs nebula about viewport sizing (which we keep stable).
+      nebula.resize({ w, h });
     }
+console.log("Total nebula:", nebula.getTotalCount());
+console.log("Nebula within +/-10k of origin:", nebula.countWithin({ x: 0, y: 0, range: 10000 }));
+
+    // ---- Boot sequence (spawn once + bake once, offscreen) ----
+    // 1) size the canvas
+    resize();
+
+    // 2) spawn nebula world once + bake all buffers once BEFORE first frame
+    // This prevents any "first move chunk" caused by lazy baking.
+    nebula.init({ w: w || 1920, h: h || 1080 });
+    nebula.prewarm();
 
     let lastMs = 0;
 
@@ -77,6 +96,14 @@ export function useViewportRenderer({
       // Camera smoothing
       const target = camTargetRef.current;
       const smooth = camSmoothRef.current;
+
+      // If you ever get a one-time snap on first movement, this helps:
+      // snap once if smooth is uninitialized (optional, safe)
+      if (!Number.isFinite(smooth.x) || !Number.isFinite(smooth.y)) {
+        smooth.x = target.x;
+        smooth.y = target.y;
+      }
+
       const k = 1 - Math.exp(-TUNABLES.CAMERA_FOLLOW * dt);
       smooth.x += (target.x - smooth.x) * k;
       smooth.y += (target.y - smooth.y) * k;
@@ -102,11 +129,11 @@ export function useViewportRenderer({
         isFarLayer: true,
       });
 
-      // Meteors (NOTE: API is maybeSpawn, not maybeSpawnMeteor)
+      // Meteors
       meteors.maybeSpawn(dt, w, h);
       meteors.draw(ctx, dt);
 
-      // Dust + nebula
+      // Dust + nebula (nebula is already baked; draw is stable)
       dust.draw(ctx, { dt, w, h, camX, camY });
       nebula.updateAndDraw(ctx, { dt, t, w, h, camX, camY });
 
@@ -126,7 +153,6 @@ export function useViewportRenderer({
     }
 
     window.addEventListener("resize", resize);
-    resize();
     raf = requestAnimationFrame(frame);
 
     return () => {
