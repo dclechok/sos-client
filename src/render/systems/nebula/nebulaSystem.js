@@ -63,6 +63,25 @@ export function createNebulaSystem(worldSeed) {
     cloud.bufCtx = cctx;
     cloud.bufSize = size;
     cloud.puffLayout = buildPuffLayout(cloud.maskSeed, cloud.puffCount, size);
+    cloud.baked = false;
+  }
+
+  // Create/cache a repeating pattern per cloud (per tile)
+  function ensurePattern(cctx, cloud) {
+    if (!cloud._pattern || cloud._patternSrc !== cloud.tile) {
+      cloud._pattern = cctx.createPattern(cloud.tile, "repeat");
+      cloud._patternSrc = cloud.tile;
+    }
+  }
+
+  // Fill rect with repeating pattern in a way that honors offsets
+  function fillWithPattern(cctx, cloud, x, y, w, h) {
+    ensurePattern(cctx, cloud);
+    cctx.save();
+    cctx.translate(x, y);
+    cctx.fillStyle = cloud._pattern;
+    cctx.fillRect(-x, -y, w, h);
+    cctx.restore();
   }
 
   function rebuildNebulaTextureOnce(cloud) {
@@ -78,28 +97,51 @@ export function createNebulaSystem(worldSeed) {
     const jx = cloud.bakeJx;
     const jy = cloud.bakeJy;
 
-    // Base tile
+    // -------------------------------------------------------
+    // Base tile + puffs (REPEATING PATTERN — fixes seams/lines)
+    // -------------------------------------------------------
     cctx.globalCompositeOperation = "source-over";
     cctx.globalAlpha = 1;
-    cctx.drawImage(cloud.tile, jx, jy, size, size);
 
-    // Interior puffs
+    // Base fill
+    fillWithPattern(cctx, cloud, jx, jy, size, size);
+
+    // Puff layers (scaled pattern patches)
     const layout = cloud.puffLayout;
     for (let i = 0; i < layout.length; i++) {
       const p = layout[i];
-      const w2 = size * p.sx;
-      const h2 = size * p.sy;
+
+      cctx.save();
       cctx.globalAlpha = p.a;
-      cctx.drawImage(cloud.tile, jx + p.ox, jy + p.oy, w2, h2);
+
+      // Draw a scaled “patch” using the same repeating pattern
+      // We scale the canvas, then fill with the pattern in that scaled space.
+      const px = jx + p.ox;
+      const py = jy + p.oy;
+
+      cctx.translate(px, py);
+      cctx.scale(p.sx, p.sy);
+
+      ensurePattern(cctx, cloud);
+      cctx.fillStyle = cloud._pattern;
+
+      // Fill enough area to cover buffer after scaling
+      cctx.fillRect(-px / p.sx, -py / p.sy, size / p.sx, size / p.sy);
+
+      cctx.restore();
     }
 
-    // Mask
+    // -------------------
+    // Mask (same as before)
+    // -------------------
     cctx.globalCompositeOperation = "destination-in";
     cctx.globalAlpha = 1;
     const mask = getNebulaMask(size, cloud.maskSeed, cloud.puffCount, cloud.holeCount);
     cctx.drawImage(mask, 0, 0);
 
-    // Buffer soften (your “beauty” step)
+    // -------------------------
+    // Buffer soften (beauty step)
+    // -------------------------
     cctx.globalCompositeOperation = "source-over";
     cctx.globalAlpha = 1;
     if (N.BUF_BLUR_PX > 0) {
@@ -108,7 +150,9 @@ export function createNebulaSystem(worldSeed) {
       cctx.filter = "none";
     }
 
-    // Micro-contrast wash (your original look)
+    // -----------------------------
+    // Micro-contrast wash (original)
+    // -----------------------------
     cctx.globalCompositeOperation = "source-atop";
     cctx.globalAlpha = N.CONTRAST_WASH;
     cctx.fillStyle = "black";
@@ -180,6 +224,13 @@ export function createNebulaSystem(worldSeed) {
 
         bakeJx,
         bakeJy,
+
+        // pattern cache
+        _pattern: null,
+        _patternSrc: null,
+
+        // edge fade cache
+        _edgeFade: 1,
       });
     }
   }
@@ -214,7 +265,6 @@ export function createNebulaSystem(worldSeed) {
     const r = cloud.r;
     const size = Math.ceil(r * 2);
 
-    // Should already be baked from prewarm(), but safe:
     if (!cloud.baked) rebuildNebulaTextureOnce(cloud);
 
     const breath = 1 + Math.sin(t * cloud.breathe + cloud.phase) * 0.1;
@@ -223,7 +273,9 @@ export function createNebulaSystem(worldSeed) {
 
     ctx.save();
     ctx.globalCompositeOperation = "lighter";
-    ctx.globalAlpha = cloud.a * breath;
+
+    // Edge fade prevents “chunk away” at boundaries
+    ctx.globalAlpha = cloud.a * breath * (cloud._edgeFade ?? 1);
 
     if (N.DRAW_BLUR_PX > 0) ctx.filter = `blur(${N.DRAW_BLUR_PX}px)`;
     ctx.drawImage(cloud.buf, screenX - r + jx, screenY - r + jy, size, size);
@@ -232,8 +284,7 @@ export function createNebulaSystem(worldSeed) {
     ctx.restore();
   }
 
-  // ---- Camera-relative rendering + offscreen padding ----
-  // This is the part that prevents “chunk in viewport” and “chunk away” at edges.
+  // ---- Camera-relative rendering + offscreen padding + edge fade ----
   function updateAndDraw(ctx, { dt, t, w, h, camX, camY }) {
     if (!didInit) init({ w, h });
 
@@ -242,7 +293,8 @@ export function createNebulaSystem(worldSeed) {
     const oy = wrap01(camY * TUNABLES.SCALES.NEBULA);
 
     // Draw slightly offscreen so nothing appears/disappears at the edge
-    const PAD = Math.max(w, h) * (N.DRAW_PAD_FRAC ?? 0.35);
+    const PAD = Math.max(w, h) * (N.DRAW_PAD_FRAC ?? 0.40);
+    const FADE = Math.max(120, PAD * 0.35);
 
     for (const n of nebulae) {
       // Drift in world space
@@ -261,6 +313,15 @@ export function createNebulaSystem(worldSeed) {
       const r = n.r;
       if (sx < -PAD - r || sx > w + PAD + r || sy < -PAD - r || sy > h + PAD + r) continue;
 
+      // Smooth fade near the outer margin (prevents popping at edges)
+      const edgeDist = Math.min(
+        sx + PAD,
+        sy + PAD,
+        (w + PAD) - sx,
+        (h + PAD) - sy
+      );
+      n._edgeFade = Math.max(0, Math.min(1, edgeDist / FADE));
+
       drawCloud(ctx, n, t, sx, sy);
     }
   }
@@ -269,26 +330,19 @@ export function createNebulaSystem(worldSeed) {
   // Counting helpers (simple)
   // ------------------------------
 
-  // Total nebula in the universe (your system only ever creates N.COUNT)
   function getTotalCount() {
     return nebulae.length;
   }
 
-  // Count nebula whose *world centers* are inside an axis-aligned box.
-  // NOTE: Your nebula world wraps (0..WORLD). For “up to 10,000x/y from origin”,
-  // pass xMin=-10000, xMax=10000, etc. We’ll wrap those into [0..WORLD) and do
-  // a wrapped-box check.
   function countInBox({ xMin, xMax, yMin, yMax }) {
     if (!didInit) init({});
 
-    // Normalize bounds into world space; handle ranges that cross wrap.
     const xmin = wrap01(xMin);
     const xmax = wrap01(xMax);
     const ymin = wrap01(yMin);
     const ymax = wrap01(yMax);
 
     const inRangeWrapped = (v, a, b) => {
-      // range [a..b] if a<=b, else it crosses wrap and is (v>=a || v<=b)
       if (a <= b) return v >= a && v <= b;
       return v >= a || v <= b;
     };
@@ -300,7 +354,6 @@ export function createNebulaSystem(worldSeed) {
     return c;
   }
 
-  // Convenience: “How many nebula within +/-range of (x,y)”
   function countWithin({ x = 0, y = 0, range = 10000 }) {
     return countInBox({
       xMin: x - range,

@@ -18,6 +18,11 @@ import { useEffect, useRef, useState, useCallback } from "react";
  *
  * Optional manual thrust (if you keep it server-side):
  * - socket.emit("player:input", { thrust: true/false })
+ *
+ * FIX INCLUDED:
+ * - Uses the actual canvas element rect for center (NOT window center)
+ * - Converts CSS pixels -> canvas pixels via scaleX/scaleY
+ * - This fixes "vertical movement feels slower" when canvas is DPR-scaled / resized.
  */
 
 export default function PlayerRenderer({
@@ -39,6 +44,10 @@ export default function PlayerRenderer({
 
   renderOthers = true,
   playerNames = {},
+
+  // ✅ NEW (REQUIRED for correct mouse mapping when canvas is DPR-scaled):
+  // Pass the SAME canvasRef you use in MainViewport/useViewportRenderer.
+  canvasRef,
 }) {
   const [hoverId, setHoverId] = useState(null);
 
@@ -62,32 +71,77 @@ export default function PlayerRenderer({
   const rotationToCssDeg = (angleRad) =>
     (Number(angleRad || 0) * 180) / Math.PI + spriteFacingOffsetDeg;
 
-  // Convert world pos -> screen pos relative to me (me is centered)
-  const worldToScreen = (p) => {
-    const cx = window.innerWidth / 2;
-    const cy = window.innerHeight / 2;
+  // ------------------------------
+  // Canvas metrics (center + CSS->canvas scaling)
+  // ------------------------------
+  const getCanvasMetrics = useCallback(() => {
+    const canvas = canvasRef?.current;
 
-    if (!me) return { x: cx, y: cy };
+    // Fallback: window-based (works only if canvas == full screen and no DPR tricks)
+    if (!canvas) {
+      return {
+        cx: window.innerWidth / 2,
+        cy: window.innerHeight / 2,
+        scaleX: 1,
+        scaleY: 1,
+      };
+    }
+
+    const r = canvas.getBoundingClientRect();
+
+    // scaleX/scaleY convert CSS pixels -> canvas pixels
+    // (handles DPR scaling, DPR caps, and any CSS stretching)
+    const scaleX = r.width ? canvas.width / r.width : 1;
+    const scaleY = r.height ? canvas.height / r.height : 1;
 
     return {
-      x: cx + (Number(p.x || 0) - Number(me.x || 0)),
-      y: cy + (Number(p.y || 0) - Number(me.y || 0)),
+      cx: r.left + r.width / 2,
+      cy: r.top + r.height / 2,
+      scaleX,
+      scaleY,
     };
-  };
+  }, [canvasRef]);
 
-  // Stable screen->world (uses meRef so it doesn't need me as a dependency)
-  const screenToWorld = useCallback((clientX, clientY) => {
-    const cx = window.innerWidth / 2;
-    const cy = window.innerHeight / 2;
+  // Convert world pos -> screen pos (CSS pixels) relative to me (me is centered)
+  const worldToScreen = useCallback(
+    (p) => {
+      const { cx, cy, scaleX, scaleY } = getCanvasMetrics();
 
-    const m = meRef.current;
-    if (!m) return { x: 0, y: 0 };
+      const m = meRef.current;
+      if (!m) return { x: cx, y: cy };
 
-    return {
-      x: Number(m.x || 0) + (clientX - cx),
-      y: Number(m.y || 0) + (clientY - cy),
-    };
-  }, []);
+      const dxWorld = Number(p.x || 0) - Number(m.x || 0);
+      const dyWorld = Number(p.y || 0) - Number(m.y || 0);
+
+      // In your renderer, world units are effectively "canvas pixels"
+      // Convert to CSS pixels by dividing by scale.
+      return {
+        x: cx + dxWorld / scaleX,
+        y: cy + dyWorld / scaleY,
+      };
+    },
+    [getCanvasMetrics]
+  );
+
+  // Stable screen->world (CSS pixels -> canvas pixels -> world)
+  const screenToWorld = useCallback(
+    (clientX, clientY) => {
+      const { cx, cy, scaleX, scaleY } = getCanvasMetrics();
+
+      const m = meRef.current;
+      if (!m) return { x: 0, y: 0 };
+
+      // Convert CSS delta to canvas-pixel delta
+      const dxCanvasPx = (clientX - cx) * scaleX;
+      const dyCanvasPx = (clientY - cy) * scaleY;
+
+      return {
+        x: Number(m.x || 0) + dxCanvasPx,
+        y: Number(m.y || 0) + dyCanvasPx,
+      };
+    },
+    [getCanvasMetrics]
+  );
 
   // Prefers server snapshot "p.name", but keeps playerNames as a fallback.
   const getDisplayName = (id, p) => {

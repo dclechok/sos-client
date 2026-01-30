@@ -73,7 +73,7 @@ export function useViewportRenderer({
       nebula.resize({ w, h });
     }
 console.log("Total nebula:", nebula.getTotalCount());
-console.log("Nebula within +/-10k of origin:", nebula.countWithin({ x: 0, y: 0, range: 10000 }));
+console.log("Nebula within +/-100k of origin:", nebula.countWithin({ x: 0, y: 0, range: 100000 }));
 
     // ---- Boot sequence (spawn once + bake once, offscreen) ----
     // 1) size the canvas
