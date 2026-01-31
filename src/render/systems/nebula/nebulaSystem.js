@@ -94,8 +94,10 @@ export function createNebulaSystem(worldSeed) {
     cctx.setTransform(1, 0, 0, 1, 0, 0);
     cctx.clearRect(0, 0, size, size);
 
-    const jx = cloud.bakeJx;
-    const jy = cloud.bakeJy;
+  // Snap pattern origin to whole pixels to prevent repeat seam sampling
+  const jx = (cloud.bakeJx + 0.5) | 0;
+  const jy = (cloud.bakeJy + 0.5) | 0;
+
 
     // -------------------------------------------------------
     // Base tile + puffs (REPEATING PATTERN — fixes seams/lines)
@@ -116,8 +118,8 @@ export function createNebulaSystem(worldSeed) {
 
       // Draw a scaled “patch” using the same repeating pattern
       // We scale the canvas, then fill with the pattern in that scaled space.
-      const px = jx + p.ox;
-      const py = jy + p.oy;
+      const px = ((jx + p.ox) + 0.5) | 0;
+      const py = ((jy + p.oy) + 0.5) | 0;
 
       cctx.translate(px, py);
       cctx.scale(p.sx, p.sy);
@@ -139,16 +141,29 @@ export function createNebulaSystem(worldSeed) {
     const mask = getNebulaMask(size, cloud.maskSeed, cloud.puffCount, cloud.holeCount);
     cctx.drawImage(mask, 0, 0);
 
-    // -------------------------
-    // Buffer soften (beauty step)
-    // -------------------------
-    cctx.globalCompositeOperation = "source-over";
-    cctx.globalAlpha = 1;
-    if (N.BUF_BLUR_PX > 0) {
-      cctx.filter = `blur(${N.BUF_BLUR_PX}px)`;
-      cctx.drawImage(cloud.buf, 0, 0);
-      cctx.filter = "none";
-    }
+  // -------------------------
+  // Buffer soften (beauty step)
+  // -------------------------
+  cctx.globalCompositeOperation = "source-over";
+  cctx.globalAlpha = 1;
+
+  if (N.BUF_BLUR_PX > 0) {
+    // IMPORTANT: don't draw canvas onto itself with a filter (can create seams)
+    const tmp = document.createElement("canvas");
+    tmp.width = size;
+    tmp.height = size;
+    const tctx = tmp.getContext("2d");
+
+    tctx.imageSmoothingEnabled = true;
+    tctx.filter = `blur(${N.BUF_BLUR_PX}px)`;
+    tctx.drawImage(cloud.buf, 0, 0);
+    tctx.filter = "none";
+
+    cctx.setTransform(1, 0, 0, 1, 0, 0);
+    cctx.clearRect(0, 0, size, size);
+    cctx.drawImage(tmp, 0, 0);
+  }
+
 
     // -----------------------------
     // Micro-contrast wash (original)
@@ -268,21 +283,27 @@ export function createNebulaSystem(worldSeed) {
     if (!cloud.baked) rebuildNebulaTextureOnce(cloud);
 
     const breath = 1 + Math.sin(t * cloud.breathe + cloud.phase) * 0.1;
+
+    // Jitter (keep same motion, just snap the final placement)
     const jx = Math.sin(t * cloud.jitterSpeed + cloud.phase) * cloud.jitterAmp;
     const jy = Math.cos(t * (cloud.jitterSpeed * 0.93) + cloud.phase) * cloud.jitterAmp;
 
     ctx.save();
     ctx.globalCompositeOperation = "lighter";
-
-    // Edge fade prevents “chunk away” at boundaries
     ctx.globalAlpha = cloud.a * breath * (cloud._edgeFade ?? 1);
 
     if (N.DRAW_BLUR_PX > 0) ctx.filter = `blur(${N.DRAW_BLUR_PX}px)`;
-    ctx.drawImage(cloud.buf, screenX - r + jx, screenY - r + jy, size, size);
-    ctx.filter = "none";
 
+    // ✅ SNAP final draw position to whole pixels (prevents repeat seam sampling artifacts)
+    const dx = ((screenX - r + jx) + 0.5) | 0;
+    const dy = ((screenY - r + jy) + 0.5) | 0;
+
+    ctx.drawImage(cloud.buf, dx, dy, size, size);
+
+    ctx.filter = "none";
     ctx.restore();
   }
+
 
   // ---- Camera-relative rendering + offscreen padding + edge fade ----
   function updateAndDraw(ctx, { dt, t, w, h, camX, camY }) {
