@@ -19,10 +19,10 @@ import { useEffect, useRef, useState, useCallback } from "react";
  * Optional manual thrust (if you keep it server-side):
  * - socket.emit("player:input", { thrust: true/false })
  *
- * FIX INCLUDED:
- * - Uses the actual canvas element rect for center (NOT window center)
- * - Converts CSS pixels -> canvas pixels via scaleX/scaleY
- * - This fixes "vertical movement feels slower" when canvas is DPR-scaled / resized.
+ * ✅ FIX:
+ * Use ONE uniform CSS->canvas/world scale for BOTH axes.
+ * This prevents vertical target deltas from being inflated vs horizontal.
+ * (Does not change ship controls; only fixes coordinate mapping.)
  */
 
 export default function PlayerRenderer({
@@ -45,7 +45,6 @@ export default function PlayerRenderer({
   renderOthers = true,
   playerNames = {},
 
-  // ✅ NEW (REQUIRED for correct mouse mapping when canvas is DPR-scaled):
   // Pass the SAME canvasRef you use in MainViewport/useViewportRenderer.
   canvasRef,
 }) {
@@ -72,31 +71,36 @@ export default function PlayerRenderer({
     (Number(angleRad || 0) * 180) / Math.PI + spriteFacingOffsetDeg;
 
   // ------------------------------
-  // Canvas metrics (center + CSS->canvas scaling)
+  // Canvas metrics (center + UNIFORM CSS->canvas/world scaling)
   // ------------------------------
   const getCanvasMetrics = useCallback(() => {
     const canvas = canvasRef?.current;
 
-    // Fallback: window-based (works only if canvas == full screen and no DPR tricks)
+    // Fallback: window-based
     if (!canvas) {
       return {
         cx: window.innerWidth / 2,
         cy: window.innerHeight / 2,
-        scaleX: 1,
-        scaleY: 1,
+        scale: 1,
       };
     }
 
     const r = canvas.getBoundingClientRect();
 
-    // scaleX/scaleY convert CSS pixels -> canvas pixels
-    // (handles DPR scaling, DPR caps, and any CSS stretching)
+    // Raw scales (for reference)
     const scaleX = r.width ? canvas.width / r.width : 1;
     const scaleY = r.height ? canvas.height / r.height : 1;
+
+    // ✅ Uniform scale (critical fix)
+    // Use scaleX so both axes map consistently.
+    // (Using average is also fine, but scaleX tends to be stable.)
+    const scale = scaleX;
 
     return {
       cx: r.left + r.width / 2,
       cy: r.top + r.height / 2,
+      scale,
+      // keep these for optional debugging if you want
       scaleX,
       scaleY,
     };
@@ -105,7 +109,7 @@ export default function PlayerRenderer({
   // Convert world pos -> screen pos (CSS pixels) relative to me (me is centered)
   const worldToScreen = useCallback(
     (p) => {
-      const { cx, cy, scaleX, scaleY } = getCanvasMetrics();
+      const { cx, cy, scale } = getCanvasMetrics();
 
       const m = meRef.current;
       if (!m) return { x: cx, y: cy };
@@ -113,31 +117,28 @@ export default function PlayerRenderer({
       const dxWorld = Number(p.x || 0) - Number(m.x || 0);
       const dyWorld = Number(p.y || 0) - Number(m.y || 0);
 
-      // In your renderer, world units are effectively "canvas pixels"
-      // Convert to CSS pixels by dividing by scale.
       return {
-        x: cx + dxWorld / scaleX,
-        y: cy + dyWorld / scaleY,
+        x: cx + dxWorld / scale,
+        y: cy + dyWorld / scale,
       };
     },
     [getCanvasMetrics]
   );
 
-  // Stable screen->world (CSS pixels -> canvas pixels -> world)
+  // Stable screen->world (CSS pixels -> canvas/world) using UNIFORM scale
   const screenToWorld = useCallback(
     (clientX, clientY) => {
-      const { cx, cy, scaleX, scaleY } = getCanvasMetrics();
+      const { cx, cy, scale } = getCanvasMetrics();
 
       const m = meRef.current;
       if (!m) return { x: 0, y: 0 };
 
-      // Convert CSS delta to canvas-pixel delta
-      const dxCanvasPx = (clientX - cx) * scaleX;
-      const dyCanvasPx = (clientY - cy) * scaleY;
+      const dxWorld = (clientX - cx) * scale;
+      const dyWorld = (clientY - cy) * scale;
 
       return {
-        x: Number(m.x || 0) + dxCanvasPx,
-        y: Number(m.y || 0) + dyCanvasPx,
+        x: Number(m.x || 0) + dxWorld,
+        y: Number(m.y || 0) + dyWorld,
       };
     },
     [getCanvasMetrics]
@@ -177,11 +178,12 @@ export default function PlayerRenderer({
     pointerEvents: "none",
   };
 
+  // -----------------------------------
+  // DEBUG HELPERS (throttle logs)
+  // -----------------------------------
+  const lastSendLogAtRef = useRef(0);
+
   // Mouse listeners:
-  // - prevent context menu
-  // - track mouse position
-  // - track right button state
-  // - on right press, send one immediate moveTo
   useEffect(() => {
     if (!socket) return;
 
@@ -198,11 +200,26 @@ export default function PlayerRenderer({
 
       rightDownRef.current = true;
 
-      // Fire immediately on press
       const m = meRef.current;
       if (!m) return;
 
       const { x, y } = screenToWorld(e.clientX, e.clientY);
+
+      // ✅ DEBUG: what we are sending (dx/dy/dist in WORLD units)
+      const dx = x - m.x;
+      const dy = y - m.y;
+      const dist = Math.hypot(dx, dy);
+
+      const now = performance.now();
+      if (now - lastSendLogAtRef.current > 150) {
+        lastSendLogAtRef.current = now;
+        console.log(
+          `[CLIENT moveTo SEND] dx=${dx.toFixed(1)} dy=${dy.toFixed(
+            1
+          )} dist=${dist.toFixed(1)}`
+        );
+      }
+
       socket.emit("player:moveTo", { x: Number(x), y: Number(y) });
     };
 
