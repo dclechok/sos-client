@@ -54,6 +54,9 @@ export default function App() {
   );
   const worldBoot = useWorldBoot(bootSteps);
 
+  // ✅ FIX: bind api once so useEffect deps are correct and stable
+  const bootApi = worldBoot?.api;
+
   useEffect(() => {
     async function init() {
       const { account: storedAccount, character: storedChar } =
@@ -96,21 +99,24 @@ export default function App() {
   useEffect(() => {
     const hasPickedCharacter = character && character !== null;
 
+    // If bootApi isn't ready yet, do nothing (prevents undefined access)
+    if (!bootApi) return;
+
     if (!hasPickedCharacter) {
-      worldBoot.api.end();
-      worldBoot.api.reset();
+      bootApi.end();
+      bootApi.reset();
       return;
     }
 
-    worldBoot.api.reset();
-    worldBoot.api.begin();
+    bootApi.reset();
+    bootApi.begin();
 
-    worldBoot.api.start("snapshot", "Waiting for server…");
-    worldBoot.api.start("stars", "Preparing starfield…");
-    worldBoot.api.start("nebula", "Baking nebula…");
-    worldBoot.api.start("dust", "Spawning dust…");
-    worldBoot.api.start("ready", "Loading ship sprite…");
-  }, [character]); // intentionally NOT dependent on isReady/worldSeed
+    bootApi.start("snapshot", "Waiting for server…");
+    bootApi.start("stars", "Preparing starfield…");
+    bootApi.start("nebula", "Baking nebula…");
+    bootApi.start("dust", "Spawning dust…");
+    bootApi.start("ready", "Loading ship sprite…");
+  }, [character, bootApi]); // ✅ fixes exhaustive-deps
 
   if (width === 0 || height === 0) return <Spinner />;
   if (width < 800 || height < 500) return <DisplayCheck />;
@@ -151,7 +157,7 @@ export default function App() {
           cameraX={me?.x ?? 0}
           cameraY={me?.y ?? 0}
           worldBoot={worldBoot}
-          bootApi={worldBoot.api}
+          bootApi={bootApi} // ✅ use bootApi
         />
       )}
 
@@ -162,7 +168,7 @@ export default function App() {
           players={players}
           canvasRef={canvasRef}
           worldBoot={worldBoot}
-          bootApi={worldBoot.api}
+          bootApi={bootApi} // ✅ use bootApi
         />
       )}
 
