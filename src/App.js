@@ -16,7 +16,10 @@ import { useGameSocket } from "./hooks/useGameSocket";
 
 import MainViewport from "./MainViewport";
 import ChatMenu from "./ChatMenu";
-import PlayerRenderer from "./PlayerRenderer";
+
+// ✅ UPDATED import for the split PlayerRenderer
+// If you placed the new files at: src/render/players/PlayerRenderer.jsx
+import PlayerRenderer from "./render/players/PlayerRenderer";
 
 import { useWorldBoot } from "./hooks/useWorldBoot";
 import WorldBootOverlay from "./WorldBootOverlay";
@@ -24,7 +27,8 @@ import WorldBootOverlay from "./WorldBootOverlay";
 function useWindowSize() {
   const [size, setSize] = useState({ width: 0, height: 0 });
   useEffect(() => {
-    const handler = () => setSize({ width: window.innerWidth, height: window.innerHeight });
+    const handler = () =>
+      setSize({ width: window.innerWidth, height: window.innerHeight });
     handler();
     window.addEventListener("resize", handler);
     return () => window.removeEventListener("resize", handler);
@@ -39,16 +43,22 @@ export default function App() {
   useButtonClickSound();
   const { width, height } = useWindowSize();
 
-  const { socket, isReady, worldSeed, myId, players, me, identify } = useGameSocket();
+  const { socket, isReady, worldSeed, myId, players, me, identify } =
+    useGameSocket();
 
   const canvasRef = useRef(null);
 
-  const bootSteps = useMemo(() => ["snapshot", "stars", "nebula", "dust", "ready"], []);
+  const bootSteps = useMemo(
+    () => ["snapshot", "stars", "nebula", "dust", "ready"],
+    []
+  );
   const worldBoot = useWorldBoot(bootSteps);
 
   useEffect(() => {
     async function init() {
-      const { account: storedAccount, character: storedChar } = loadStoredSession();
+      const { account: storedAccount, character: storedChar } =
+        loadStoredSession();
+
       if (!storedAccount?.token) {
         setAccount(null);
         setCharacter(null);
@@ -124,7 +134,7 @@ export default function App() {
 
   const bootActive = worldBoot.active;
 
-  // ✅ Only start renderer once socket + seed are ready
+  // ✅ Only mount world once socket + seed are ready
   const canMountWorld = bootActive && isReady && Number.isFinite(worldSeed);
 
   return (
@@ -153,7 +163,6 @@ export default function App() {
           canvasRef={canvasRef}
           worldBoot={worldBoot}
           bootApi={worldBoot.api}
-          // ✅ remove isVisible gating for now
         />
       )}
 

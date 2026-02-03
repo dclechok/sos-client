@@ -1,4 +1,4 @@
-// useGameSocket.js (OPEN WORLD MMO — robust + production-safe)
+// hooks/useGameSocket.js (OPEN WORLD MMO — robust + production-safe)
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import socket from "./socket";
@@ -101,9 +101,14 @@ export function useGameSocket() {
         setPlayers((prev) => ({
           ...prev,
           [payload.id]: {
+            ...(prev[payload.id] || {}),
             x: Number(payload.ship.x ?? 0),
             y: Number(payload.ship.y ?? 0),
+            vx: Number(payload.ship.vx ?? 0),
+            vy: Number(payload.ship.vy ?? 0),
             angle: Number(payload.ship.angle ?? 0),
+            name: payload.ship.name ?? prev[payload.id]?.name ?? null,
+            // Don't stamp here; snapshots carry t. Keeping it stable is fine.
           },
         }));
       }
@@ -114,12 +119,31 @@ export function useGameSocket() {
   }, []);
 
   /* ------------------------------------------------------
-     world:snapshot -> players
+     world:snapshot -> players (✅ STAMP snapshot time, include vx/vy)
   ------------------------------------------------------ */
   useEffect(() => {
     const handler = (snap) => {
       if (!snap?.players || typeof snap.players !== "object") return;
-      setPlayers(snap.players);
+
+      // Server sends { players, t }, where t is Date.now() on server.
+      const t = Number.isFinite(snap?.t) ? Number(snap.t) : Date.now();
+
+      const stamped = {};
+      for (const [id, p] of Object.entries(snap.players)) {
+        if (!p) continue;
+
+        stamped[id] = {
+          ...p,
+          x: Number(p.x ?? 0),
+          y: Number(p.y ?? 0),
+          vx: Number(p.vx ?? 0),
+          vy: Number(p.vy ?? 0),
+          angle: Number(p.angle ?? 0),
+          t, // ✅ crucial for interpolation/prediction alignment
+        };
+      }
+
+      setPlayers(stamped);
     };
 
     socket.on("world:snapshot", handler);
@@ -127,7 +151,7 @@ export function useGameSocket() {
   }, []);
 
   /* ------------------------------------------------------
-     Server errors (helpful during deployment)
+     Server errors
   ------------------------------------------------------ */
   useEffect(() => {
     const handler = (e) => console.log("⚠️ server error:", e);
@@ -144,15 +168,13 @@ export function useGameSocket() {
     if (socket.connected) socket.emit("identify", { characterId });
   }, []);
 
-  // ✅ Movement change #1:
-  // sendInput is now ONLY manual thrust (no mouse targetAngle).
+  // Manual thrust only
   const sendInput = useCallback((thrust) => {
     if (!socket.connected) return;
     socket.emit("player:input", { thrust: !!thrust });
   }, []);
 
-  // ✅ Movement change #2:
-  // Right-click sets a destination ONCE; server handles smooth turning + persistent thrust.
+  // Right-click destination
   const moveTo = useCallback((x, y) => {
     if (!socket.connected) return;
     const tx = Number(x);
@@ -162,7 +184,6 @@ export function useGameSocket() {
     socket.emit("player:moveTo", { x: tx, y: ty });
   }, []);
 
-  // Optional: cancel autopilot (if you add this on server)
   const cancelMove = useCallback(() => {
     if (!socket.connected) return;
     socket.emit("player:moveCancel");
@@ -184,10 +205,9 @@ export function useGameSocket() {
 
     identify,
 
-    // ✅ updated movement API
-    sendInput,   // thrust only
-    moveTo,      // right-click destination
-    cancelMove,  // optional
+    sendInput,
+    moveTo,
+    cancelMove,
 
     playersRef,
   };
