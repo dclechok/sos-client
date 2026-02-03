@@ -13,12 +13,6 @@ import { useEffect, useRef, useState, useCallback } from "react";
  * - Hover ships: show name + faint glow (including your own ship)
  * - Name label always upright (label is not inside rotated element)
  *
- * Server expects:
- * - socket.emit("player:moveTo", { x, y })  // world coords
- *
- * Optional manual thrust (if you keep it server-side):
- * - socket.emit("player:input", { thrust: true/false })
- *
  * ✅ FIX:
  * Use ONE uniform CSS->canvas/world scale for BOTH axes.
  * This prevents vertical target deltas from being inflated vs horizontal.
@@ -47,6 +41,10 @@ export default function PlayerRenderer({
 
   // Pass the SAME canvasRef you use in MainViewport/useViewportRenderer.
   canvasRef,
+
+  // world loading pipeline support
+  worldBoot,
+  bootApi,
 }) {
   const [hoverId, setHoverId] = useState(null);
 
@@ -92,15 +90,12 @@ export default function PlayerRenderer({
     const scaleY = r.height ? canvas.height / r.height : 1;
 
     // ✅ Uniform scale (critical fix)
-    // Use scaleX so both axes map consistently.
-    // (Using average is also fine, but scaleX tends to be stable.)
     const scale = scaleX;
 
     return {
       cx: r.left + r.width / 2,
       cy: r.top + r.height / 2,
       scale,
-      // keep these for optional debugging if you want
       scaleX,
       scaleY,
     };
@@ -179,6 +174,56 @@ export default function PlayerRenderer({
   };
 
   // -----------------------------------
+  // WORLD BOOT HOOKS (snapshot + local sprite)
+  // -----------------------------------
+  const markedSnapshotRef = useRef(false);
+  const markedReadyRef = useRef(false);
+  const lastBootActiveRef = useRef(false);
+
+  // Reset markers whenever boot restarts (active goes false->true)
+  useEffect(() => {
+    const active = Boolean(worldBoot?.active);
+    const wasActive = lastBootActiveRef.current;
+
+    if (!wasActive && active) {
+      // boot (re)started
+      markedSnapshotRef.current = false;
+      markedReadyRef.current = false;
+    }
+    if (!active) {
+      // boot ended
+      markedSnapshotRef.current = false;
+      markedReadyRef.current = false;
+    }
+
+    lastBootActiveRef.current = active;
+  }, [worldBoot?.active]);
+
+  // When "me" appears, we've received our first meaningful snapshot for local player.
+  useEffect(() => {
+    if (!worldBoot?.active) return;
+    if (!bootApi) return;
+    if (!me) return;
+
+    if (!markedSnapshotRef.current) {
+      markedSnapshotRef.current = true;
+      bootApi.done("snapshot", "Player state received");
+      // ✅ DO NOT touch stars/nebula steps here.
+      // PlayerRenderer does not own those steps.
+    }
+  }, [me, worldBoot?.active, bootApi]);
+
+  // Local sprite loaded => "ready" done
+  const onMySpriteLoad = useCallback(() => {
+    if (!worldBoot?.active) return;
+    if (!bootApi) return;
+    if (markedReadyRef.current) return;
+
+    markedReadyRef.current = true;
+    bootApi.done("ready", "Ship visuals ready");
+  }, [worldBoot?.active, bootApi]);
+
+  // -----------------------------------
   // DEBUG HELPERS (throttle logs)
   // -----------------------------------
   const lastSendLogAtRef = useRef(0);
@@ -204,21 +249,6 @@ export default function PlayerRenderer({
       if (!m) return;
 
       const { x, y } = screenToWorld(e.clientX, e.clientY);
-
-      // ✅ DEBUG: what we are sending (dx/dy/dist in WORLD units)
-      const dx = x - m.x;
-      const dy = y - m.y;
-      const dist = Math.hypot(dx, dy);
-
-      const now = performance.now();
-      if (now - lastSendLogAtRef.current > 150) {
-        lastSendLogAtRef.current = now;
-        console.log(
-          `[CLIENT moveTo SEND] dx=${dx.toFixed(1)} dy=${dy.toFixed(
-            1
-          )} dist=${dist.toFixed(1)}`
-        );
-      }
 
       socket.emit("player:moveTo", { x: Number(x), y: Number(y) });
     };
@@ -299,9 +329,7 @@ export default function PlayerRenderer({
                   : "none",
               }}
             >
-              {hovered && (
-                <div style={nameLabelStyle}>{getDisplayName(id, p)}</div>
-              )}
+              {hovered && <div style={nameLabelStyle}>{getDisplayName(id, p)}</div>}
 
               <div
                 style={{
@@ -330,7 +358,7 @@ export default function PlayerRenderer({
           );
         })}
 
-      {/* LOCAL PLAYER (ALWAYS CENTERED) */}
+      {/* LOCAL PLAYER */}
       <div
         onMouseEnter={() => setHoverId(myId)}
         onMouseLeave={() => setHoverId((cur) => (cur === myId ? null : cur))}
@@ -366,8 +394,12 @@ export default function PlayerRenderer({
             src={mySpriteSrc}
             alt="My ship"
             draggable={false}
+            onLoad={onMySpriteLoad}
             onError={(e) => {
               console.error("Sprite failed to load:", mySpriteSrc);
+              if (worldBoot?.active && bootApi) {
+                bootApi.error("ready", `Sprite failed: ${mySpriteSrc}`);
+              }
               e.currentTarget.style.outline = "2px solid red";
             }}
             style={{

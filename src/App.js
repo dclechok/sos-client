@@ -1,6 +1,6 @@
 // App.js
 import "./styles/App.css";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 
 import DisplayCheck from "./DisplayCheck";
 import Spinner from "./Spinner";
@@ -12,46 +12,43 @@ import CharacterSelection from "./CharacterSelection";
 import LogoutButton from "./LogoutButton";
 
 import { loadStoredSession, verifyToken } from "./utils/session";
-
 import { useGameSocket } from "./hooks/useGameSocket";
+
 import MainViewport from "./MainViewport";
 import ChatMenu from "./ChatMenu";
 import PlayerRenderer from "./PlayerRenderer";
 
+import { useWorldBoot } from "./hooks/useWorldBoot";
+import WorldBootOverlay from "./WorldBootOverlay";
+
 function useWindowSize() {
   const [size, setSize] = useState({ width: 0, height: 0 });
-
   useEffect(() => {
     const handler = () => setSize({ width: window.innerWidth, height: window.innerHeight });
     handler();
     window.addEventListener("resize", handler);
     return () => window.removeEventListener("resize", handler);
   }, []);
-
   return size;
 }
 
-function App() {
-  const [account, setAccount] = useState(undefined); // undefined = loading
-  const [character, setCharacter] = useState(undefined); // undefined = loading
+export default function App() {
+  const [account, setAccount] = useState(undefined);
+  const [character, setCharacter] = useState(undefined);
 
   useButtonClickSound();
   const { width, height } = useWindowSize();
 
-  const {
-    socket,
-    isReady,
-    worldSeed,
-    myId,
-    players,
-    me,
-    identify,
-  } = useGameSocket();
+  const { socket, isReady, worldSeed, myId, players, me, identify } = useGameSocket();
+
+  const canvasRef = useRef(null);
+
+  const bootSteps = useMemo(() => ["snapshot", "stars", "nebula", "dust", "ready"], []);
+  const worldBoot = useWorldBoot(bootSteps);
 
   useEffect(() => {
     async function init() {
       const { account: storedAccount, character: storedChar } = loadStoredSession();
-
       if (!storedAccount?.token) {
         setAccount(null);
         setCharacter(null);
@@ -59,7 +56,6 @@ function App() {
       }
 
       const valid = await verifyToken(storedAccount.token);
-
       if (!valid) {
         localStorage.removeItem("pd_token");
         localStorage.removeItem("pd_account");
@@ -72,25 +68,42 @@ function App() {
       setAccount(valid);
       setCharacter(storedChar || null);
     }
-
     init();
   }, []);
 
-  // Identify after socket connected AND character actually selected (not undefined, not null)
+  // Identify after socket connected AND character selected
   useEffect(() => {
     if (!isReady) return;
-    if (!character) return; // skips undefined + null
+    if (!character) return;
 
     const characterId = character._id || character.id;
     if (!characterId) return;
 
     identify(characterId);
-
   }, [isReady, character, identify]);
+
+  // Start boot immediately when character is chosen (overlay first)
+  useEffect(() => {
+    const hasPickedCharacter = character && character !== null;
+
+    if (!hasPickedCharacter) {
+      worldBoot.api.end();
+      worldBoot.api.reset();
+      return;
+    }
+
+    worldBoot.api.reset();
+    worldBoot.api.begin();
+
+    worldBoot.api.start("snapshot", "Waiting for server…");
+    worldBoot.api.start("stars", "Preparing starfield…");
+    worldBoot.api.start("nebula", "Baking nebula…");
+    worldBoot.api.start("dust", "Spawning dust…");
+    worldBoot.api.start("ready", "Loading ship sprite…");
+  }, [character]); // intentionally NOT dependent on isReady/worldSeed
 
   if (width === 0 || height === 0) return <Spinner />;
   if (width < 800 || height < 500) return <DisplayCheck />;
-
   if (account === null) return <Login setAccount={setAccount} />;
 
   if (character === null) {
@@ -109,22 +122,42 @@ function App() {
     );
   }
 
+  const bootActive = worldBoot.active;
+
+  // ✅ Only start renderer once socket + seed are ready
+  const canMountWorld = bootActive && isReady && Number.isFinite(worldSeed);
+
   return (
     <div className="App" onContextMenu={(e) => e.preventDefault()}>
       <LogoutButton setAccount={setAccount} setCharacter={setCharacter} />
       <NavBar account={account} />
 
-      <MainViewport
-        worldSeed={worldSeed}
-        cameraX={me?.x ?? 0}
-        cameraY={me?.y ?? 0}
-      />
+      <WorldBootOverlay worldBoot={worldBoot} />
 
-      <PlayerRenderer socket={socket} myId={myId} players={players} />
+      {canMountWorld && (
+        <MainViewport
+          canvasRef={canvasRef}
+          worldSeed={worldSeed}
+          cameraX={me?.x ?? 0}
+          cameraY={me?.y ?? 0}
+          worldBoot={worldBoot}
+          bootApi={worldBoot.api}
+        />
+      )}
 
-      <ChatMenu character={character} />
+      {canMountWorld && (
+        <PlayerRenderer
+          socket={socket}
+          myId={myId}
+          players={players}
+          canvasRef={canvasRef}
+          worldBoot={worldBoot}
+          bootApi={worldBoot.api}
+          // ✅ remove isVisible gating for now
+        />
+      )}
+
+      {worldBoot.ready && <ChatMenu character={character} />}
     </div>
   );
 }
-
-export default App;
