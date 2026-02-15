@@ -1,5 +1,5 @@
 // usePlayerInput.js
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 export function usePlayerInput({
   enabled,
@@ -7,25 +7,27 @@ export function usePlayerInput({
   screenToWorld,
   onMoveTo,
 
-  // NEW:
-  getMyPos, // () => ({x,y})
-  onFacingChange, // (dir: "left" | "right") => void
+  getMyPos,        // () => ({x,y})
+  onFacingChange,  // (dir: "left" | "right") => void
 }) {
   const rightDownRef = useRef(false);
-  const mouseRef = useRef({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+  const mouseRef = useRef({ x: 0, y: 0 });
   const facingRef = useRef("right");
 
-  const setFacingFromWorldX = (worldX) => {
-    if (!getMyPos) return;
-    const me = getMyPos();
-    if (!me || !Number.isFinite(me.x)) return;
+  const setFacingFromWorldX = useCallback(
+    (worldX) => {
+      if (!getMyPos) return;
+      const me = getMyPos();
+      if (!me || !Number.isFinite(me.x)) return;
 
-    const dir = worldX < me.x ? "left" : "right";
-    if (dir !== facingRef.current) {
-      facingRef.current = dir;
-      onFacingChange?.(dir);
-    }
-  };
+      const dir = worldX < me.x ? "left" : "right";
+      if (dir !== facingRef.current) {
+        facingRef.current = dir;
+        onFacingChange?.(dir);
+      }
+    },
+    [getMyPos, onFacingChange]
+  );
 
   useEffect(() => {
     if (!enabled) return;
@@ -44,9 +46,7 @@ export function usePlayerInput({
 
       const { x, y } = screenToWorld(e.clientX, e.clientY);
 
-      // NEW: update facing based on click
       setFacingFromWorldX(Number(x));
-
       onMoveTo({ x: Number(x), y: Number(y) });
     };
 
@@ -66,7 +66,7 @@ export function usePlayerInput({
       window.removeEventListener("mousedown", onMouseDown);
       window.removeEventListener("mouseup", onMouseUp);
     };
-  }, [enabled, screenToWorld, onMoveTo, getMyPos, onFacingChange]);
+  }, [enabled, screenToWorld, onMoveTo, setFacingFromWorldX]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -78,7 +78,7 @@ export function usePlayerInput({
 
       const { x, y } = screenToWorld(mouseRef.current.x, mouseRef.current.y);
 
-      // optional: continuously face toward cursor while holding
+      // face toward cursor while holding (optional)
       setFacingFromWorldX(Number(x));
 
       onMoveTo({ x: Number(x), y: Number(y) });
@@ -86,7 +86,7 @@ export function usePlayerInput({
 
     const id = setInterval(tick, intervalMs);
     return () => clearInterval(id);
-  }, [enabled, sendRateHz, screenToWorld, onMoveTo, getMyPos, onFacingChange]);
+  }, [enabled, sendRateHz, screenToWorld, onMoveTo, setFacingFromWorldX]);
 
   return { rightDownRef, mouseRef };
 }
