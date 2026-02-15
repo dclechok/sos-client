@@ -1,6 +1,6 @@
 // App.js
 import "./styles/App.css";
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef } from "react";
 
 import DisplayCheck from "./DisplayCheck";
 import Spinner from "./Spinner";
@@ -18,11 +18,7 @@ import MainViewport from "./MainViewport";
 import ChatMenu from "./ChatMenu";
 
 // ✅ UPDATED import for the split PlayerRenderer
-// If you placed the new files at: src/render/players/PlayerRenderer.jsx
 import PlayerRenderer from "./render/players/PlayerRenderer";
-
-import { useWorldBoot } from "./hooks/useWorldBoot";
-import WorldBootOverlay from "./WorldBootOverlay";
 
 function useWindowSize() {
   const [size, setSize] = useState({ width: 0, height: 0 });
@@ -48,14 +44,24 @@ export default function App() {
 
   const canvasRef = useRef(null);
 
-  const bootSteps = useMemo(
-    () => ["snapshot", "stars", "nebula", "dust", "ready"],
-    []
-  );
-  const worldBoot = useWorldBoot(bootSteps);
+  const camStableRef = useRef({ x: 0, y: 0 });
+  const rawX =
+    typeof me?.x === "number" ? me.x : (camStableRef.current.x ?? 0);
+  const rawY =
+    typeof me?.y === "number" ? me.y : (camStableRef.current.y ?? 0);
 
-  // ✅ FIX: bind api once so useEffect deps are correct and stable
-  const bootApi = worldBoot?.api;
+  // tweak: 0.25–1.0 typical
+  const EPS = 0.35;
+
+  const cameraX =
+    Math.abs(rawX - camStableRef.current.x) < EPS
+      ? camStableRef.current.x
+      : (camStableRef.current.x = rawX);
+
+  const cameraY =
+    Math.abs(rawY - camStableRef.current.y) < EPS
+      ? camStableRef.current.y
+      : (camStableRef.current.y = rawY);
 
   useEffect(() => {
     async function init() {
@@ -95,29 +101,6 @@ export default function App() {
     identify(characterId);
   }, [isReady, character, identify]);
 
-  // Start boot immediately when character is chosen (overlay first)
-  useEffect(() => {
-    const hasPickedCharacter = character && character !== null;
-
-    // If bootApi isn't ready yet, do nothing (prevents undefined access)
-    if (!bootApi) return;
-
-    if (!hasPickedCharacter) {
-      bootApi.end();
-      bootApi.reset();
-      return;
-    }
-
-    bootApi.reset();
-    bootApi.begin();
-
-    bootApi.start("snapshot", "Waiting for server…");
-    bootApi.start("stars", "Preparing starfield…");
-    bootApi.start("nebula", "Baking nebula…");
-    bootApi.start("dust", "Spawning dust…");
-    bootApi.start("ready", "Loading ship sprite…");
-  }, [character, bootApi]); // ✅ fixes exhaustive-deps
-
   if (width === 0 || height === 0) return <Spinner />;
   if (width < 800 || height < 500) return <DisplayCheck />;
   if (account === null) return <Login setAccount={setAccount} />;
@@ -138,26 +121,22 @@ export default function App() {
     );
   }
 
-  const bootActive = worldBoot.active;
-
-  // ✅ Only mount world once socket + seed are ready
-  const canMountWorld = bootActive && isReady && Number.isFinite(worldSeed);
+  // ✅ Only mount world once socket + seed are ready (DO NOT gate on bootActive)
+  const hasPickedCharacter = character && character !== null;
+  const canMountWorld =
+    hasPickedCharacter && isReady && Number.isFinite(worldSeed);
 
   return (
     <div className="App" onContextMenu={(e) => e.preventDefault()}>
       <LogoutButton setAccount={setAccount} setCharacter={setCharacter} />
       <NavBar account={account} />
 
-      <WorldBootOverlay worldBoot={worldBoot} />
-
       {canMountWorld && (
         <MainViewport
           canvasRef={canvasRef}
           worldSeed={worldSeed}
-          cameraX={me?.x ?? 0}
-          cameraY={me?.y ?? 0}
-          worldBoot={worldBoot}
-          bootApi={bootApi} // ✅ use bootApi
+          cameraX={cameraX}
+          cameraY={cameraY}
         />
       )}
 
@@ -167,12 +146,10 @@ export default function App() {
           myId={myId}
           players={players}
           canvasRef={canvasRef}
-          worldBoot={worldBoot}
-          bootApi={bootApi} // ✅ use bootApi
         />
       )}
 
-      {worldBoot.ready && <ChatMenu character={character} />}
+      {<ChatMenu character={character} />}
     </div>
   );
 }

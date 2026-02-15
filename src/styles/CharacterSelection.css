@@ -1,88 +1,190 @@
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&display=swap');
+/* ================================
+   FANTASY RPG RESKIN (PARChMENT + IRON + TORCHLIGHT)
+   ================================ */
 
-.char-wrapper {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-  font-family: "Orbitron", sans-serif;
-  font-optical-sizing: auto;
-  font-weight: 300;
-  font-style: normal;
+/* Fonts: readable serif + fantasy display */
+@import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=IM+Fell+English:ital@0;1&display=swap");
+
+:root{
+  --bg-0: #0b0a07;              /* deep tavern dark */
+  --bg-1: #14120d;              /* panel shadow */
+  --ink: #2b2115;               /* ink text */
+  --parchment: #f3e6c6;         /* parchment */
+  --parchment-2:#ead9b3;        /* warmer parchment */
+  --wax: #7a1d1b;               /* seal red */
+  --gold: #c2a35a;              /* gilt */
+  --iron: #4a453b;              /* iron trim */
+  --iron-2:#2e2b23;             /* dark iron */
+  --ember: rgba(255, 170, 80, .45);
+  --glow: rgba(255, 210, 140, .18);
+}
+
+/* Optional: a subtle "torchlight" background for the whole page */
+body{
+  background:
+    radial-gradient(900px 500px at 50% 10%, rgba(255, 190, 110, .10), transparent 55%),
+    radial-gradient(700px 480px at 20% 65%, rgba(255, 170, 80, .07), transparent 60%),
+    radial-gradient(900px 700px at 80% 70%, rgba(180, 150, 90, .05), transparent 60%),
+    linear-gradient(180deg, #070604 0%, var(--bg-0) 45%, #060503 100%);
+  color: var(--parchment);
+}
+
+/* ================================
+   CHARACTER SELECT (Fantasy)
+   ================================ */
+
+.char-wrapper{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:flex-start;
   margin-top: 8vh;
+
+  font-family: "IM Fell English", serif;
+  letter-spacing: .3px;
 }
 
-.char-title {
-  font-size: 24px;
-  margin-bottom: 20px;
-  color: white;
-  text-align: center;
+.char-title{
+  font-family: "Cinzel", serif;
+  font-weight: 700;
+  font-size: 26px;
+  color: var(--parchment);
+  text-align:center;
+  margin-bottom: 18px;
+
+  text-shadow:
+    0 2px 0 rgba(0,0,0,.45),
+    0 0 18px rgba(255,200,120,.10);
 }
 
-.char-cont {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-width: 400px;
-  padding: 20px;
+.char-cont{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  min-width: 420px;
+  padding: 18px;
 }
 
-.chars {
-  display: flex;
-  flex-direction: column;
-  text-align: center;
-  background-color: transparent;
-  width: 350px;
-  padding: 20px 0;
+/* Parchment panel behind the list */
+.chars{
+  width: 360px;
+  padding: 16px 14px;
+  display:flex;
+  flex-direction:column;
   gap: 10px;
+  text-align:center;
+
+  background:
+    radial-gradient(1200px 320px at 50% 0%, rgba(255,255,255,.14), transparent 55%),
+    linear-gradient(180deg, var(--parchment) 0%, var(--parchment-2) 100%);
+
+  border-radius: 10px;
+
+  /* "torn paper" illusion via layered shadows */
+  box-shadow:
+    0 18px 50px rgba(0,0,0,.55),
+    0 0 0 1px rgba(0,0,0,.35),
+    inset 0 0 0 2px rgba(255,255,255,.18),
+    inset 0 -16px 40px rgba(70,50,20,.20);
+
+  position: relative;
 }
 
-/* 🔥 Purple cyberpunk vessel slots */
-.chars > div {
-  background-color: rgb(2, 2, 8);
-  padding: 12px 0;
-  display: block;
-  width: 100%;
+/* Decorative corner studs */
+.chars::before,
+.chars::after{
+  content:"";
+  position:absolute;
+  inset: 8px;
+  border-radius: 8px;
+  pointer-events:none;
+  border: 1px dashed rgba(50,35,15,.22);
+}
+.chars::after{
+  inset: 14px;
+  border: 1px solid rgba(80,60,25,.16);
+}
 
-  /* 🔮 Purple neon border */
-  border: 1px solid rgb(81, 89, 207);
+/* Individual character rows = "ledger entries" */
+.chars > div{
+  position: relative;
+  padding: 12px 10px;
+  border-radius: 9px;
 
-  /* Text color */
-  color: rgb(190, 185, 255);
+  color: var(--ink);
   font-size: 18px;
-  letter-spacing: 1px;
 
-  /* Purple glow */
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.45), rgba(255,255,255,.08)),
+    linear-gradient(90deg, rgba(0,0,0,.06), transparent 35%, rgba(0,0,0,.06));
+
+  border: 1px solid rgba(70,50,20,.25);
+
   box-shadow:
-    0 0 6px rgba(81, 89, 207, 0.45),
-    inset 0 0 6px rgba(81, 89, 207, 0.25);
+    0 2px 0 rgba(0,0,0,.18),
+    inset 0 1px 0 rgba(255,255,255,.25);
 
   transition:
-    transform 0.15s ease,
-    box-shadow 0.2s ease,
-    background-color 0.2s ease,
-    color 0.2s ease;
+    transform .14s ease,
+    box-shadow .22s ease,
+    filter .22s ease;
 }
 
-/* 🚀 Hover — brighter holographic purple */
-.chars > div:hover {
-  transform: scale(1.03);
-  background-color: rgba(20, 15, 40, 0.8);
-
-  box-shadow:
-    0 0 12px rgba(81, 89, 207, 0.7),
-    0 0 24px rgba(81, 89, 207, 0.5),
-    inset 0 0 10px rgba(81, 89, 207, 0.35);
-
-  color: white;
+/* Left "gilt" stripe like a bookmark */
+.chars > div::before{
+  content:"";
+  position:absolute;
+  left: 10px;
+  top: 10px;
+  bottom: 10px;
+  width: 4px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, rgba(220,180,90,.95), rgba(140,105,45,.9));
+  box-shadow: 0 0 0 1px rgba(40,25,8,.35);
+  opacity: .55;
 }
 
-/* 🧬 Selected Vessel */
-.chars > div.selected {
-  background-color: rgba(81, 89, 207, 0.12);
+/* Hover = enchanted warmth */
+.chars > div:hover{
+  transform: translateY(-1px) scale(1.01);
   box-shadow:
-    0 0 22px rgba(81, 89, 207, 0.85),
-    inset 0 0 14px rgba(81, 89, 207, 0.45);
-  transform: scale(1.06);
-  color: #fff;
+    0 10px 22px rgba(0,0,0,.28),
+    0 0 18px rgba(255,190,110,.14),
+    inset 0 1px 0 rgba(255,255,255,.28);
+
+  filter: saturate(1.05);
+}
+
+/* Selected = wax seal + glow */
+.chars > div.selected{
+  transform: translateY(-2px) scale(1.02);
+  border-color: rgba(160,120,55,.55);
+
+  box-shadow:
+    0 14px 30px rgba(0,0,0,.34),
+    0 0 24px rgba(255,190,110,.22),
+    inset 0 1px 0 rgba(255,255,255,.30);
+
+  background:
+    radial-gradient(420px 140px at 50% 0%, rgba(255,220,160,.35), transparent 60%),
+    linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,.10)),
+    linear-gradient(90deg, rgba(0,0,0,.06), transparent 35%, rgba(0,0,0,.06));
+}
+
+/* little "seal" dot on selected */
+.chars > div.selected::after{
+  content:"";
+  position:absolute;
+  right: 12px;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  margin-top: -7px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.35), transparent 40%),
+              radial-gradient(circle at 60% 60%, rgba(0,0,0,.25), transparent 55%),
+              linear-gradient(180deg, #a42a23, var(--wax));
+  box-shadow:
+    0 0 0 1px rgba(30,15,10,.55),
+    0 0 14px rgba(255,180,120,.18);
 }

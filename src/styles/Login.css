@@ -1,108 +1,278 @@
-@import url('https://fonts.googleapis.com/css2?family=Jersey+10&family=Orbitron:wght@300;400;700&display=swap');
+/* ================================
+   FONT IMPORTS (must be first line)
+   ================================ */
 
-/* LOGIN CONTAINER */
+@import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=IM+Fell+English&display=swap');
+
+
+/* ================================
+   LOGIN BOX (Fantasy)
+   ================================ */
+
+.login-box{
+  font-family: "IM Fell English", serif;
+  text-align:center;
+  position: relative;
+
+  margin: 5% 18% 0 18%;
+  padding: 30px 26px;
+  min-height: 320px;
+
+  color: var(--ink);
+
+  background:
+    radial-gradient(900px 220px at 50% 0%, rgba(255,255,255,.18), transparent 60%),
+    linear-gradient(180deg, var(--parchment) 0%, var(--parchment-2) 100%);
+
+  border-radius: 12px;
+  border: 1px solid rgba(60,40,15,.40);
+
+  box-shadow:
+    0 24px 70px rgba(0,0,0,.55),
+    0 0 0 6px rgba(20,15,10,.30),
+    inset 0 0 0 2px rgba(255,255,255,.18),
+    inset 0 -20px 40px rgba(70,50,20,.20);
+
+  letter-spacing: .6px;
+}
+
+/* ================================
+   GAME TITLE — SHARDS OF SELF
+   ================================ */
+
+.game-title{
+  font-family: "Cinzel Decorative", serif;
+  font-weight: 900;
+  font-size: 56px;
+  letter-spacing: 3px;
+  margin-bottom: 18px;
+
+  color: #1a120c;
+
+  text-shadow:
+    0 1px 0 rgba(255,255,255,.18),
+    0 3px 8px rgba(0,0,0,.55),
+    0 0 18px rgba(40,20,5,.35);
+
+  position: relative;
+}
+
+/* rune underline */
+.game-title::after{
+  content:"";
+  display:block;
+  margin: 12px auto 0 auto;
+  width: 160px;
+  height: 2px;
+
+  background:
+    linear-gradient(90deg,
+      transparent,
+      rgba(120,80,25,.6),
+      rgba(200,160,80,.8),
+      rgba(120,80,25,.6),
+      transparent
+    );
+
+  box-shadow: 0 0 10px rgba(200,160,80,.25);
+  opacity:.8;
+}
+
+/* ================================
+   SIGIL WATERMARK
+   ================================ */
+
+.login-box::before{
+  content:"";
+  position:absolute;
+  inset: 18px;
+  border-radius: 10px;
+  pointer-events:none;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(120,80,25,.10), transparent 55%),
+    conic-gradient(from 180deg,
+      rgba(120,80,25,.08),
+      transparent 18%,
+      rgba(120,80,25,.08) 36%,
+      transparent 54%,
+      rgba(120,80,25,.08) 72%,
+      transparent 90%,
+      rgba(120,80,25,.08)
+    );
+  opacity: .35;
+  filter: blur(.2px);
+}
+
+/* ================================
+   HEADINGS
+   ================================ */
+
+.login-box h1,
+.login-box h2{
+  font-family: "Cinzel Decorative", serif;
+  letter-spacing: 1px;
+  margin: 0 0 10px 0;
+  color: #2a1e12;
+  text-shadow: 0 1px 0 rgba(255,255,255,.25);
+}
+
+/* ================================
+   INPUTS
+   ================================ */
+
+.login-box input{
+  width: 72%;
+  margin-top: 10px;
+  margin-bottom: 16px;
+  padding: 11px 12px;
+
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,.10));
+  border: 1px solid rgba(70,50,20,.35);
+  border-radius: 10px;
+
+  color: #251a10;
+  font-family: "IM Fell English", serif;
+  font-size: 16px;
+
+  box-shadow:
+    inset 0 2px 6px rgba(0,0,0,.12),
+    inset 0 1px 0 rgba(255,255,255,.25);
+
+  transition:
+    box-shadow .2s ease,
+    transform .12s ease,
+    border-color .2s ease;
+}
+
+.login-box input:focus{
+  outline:none;
+  border-color: rgba(170,125,60,.65);
+  box-shadow:
+    0 0 0 3px rgba(255,190,110,.20),
+    inset 0 2px 6px rgba(0,0,0,.12),
+    inset 0 1px 0 rgba(255,255,255,.25);
+  transform: translateY(-1px);
+}
+
+/* ================================
+   BUTTON
+   ================================ */
+
+.login-box button{
+  border: 1px solid rgba(70,50,20,.55);
+  border-radius: 12px;
+
+  padding: 10px 26px;
+  margin-top: 10px;
+  margin-bottom: 18px;
+
+  cursor:pointer;
+
+  font-family: "Cinzel Decorative", serif;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 1.2px;
+
+  color: #2a1e12;
+
+  background:
+    radial-gradient(180px 80px at 40% 20%, rgba(255,255,255,.35), transparent 55%),
+    linear-gradient(180deg, rgba(220,180,90,.95), rgba(140,105,45,.95));
+
+  box-shadow:
+    0 10px 18px rgba(0,0,0,.28),
+    inset 0 1px 0 rgba(255,255,255,.30),
+    inset 0 -6px 14px rgba(60,40,15,.22);
+
+  transition:
+    transform .12s ease,
+    box-shadow .2s ease,
+    filter .2s ease;
+}
+
+.login-box button:hover{
+  transform: translateY(-1px) scale(1.02);
+  filter: saturate(1.06);
+}
+
+.login-box button:active{
+  transform: translateY(0px) scale(.99);
+}
+
+/* ================================
+   DISCORD ICON
+   ================================ */
+
+.login-box img{
+  width: 42px;
+  margin-top: 10px;
+
+  filter: saturate(.85) contrast(1.05);
+  transition: transform .15s ease, filter .2s ease;
+}
+
+.login-box img:hover{
+  transform: scale(1.07);
+  filter:
+    drop-shadow(0 0 10px rgba(255,190,110,.22))
+    saturate(1) contrast(1.1);
+}
+
+/* ================================
+   PAGE + WALLPAPER
+   ================================ */
+
+.login-page {
+  min-height: 100vh;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 5vh;
+  overflow: hidden;
+}
+
+.login-wallpaper {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+
+  filter: brightness(0.75) saturate(1.05);
+  transform: translateZ(0);
+}
+
+/* ================================
+   DARK VIGNETTE OVER VIEWPORT
+   ================================ */
+
+.login-page::after{
+  content:"";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+
+  /* layered vignette for depth */
+  background:
+    radial-gradient(
+      ellipse at center,
+      rgba(0,0,0,0) 45%,
+      rgba(0,0,0,.25) 65%,
+      rgba(0,0,0,.55) 82%,
+      rgba(0,0,0,.85) 100%
+    );
+
+  /* subtle extra darkness at top for title drama */
+  box-shadow:
+    inset 0 140px 180px rgba(0,0,0,.55),
+    inset 0 -120px 180px rgba(0,0,0,.45);
+}
+
 .login-box {
-    font-family: "Jersey 10", sans-serif;
-    text-align: center;
-    position: relative;
-    margin: 5% 20% 0 20%;
-    padding: 30px;
-    min-height: 300px;
-
-    background-color: rgb(2, 2, 8);
-    color: rgb(220, 215, 255); /* slight purple tint */
-
-    border: 2px solid rgba(81, 89, 207, 0.35);
-    box-shadow:
-        0 0 10px rgba(81, 89, 207, 0.35),
-        inset 0 0 14px rgba(81, 89, 207, 0.25);
-
-    letter-spacing: 2px;
-    border-radius: 4px;
-}
-
-/* INPUTS — purple neon bars */
-.login-box input {
-    width: 70%;
-    margin-top: 8px;
-    margin-bottom: 16px;
-    padding: 10px 12px;
-
-    background-color: rgb(10, 10, 18);
-    border: 1px solid rgb(81, 89, 207);
-
-    color: rgb(190, 185, 255);
-    font-family: "Orbitron", sans-serif;
-    font-weight: 300;
-    font-size: 15px;
-    letter-spacing: 1px;
-
-    box-shadow:
-        0 0 6px rgba(81, 89, 207, 0.35),
-        inset 0 0 6px rgba(81, 89, 207, 0.2);
-
-    transition: box-shadow 0.2s ease, background-color 0.2s ease;
-}
-
-.login-box input:focus {
-    outline: none;
-    background-color: rgb(5, 5, 15);
-
-    box-shadow:
-        0 0 12px rgba(81, 89, 207, 0.65),
-        inset 0 0 10px rgba(81, 89, 207, 0.35);
-}
-
-/* LOGIN BUTTON */
-.login-box button {
-    background-color: rgb(5, 10, 18);
-    border: 1px solid rgb(81, 89, 207);
-
-    color: rgb(220, 215, 255);
-    font-family: "Orbitron", sans-serif;
-    font-weight: 300;
-    font-size: 16px;
-    letter-spacing: 1px;
-
-    padding: 8px 24px;
-    margin-top: 10px;
-    margin-bottom: 20px;
-
-    cursor: pointer;
-
-    box-shadow:
-        0 0 6px rgba(81, 89, 207, 0.4),
-        inset 0 0 4px rgba(81, 89, 207, 0.25);
-
-    transition:
-        background-color 0.2s ease,
-        box-shadow 0.25s ease,
-        transform 0.1s ease;
-}
-
-.login-box button:hover {
-    background-color: rgb(8, 8, 20);
-    transform: scale(1.03);
-
-    box-shadow:
-        0 0 14px rgba(81, 89, 207, 0.7),
-        0 0 26px rgba(81, 89, 207, 0.45),
-        inset 0 0 10px rgba(81, 89, 207, 0.3);
-
-    color: #fff;
-}
-
-/* DISCORD ICON */
-.login-box img {
-    width: 40px;
-    margin-top: 8px;
-
-    transition:
-        transform 0.15s ease,
-        filter 0.2s ease;
-}
-
-.login-box img:hover {
-    transform: scale(1.08);
-    filter: drop-shadow(0 0 6px rgba(81, 89, 207, 0.6));
+  z-index: 1;
 }

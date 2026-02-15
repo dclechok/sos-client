@@ -1,25 +1,19 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 
 /**
- * Remote smoothing (production style):
+ * Remote smoothing (no rotation):
  * - History buffer per player
  * - Interpolate at (now - interpDelayMs)
- * - If renderTime newer than newest sample:
- *     short CLAMPED extrapolation using estimated velocity
+ * - Optional short extrapolation using estimated velocity
  *
  * Exposes:
- * - remoteIds: list of remote player IDs
- * - getRenderState(id): latest smoothed pose {x,y,a}
- *
- * NOTE:
- * We keep a tiny RAF "frame tick" state so React re-renders and the DOM
- * receives updated transforms, while the heavy data stays in refs.
+ * - remoteIds
+ * - getRenderState(id): {x, y, facing}
  */
 export function useRemoteInterpolation({ players, myId, interpDelayMs = 120 }) {
-  const historyRef = useRef(new Map()); // id -> [{t,x,y,a},...]
-  const renderRef = useRef({}); // id -> {x,y,a}
+  const historyRef = useRef(new Map()); // id -> [{t,x,y,facing},...]
+  const renderRef = useRef({}); // id -> {x,y,facing}
 
-  // Tiny state just to trigger component re-render each RAF
   const [, setFrame] = useState(0);
 
   const remoteIds = useMemo(() => {
@@ -32,7 +26,6 @@ export function useRemoteInterpolation({ players, myId, interpDelayMs = 120 }) {
       (Number.isFinite(p?.ts) && p.ts) ||
       (Number.isFinite(p?.t) && p.t) ||
       (Number.isFinite(p?.serverTime) && p.serverTime);
-
     return Number.isFinite(t) ? Number(t) : Date.now();
   };
 
@@ -56,8 +49,14 @@ export function useRemoteInterpolation({ players, myId, interpDelayMs = 120 }) {
           t,
           x: Number(p.x || 0),
           y: Number(p.y || 0),
-          a: Number(p.angle || 0),
+          // keep as last-known discrete value
+          facing: p?.facing === "left" ? "left" : "right",
         });
+      } else if (buf.length) {
+        // If position sample isn't newer, still allow facing to update
+        const last = buf[buf.length - 1];
+        const f = p?.facing === "left" ? "left" : "right";
+        if (f !== last.facing) last.facing = f;
       }
 
       // Keep ~2s of history
@@ -75,18 +74,10 @@ export function useRemoteInterpolation({ players, myId, interpDelayMs = 120 }) {
 
   const lerp = (a, b, t) => a + (b - a) * t;
 
-  const lerpAngle = (a, b, t) => {
-    let d = b - a;
-    while (d > Math.PI) d -= Math.PI * 2;
-    while (d < -Math.PI) d += Math.PI * 2;
-    return a + d * t;
-  };
-
   // RAF interpolation/extrapolation loop
   useEffect(() => {
     let raf = 0;
-
-    const MAX_EXTRAP_MS = 140; // keep small to avoid rubberband
+    const MAX_EXTRAP_MS = 140;
 
     const tick = () => {
       const now = Date.now();
@@ -98,7 +89,6 @@ export function useRemoteInterpolation({ players, myId, interpDelayMs = 120 }) {
       for (const [id, buf] of hist.entries()) {
         if (!buf || buf.length === 0) continue;
 
-        // Find bracketing samples
         let s0 = null;
         let s1 = null;
 
@@ -111,14 +101,12 @@ export function useRemoteInterpolation({ players, myId, interpDelayMs = 120 }) {
         }
 
         if (!s0) {
-          // renderTime older than oldest => use oldest
           const s = buf[0];
-          out[id] = { x: s.x, y: s.y, a: s.a };
+          out[id] = { x: s.x, y: s.y, facing: s.facing || "right" };
           continue;
         }
 
         if (s1) {
-          // Interpolate
           const dt = s1.t - s0.t;
           const alpha =
             dt > 0 ? Math.min(1, Math.max(0, (renderTime - s0.t) / dt)) : 0;
@@ -126,12 +114,13 @@ export function useRemoteInterpolation({ players, myId, interpDelayMs = 120 }) {
           out[id] = {
             x: lerp(s0.x, s1.x, alpha),
             y: lerp(s0.y, s1.y, alpha),
-            a: lerpAngle(s0.a, s1.a, alpha),
+            // discrete: choose the nearer/next sample's facing
+            facing: alpha < 0.5 ? (s0.facing || "right") : (s1.facing || "right"),
           };
           continue;
         }
 
-        // No s1 => renderTime newer than newest sample
+        // Extrapolate position (hold facing)
         const newest = buf[buf.length - 1];
 
         if (buf.length >= 2) {
@@ -146,27 +135,23 @@ export function useRemoteInterpolation({ players, myId, interpDelayMs = 120 }) {
               MAX_EXTRAP_MS,
               Math.max(0, renderTime - newest.t)
             );
+
             const extraS = extraMs / 1000;
 
             out[id] = {
               x: newest.x + vx * extraS,
               y: newest.y + vy * extraS,
-              a: newest.a, // keep last angle (looks better than extrapolating)
+              facing: newest.facing || "right",
             };
             continue;
           }
         }
 
-        // fallback: hold last
-        out[id] = { x: newest.x, y: newest.y, a: newest.a };
+        out[id] = { x: newest.x, y: newest.y, facing: newest.facing || "right" };
       }
 
-      // Store latest smoothed poses in ref
       renderRef.current = out;
-
-      // Trigger a cheap re-render so PlayerRenderer reads fresh ref
       setFrame((f) => (f + 1) & 1023);
-
       raf = requestAnimationFrame(tick);
     };
 
@@ -174,7 +159,6 @@ export function useRemoteInterpolation({ players, myId, interpDelayMs = 120 }) {
     return () => cancelAnimationFrame(raf);
   }, [interpDelayMs]);
 
-  // ✅ stable getter
   const getRenderState = useCallback((id) => renderRef.current?.[id], []);
 
   return { remoteIds, getRenderState };

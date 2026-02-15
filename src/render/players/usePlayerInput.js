@@ -1,32 +1,32 @@
+// usePlayerInput.js
 import { useEffect, useRef } from "react";
 
-/**
- * Handles right-click drag-to-move input.
- * Owns:
- * - mouse position tracking
- * - right button state
- * - context menu prevent
- * - sendRateHz interval while holding right click
- *
- * You pass:
- * - enabled: boolean
- * - sendRateHz: number
- * - screenToWorld(clientX, clientY) -> {x,y}
- * - onMoveTo({x,y}) -> void (e.g. socket.emit)
- */
 export function usePlayerInput({
   enabled,
   sendRateHz = 20,
   screenToWorld,
   onMoveTo,
+
+  // NEW:
+  getMyPos, // () => ({x,y})
+  onFacingChange, // (dir: "left" | "right") => void
 }) {
   const rightDownRef = useRef(false);
-  const mouseRef = useRef({
-    x: window.innerWidth / 2,
-    y: window.innerHeight / 2,
-  });
+  const mouseRef = useRef({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+  const facingRef = useRef("right");
 
-  // Mouse listeners (move + right down/up + context menu)
+  const setFacingFromWorldX = (worldX) => {
+    if (!getMyPos) return;
+    const me = getMyPos();
+    if (!me || !Number.isFinite(me.x)) return;
+
+    const dir = worldX < me.x ? "left" : "right";
+    if (dir !== facingRef.current) {
+      facingRef.current = dir;
+      onFacingChange?.(dir);
+    }
+  };
+
   useEffect(() => {
     if (!enabled) return;
 
@@ -38,11 +38,15 @@ export function usePlayerInput({
     const onContextMenu = (e) => e.preventDefault();
 
     const onMouseDown = (e) => {
-      if (e.button !== 2) return; // right click only
+      if (e.button !== 2) return; // right click
       e.preventDefault();
       rightDownRef.current = true;
 
       const { x, y } = screenToWorld(e.clientX, e.clientY);
+
+      // NEW: update facing based on click
+      setFacingFromWorldX(Number(x));
+
       onMoveTo({ x: Number(x), y: Number(y) });
     };
 
@@ -62,9 +66,8 @@ export function usePlayerInput({
       window.removeEventListener("mousedown", onMouseDown);
       window.removeEventListener("mouseup", onMouseUp);
     };
-  }, [enabled, screenToWorld, onMoveTo]);
+  }, [enabled, screenToWorld, onMoveTo, getMyPos, onFacingChange]);
 
-  // While holding right click, update destination at sendRateHz
   useEffect(() => {
     if (!enabled) return;
 
@@ -74,15 +77,16 @@ export function usePlayerInput({
       if (!rightDownRef.current) return;
 
       const { x, y } = screenToWorld(mouseRef.current.x, mouseRef.current.y);
+
+      // optional: continuously face toward cursor while holding
+      setFacingFromWorldX(Number(x));
+
       onMoveTo({ x: Number(x), y: Number(y) });
     };
 
     const id = setInterval(tick, intervalMs);
     return () => clearInterval(id);
-  }, [enabled, sendRateHz, screenToWorld, onMoveTo]);
+  }, [enabled, sendRateHz, screenToWorld, onMoveTo, getMyPos, onFacingChange]);
 
-  return {
-    rightDownRef,
-    mouseRef,
-  };
+  return { rightDownRef, mouseRef };
 }

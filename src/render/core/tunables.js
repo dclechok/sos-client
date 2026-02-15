@@ -27,29 +27,48 @@ export const TUNABLES = {
   },
 
   // Nebula pockets
-  NEBULA: {
-    COUNT: 8,
-    ALPHA_MIN: 0.018,
-    ALPHA_MAX: 0.16,
+NEBULA: {
+  CELL_SIZE: 2400,
+  PAD: 3400,            // slightly more = fewer edge “reveals”
+  CULL_EXTRA: 1400,     // more hysteresis = less popping / hard boundaries
 
-    SIZE_MIN: 308,
-    SIZE_MAX: 1200,
+  BLOBS_MIN: 3,         // a bit denser
+  BLOBS_MAX: 7,
 
-    SPEED_MIN: 10,
-    SPEED_MAX: 28.2,
+  // Keep these as your "sprite resolution" sizes (good already)
+  SPRITE_MIN: 650,
+  SPRITE_MAX: 1900,
 
-    PUFFS_MIN: 5,
-    PUFFS_MAX: 12,
+  // Make them LOOK bigger without heavier sprite cache
+  SIZE_MULT: 2.35,      // try 1.25–1.55
 
-    HOLES_MIN: 3,
-    HOLES_MAX: 10,
+  TILE_SIZE: 1024,
+  TILE_COUNT: 6,        // more variety helps avoid repeating patterns
 
-    BUF_BLUR_PX: 1.35,
-    CONTRAST_WASH: 0.055,
+  MASK_PUFFS: 6,        // more puffs = less circular blobs
+  MASK_HOLES: 1,
 
-    DRAW_BLUR_PX: 0,
-    DRAW_JITTER_PX: 6.0,
-  },
+  ALPHA_BASE: 0.52,     // slightly down from 0.45 to avoid “solid stamps”
+  ALPHA_RANGE: 0.34,
+
+  FADE_IN: 0.85,
+  FADE_OUT: 0.80,
+
+  COMPOSITE: "screen",  // keep
+
+  // This is your line/banding killer:
+  POST_MASK_BLUR_PX: 3.0,   // try 2.8–3.4
+
+  // Visibility / density:
+  ALPHA_MULT: 1.20,     // try 1.15–1.35
+
+  DRIFT_MULT: 0.04,
+
+  // Break circle motif:
+  STRETCH_MIN: 0.70,
+  STRETCH_MAX: 2.05,
+},
+
 
   STARS: {
     SLOW_AMP_MIN: 0.04,
@@ -65,6 +84,9 @@ export const TUNABLES = {
     // give every star a tiny halo so the pulse is visible
     HALO_ALPHA_NORMAL: 0.22,
     HALO_ALPHA_GLOW: 0.65,
+    // Brightness multiplier for the FAR star layer only
+    FAR_LAYER_BRIGHTNESS: 1.25,
+
   },
 
 

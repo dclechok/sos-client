@@ -9,23 +9,22 @@ export default function PlayerRenderer({
 
   sendRateHz = 20,
 
-  mySpriteSrc = "/art/items/sprites/pod.png",
-  otherSpriteSrc = "/art/items/sprites/pod.png",
+  mySpriteSrc = "/art/items/sprites/AdeptNecromancer.gif",
+  otherSpriteSrc = "/art/items/sprites/NovicePyromancer.gif",
 
-  spriteW = 32,
-  spriteH = 32,
+  spriteW = 16,
+  spriteH = 16,
 
-  spriteFacingOffsetDeg = 0,
+  //match world zoom (keep integer)
+  zoom = 2,
 
   renderOthers = true,
   playerNames = {},
 
   canvasRef,
-
-  worldBoot,
-  bootApi,
 }) {
   const [hoverId, setHoverId] = useState(null);
+  const [myFacing, setMyFacing] = useState("right");
 
   const me = myId && players ? players[myId] : null;
 
@@ -35,11 +34,15 @@ export default function PlayerRenderer({
     meRef.current = me;
   }, [me]);
 
-  const rotationToCssDeg = (angleRad) =>
-    (Number(angleRad || 0) * 180) / Math.PI + spriteFacingOffsetDeg;
+  // safe integer zoom
+  const z = Math.max(1, Math.floor(Number(zoom) || 1));
+
+  // final DOM sprite size in CSS pixels
+  const drawW = spriteW * z;
+  const drawH = spriteH * z;
 
   // ------------------------------
-  // Canvas metrics (center + UNIFORM CSS->canvas/world scaling)
+  // Canvas metrics (center + UNIFORM CSS->canvas scaling)
   // ------------------------------
   const getCanvasMetrics = useCallback(() => {
     const canvas = canvasRef?.current;
@@ -57,7 +60,7 @@ export default function PlayerRenderer({
     const scaleX = r.width ? canvas.width / r.width : 1;
     const scaleY = r.height ? canvas.height / r.height : 1;
 
-    // ✅ Uniform scale (your fix)
+    // ✅ uniform scale: CSS px -> canvas px factor
     const scale = scaleX;
 
     return {
@@ -79,9 +82,10 @@ export default function PlayerRenderer({
       const dxWorld = Number(p.x || 0) - Number(m.x || 0);
       const dyWorld = Number(p.y || 0) - Number(m.y || 0);
 
-      return { x: cx + dxWorld / scale, y: cy + dyWorld / scale };
+      // ✅ zoom makes world units appear larger in CSS px
+      return { x: cx + (dxWorld * z) / scale, y: cy + (dyWorld * z) / scale };
     },
-    [getCanvasMetrics]
+    [getCanvasMetrics, z]
   );
 
   // screen (CSS px) -> world
@@ -91,15 +95,16 @@ export default function PlayerRenderer({
       const m = meRef.current;
       if (!m) return { x: 0, y: 0 };
 
-      const dxWorld = (clientX - cx) * scale;
-      const dyWorld = (clientY - cy) * scale;
+      // ✅ invert zoom
+      const dxWorld = ((clientX - cx) * scale) / z;
+      const dyWorld = ((clientY - cy) * scale) / z;
 
       return {
         x: Number(m.x || 0) + dxWorld,
         y: Number(m.y || 0) + dyWorld,
       };
     },
-    [getCanvasMetrics]
+    [getCanvasMetrics, z]
   );
 
   const getDisplayName = (id, p) => {
@@ -109,56 +114,14 @@ export default function PlayerRenderer({
     const fromMap = playerNames?.[id];
     if (fromMap && String(fromMap).trim()) return String(fromMap);
 
-    return `Pilot ${String(id).slice(0, 4)}`;
+    return `Player ${String(id).slice(0, 4)}`;
   };
-
-  // -----------------------------------
-  // WORLD BOOT HOOKS
-  // -----------------------------------
-  const markedSnapshotRef = useRef(false);
-  const markedReadyRef = useRef(false);
-  const lastBootActiveRef = useRef(false);
-
-  useEffect(() => {
-    const active = Boolean(worldBoot?.active);
-    const wasActive = lastBootActiveRef.current;
-
-    if (!wasActive && active) {
-      markedSnapshotRef.current = false;
-      markedReadyRef.current = false;
-    }
-    if (!active) {
-      markedSnapshotRef.current = false;
-      markedReadyRef.current = false;
-    }
-
-    lastBootActiveRef.current = active;
-  }, [worldBoot?.active]);
-
-  useEffect(() => {
-    if (!worldBoot?.active) return;
-    if (!bootApi) return;
-    if (!me) return;
-
-    if (!markedSnapshotRef.current) {
-      markedSnapshotRef.current = true;
-      bootApi.done("snapshot", "Player state received");
-    }
-  }, [me, worldBoot?.active, bootApi]);
-
-  const onMySpriteLoad = useCallback(() => {
-    if (!worldBoot?.active) return;
-    if (!bootApi) return;
-    if (markedReadyRef.current) return;
-
-    markedReadyRef.current = true;
-    bootApi.done("ready", "Ship visuals ready");
-  }, [worldBoot?.active, bootApi]);
 
   // -----------------------------------
   // INPUT HOOK
   // -----------------------------------
   const inputEnabled = Boolean(socket);
+
   const onMoveTo = useCallback(
     ({ x, y }) => {
       if (!socket) return;
@@ -172,10 +135,12 @@ export default function PlayerRenderer({
     sendRateHz,
     screenToWorld,
     onMoveTo,
+    getMyPos: () => meRef.current || { x: 0, y: 0 },
+    onFacingChange: (dir) => setMyFacing(dir),
   });
 
   // -----------------------------------
-  // REMOTE INTERPOLATION HOOK (✅ buttery ref-based)
+  // REMOTE INTERPOLATION HOOK
   // -----------------------------------
   const { remoteIds, getRenderState } = useRemoteInterpolation({
     players,
@@ -189,11 +154,8 @@ export default function PlayerRenderer({
   }, [renderOthers, remoteIds]);
 
   // -----------------------------------
-  // Render styles
+  // Styles
   // -----------------------------------
-  const IMG_RENDERING = "auto";
-  const SMOOTHING = "auto";
-
   const nameLabelStyle = {
     position: "absolute",
     left: "50%",
@@ -204,8 +166,8 @@ export default function PlayerRenderer({
     lineHeight: "12px",
     borderRadius: 6,
     background: "rgba(0,0,0,0.55)",
-    border: "1px solid rgba(160,220,255,0.25)",
-    color: "rgba(235,245,255,0.95)",
+    border: "1px solid rgba(200,160,80,0.35)",
+    color: "rgba(245,235,215,0.95)",
     whiteSpace: "nowrap",
     textShadow: "0 1px 2px rgba(0,0,0,0.75)",
     pointerEvents: "none",
@@ -213,6 +175,14 @@ export default function PlayerRenderer({
 
   const displayX = me ? Math.round(me.x) : 0;
   const displayY = me ? Math.round(me.y) : 0;
+
+  const flipStyle = (dir) => ({
+    width: "100%",
+    height: "100%",
+    transform: dir === "left" ? "scaleX(-1)" : "scaleX(1)",
+    transformOrigin: "50% 50%",
+    willChange: "transform",
+  });
 
   return (
     <div
@@ -234,15 +204,16 @@ export default function PlayerRenderer({
             getRenderState(id) || {
               x: Number(p.x || 0),
               y: Number(p.y || 0),
-              a: Number(p.angle || 0),
             };
 
           const { x, y } = worldToScreen(r);
           const hovered = hoverId === id;
 
-          // ✅ no rounding = smoother (subpixel transforms)
-          const tx = x - spriteW / 2;
-          const ty = y - spriteH / 2;
+          // ✅ snap to whole CSS pixels (prevents shimmer)
+          const tx = Math.round(x - drawW / 2);
+          const ty = Math.round(y - drawH / 2);
+
+          const otherFacing = p?.facing === "left" ? "left" : "right";
 
           return (
             <div
@@ -253,14 +224,14 @@ export default function PlayerRenderer({
                 position: "absolute",
                 left: 0,
                 top: 0,
-                width: spriteW,
-                height: spriteH,
+                width: drawW,
+                height: drawH,
                 transform: `translate3d(${tx}px, ${ty}px, 0)`,
                 transformOrigin: "0 0",
                 pointerEvents: "auto",
                 willChange: "transform",
                 filter: hovered
-                  ? "drop-shadow(0 0 6px rgba(140, 200, 255, 0.35))"
+                  ? "drop-shadow(0 0 10px rgba(200, 160, 80, 0.22))"
                   : "none",
               }}
             >
@@ -268,26 +239,17 @@ export default function PlayerRenderer({
                 <div style={nameLabelStyle}>{getDisplayName(id, p)}</div>
               )}
 
-              <div
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  transform: `rotate(${rotationToCssDeg(r.a)}deg)`,
-                  transformOrigin: "50% 50%",
-                  willChange: "transform",
-                }}
-              >
+              <div style={flipStyle(otherFacing)}>
                 <img
                   src={otherSpriteSrc}
-                  alt="Other ship"
+                  alt="Other player"
                   draggable={false}
                   style={{
                     width: "100%",
                     height: "100%",
                     display: "block",
-                    imageRendering: IMG_RENDERING,
+                    imageRendering: "pixelated",
                     userSelect: "none",
-                    WebkitFontSmoothing: SMOOTHING,
                   }}
                 />
               </div>
@@ -303,14 +265,14 @@ export default function PlayerRenderer({
           position: "absolute",
           left: "50%",
           top: "50%",
-          width: spriteW,
-          height: spriteH,
+          width: drawW,
+          height: drawH,
           transform: "translate(-50%, -50%)",
           transformOrigin: "50% 50%",
           pointerEvents: "auto",
           filter:
             hoverId === myId
-              ? "drop-shadow(0 0 6px rgba(140, 200, 255, 0.35))"
+              ? "drop-shadow(0 0 10px rgba(200, 160, 80, 0.22))"
               : "none",
         }}
       >
@@ -318,34 +280,21 @@ export default function PlayerRenderer({
           <div style={nameLabelStyle}>{getDisplayName(myId, me)}</div>
         )}
 
-        <div
-          style={{
-            width: "100%",
-            height: "100%",
-            transform: `rotate(${rotationToCssDeg(me?.angle)}deg)`,
-            transformOrigin: "50% 50%",
-            willChange: "transform",
-          }}
-        >
+        <div style={flipStyle(myFacing)}>
           <img
             src={mySpriteSrc}
-            alt="My ship"
+            alt="My player"
             draggable={false}
-            onLoad={onMySpriteLoad}
             onError={(e) => {
               console.error("Sprite failed to load:", mySpriteSrc);
-              if (worldBoot?.active && bootApi) {
-                bootApi.error("ready", `Sprite failed: ${mySpriteSrc}`);
-              }
               e.currentTarget.style.outline = "2px solid red";
             }}
             style={{
               width: "100%",
               height: "100%",
               display: "block",
-              imageRendering: IMG_RENDERING,
+              imageRendering: "pixelated",
               userSelect: "none",
-              WebkitFontSmoothing: SMOOTHING,
             }}
           />
         </div>
@@ -360,7 +309,7 @@ export default function PlayerRenderer({
             bottom: 10,
             fontSize: 11,
             fontFamily: "monospace",
-            color: "rgba(200,220,255,0.6)",
+            color: "rgba(200,160,80,0.75)",
             background: "rgba(0,0,0,0.35)",
             padding: "4px 6px",
             borderRadius: 4,
@@ -372,6 +321,10 @@ export default function PlayerRenderer({
           x: {displayX}
           <br />
           y: {displayY}
+          <br />
+          zoom: {z}x
+          <br />
+          face: {myFacing}
         </div>
       )}
     </div>

@@ -1,16 +1,17 @@
 import "./styles/Login.css";
 import discordImg from "./img/discord.png";
+import bgUrl from "./art/login-wallpaper.png";
 import { useState } from "react";
 import { handleLoginPassCheck } from "./api/accountApi";
-import Spinner from "./Spinner"; // import spinner
+import Spinner from "./Spinner";
 
 function Login({ setAccount }) {
   const [creds, setCreds] = useState({ name: "", password: "" });
-  const [loading, setLoading] = useState(false);  // <<< add this
+  const [loading, setLoading] = useState(false);
 
   async function handleLoginClick(e) {
     e.preventDefault();
-    setLoading(true); // <<< show spinner immediately
+    setLoading(true);
 
     try {
       const data = await handleLoginPassCheck(creds.name, creds.password);
@@ -28,7 +29,7 @@ function Login({ setAccount }) {
         JSON.stringify({
           id: data.user.id,
           username: data.user.username,
-          characters: data.user.characters || []
+          characters: data.user.characters || [],
         })
       );
 
@@ -41,6 +42,8 @@ function Login({ setAccount }) {
         token: data.token,
       });
 
+      // optional: if your app navigates away on login, leave loading true
+      // otherwise, you could setLoading(false) here if you stay on this screen
     } catch (err) {
       console.error(err);
       alert("Login failed");
@@ -48,44 +51,63 @@ function Login({ setAccount }) {
     }
   }
 
-  // ⛔ If loading: replace whole Login UI with spinner
-  if (loading) return <Spinner />;
+  // If loading: show spinner, but keep the wallpaper behind it
+  if (loading) {
+    return (
+      <div className="login-page">
+        <div
+          className="login-wallpaper"
+          style={{ backgroundImage: `url(${bgUrl})` }}
+        />
+        <Spinner />
+      </div>
+    );
+  }
 
   return (
-    <div className="login-box">
-      <h1>Project Domehead</h1>
+    <div className="login-page">
+      {/* full viewport wallpaper layer */}
+      <div
+        className="login-wallpaper"
+        style={{ backgroundImage: `url(${bgUrl})` }}
+      />
 
-      <form onSubmit={handleLoginClick}>
+      {/* your existing box */}
+      <div className="login-box">
+        <h1>Shards of Self</h1>
 
-        <div className="inputs">
-          User
+        <form onSubmit={handleLoginClick}>
+          <div className="inputs">
+            User
+            <br />
+            <input
+              type="text"
+              value={creds.name}
+              onChange={(e) => setCreds({ ...creds, name: e.target.value })}
+            />
+            <br />
+            <br />
+
+            Password
+            <br />
+            <input
+              type="password"
+              value={creds.password}
+              onChange={(e) => setCreds({ ...creds, password: e.target.value })}
+              required
+            />
+          </div>
+
           <br />
-          <input
-            type="text"
-            value={creds.name}
-            onChange={(e) => setCreds({ ...creds, name: e.target.value })}
-          />
-          <br /><br />
 
-          Password
-          <br />
-          <input
-            type="password"
-            value={creds.password}
-            onChange={(e) => setCreds({ ...creds, password: e.target.value })}
-            required
-          />
-        </div>
+          <button type="submit">Login</button>
+        </form>
 
         <br />
-
-        <button type="submit">Login</button>
-      </form>
-
-      <br />
-      Join our Discord!
-      <br />
-      <img src={discordImg} alt="Project Domehead Discord" />
+        Join our Discord!
+        <br />
+        <img src={discordImg} alt="Project Domehead Discord" />
+      </div>
     </div>
   );
 }
