@@ -1,15 +1,15 @@
-// src/render/viewport/MainViewport.jsx
 import "./styles/MainViewport.css";
 import { useViewportRenderer } from "./render/viewport/useViewportRenderer";
-import { useRef } from "react";
+import { useRef, useCallback } from "react";
+
+import { useTerrainAtlas } from "./render/systems/terrain/useTerrainAtlas";
+import { renderTerrain } from "./render/systems/terrain/terrainRenderer";
 
 export default function MainViewport({
-  worldSeed, // (unused for now, but keeping your prop)
+  world, // ✅ world comes from App now
   cameraX = 0,
   cameraY = 0,
   canvasRef,
-
-  //consistent pixel-art zoom (2/3/4...)
   zoom = 2,
 }) {
   const localCanvasRef = useRef(null);
@@ -27,17 +27,30 @@ export default function MainViewport({
 
   const camSmoothRef = useRef({ x: cameraX, y: cameraY });
 
+  const atlas = useTerrainAtlas({
+    atlasSrc: "/art/terrain/terrain.png",
+    atlasCols: 3,
+    gap: 2,
+    margin: 2,
+    grassTiles: [0, 1, 2],
+    waterTiles: [3, 4, 5],
+  });
+
+  const render = useCallback(
+    (ctx, frame) => {
+      renderTerrain(ctx, frame, { world, atlas });
+    },
+    [world, atlas]
+  );
+
   useViewportRenderer({
     canvasRef: refToUse,
     camTargetRef,
     camSmoothRef,
     zoom,
-
     pixelArt: true,
-
     clearColor: "#000",
-
-    // render: (ctx, frame) => { ... }  // plug in tilemap/entities later
+    render,
   });
 
   return (

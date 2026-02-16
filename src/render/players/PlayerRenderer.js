@@ -137,7 +137,9 @@ export default function PlayerRenderer({
     onMoveTo,
     getMyPos: () => meRef.current || { x: 0, y: 0 },
     onFacingChange: (dir) => setMyFacing(dir),
+    onStopMove: () => socket?.emit("player:stop"), // ✅ add this
   });
+
 
   // -----------------------------------
   // REMOTE INTERPOLATION HOOK

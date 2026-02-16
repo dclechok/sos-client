@@ -1,0 +1,109 @@
+.mapModalBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 160ms ease;
+  z-index: 2000;
+}
+
+.mapModalBackdrop.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.mapModal {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -46%) scale(0.98);
+  opacity: 0;
+  pointer-events: none;
+
+  /* compact width: only as big as the map area needs */
+  width: min(760px, calc(100vw - 24px));
+  background: rgba(10, 10, 14, 0.94);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.65);
+  z-index: 2001;
+  overflow: hidden;
+}
+
+.mapModal.open {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(-50%, -50%) scale(1);
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.mapModalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.mapModalTitle {
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.9;
+}
+
+.mapModalControls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mapBtn {
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.06);
+  color: inherit;
+  padding: 6px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.mapBtn:hover {
+  background: rgba(255,255,255,0.10);
+}
+
+.mapBtn.subtle {
+  opacity: 0.85;
+}
+
+.mapBtn.close {
+  margin-left: 6px;
+}
+
+.mapZoomLabel {
+  font-size: 12px;
+  opacity: 0.8;
+  min-width: 48px;
+  text-align: center;
+}
+
+.mapModalBody {
+  padding: 12px;
+}
+
+.mapCanvas {
+  width: 100%;
+  /* give it a consistent “map-ish” size without being huge */
+  height: min(60vh, 520px);
+  display: block;
+  background: rgba(0,0,0,0.28);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+}
+
+.mapHint {
+  padding: 0 12px 12px 12px;
+  font-size: 12px;
+  opacity: 0.65;
+}

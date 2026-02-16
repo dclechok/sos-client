@@ -77,7 +77,7 @@ export function useRemoteInterpolation({ players, myId, interpDelayMs = 120 }) {
   // RAF interpolation/extrapolation loop
   useEffect(() => {
     let raf = 0;
-    const MAX_EXTRAP_MS = 140;
+    const MAX_EXTRAP_MS = 0;
 
     const tick = () => {
       const now = Date.now();

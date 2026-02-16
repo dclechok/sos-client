@@ -17,8 +17,12 @@ import { useGameSocket } from "./hooks/useGameSocket";
 import MainViewport from "./MainViewport";
 import ChatMenu from "./ChatMenu";
 
-// ✅ UPDATED import for the split PlayerRenderer
 import PlayerRenderer from "./render/players/PlayerRenderer";
+
+import MapDrawer from "./MapDrawer";
+import { useWorldMapRenderer } from "./render/systems/map/useWorldMapRenderer";
+
+import { useWorldChunks } from "./world/useWorldChunks";
 
 function useWindowSize() {
   const [size, setSize] = useState({ width: 0, height: 0 });
@@ -35,6 +39,7 @@ function useWindowSize() {
 export default function App() {
   const [account, setAccount] = useState(undefined);
   const [character, setCharacter] = useState(undefined);
+  const [mapOpen, setMapOpen] = useState(false);
 
   useButtonClickSound();
   const { width, height } = useWindowSize();
@@ -44,13 +49,13 @@ export default function App() {
 
   const canvasRef = useRef(null);
 
+  // camera smoothing
   const camStableRef = useRef({ x: 0, y: 0 });
   const rawX =
-    typeof me?.x === "number" ? me.x : (camStableRef.current.x ?? 0);
+    typeof me?.x === "number" ? me.x : camStableRef.current.x ?? 0;
   const rawY =
-    typeof me?.y === "number" ? me.y : (camStableRef.current.y ?? 0);
+    typeof me?.y === "number" ? me.y : camStableRef.current.y ?? 0;
 
-  // tweak: 0.25–1.0 typical
   const EPS = 0.35;
 
   const cameraX =
@@ -63,6 +68,21 @@ export default function App() {
       ? camStableRef.current.y
       : (camStableRef.current.y = rawY);
 
+  // ✅ SINGLE WORLD INSTANCE (shared by terrain + minimap)
+  const world = useWorldChunks({
+    metaUrl: "/world/meta.json",
+    chunkBaseUrl: "/world/chunks",
+    preloadRadiusChunks: 2,
+  });
+
+  // ✅ minimap uses SAME world
+  const { renderMapFrame } = useWorldMapRenderer({
+    world,
+    me,
+  });
+
+  // -------------------------
+  // session boot logic
   useEffect(() => {
     async function init() {
       const { account: storedAccount, character: storedChar } =
@@ -90,7 +110,6 @@ export default function App() {
     init();
   }, []);
 
-  // Identify after socket connected AND character selected
   useEffect(() => {
     if (!isReady) return;
     if (!character) return;
@@ -101,6 +120,7 @@ export default function App() {
     identify(characterId);
   }, [isReady, character, identify]);
 
+  // -------------------------
   if (width === 0 || height === 0) return <Spinner />;
   if (width < 800 || height < 500) return <DisplayCheck />;
   if (account === null) return <Login setAccount={setAccount} />;
@@ -121,7 +141,6 @@ export default function App() {
     );
   }
 
-  // ✅ Only mount world once socket + seed are ready (DO NOT gate on bootActive)
   const hasPickedCharacter = character && character !== null;
   const canMountWorld =
     hasPickedCharacter && isReady && Number.isFinite(worldSeed);
@@ -129,11 +148,13 @@ export default function App() {
   return (
     <div className="App" onContextMenu={(e) => e.preventDefault()}>
       <LogoutButton setAccount={setAccount} setCharacter={setCharacter} />
-      <NavBar account={account} />
+
+      <NavBar onMapClick={() => setMapOpen(true)} />
 
       {canMountWorld && (
         <MainViewport
           canvasRef={canvasRef}
+          world={world}
           worldSeed={worldSeed}
           cameraX={cameraX}
           cameraY={cameraY}
@@ -149,7 +170,13 @@ export default function App() {
         />
       )}
 
-      {<ChatMenu character={character} />}
+      <ChatMenu character={character} />
+
+      <MapDrawer
+        open={mapOpen}
+        onClose={() => setMapOpen(false)}
+        renderMapFrame={renderMapFrame}
+      />
     </div>
   );
 }

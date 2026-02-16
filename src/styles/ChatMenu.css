@@ -45,36 +45,6 @@
   background: transparent;
 }
 
-/* =========================
-   HEADER
-   ========================= */
-.chat-header{
-  padding: 9px 10px;
-  text-align: center;
-
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 1.1px;
-  text-transform: uppercase;
-
-  /* not pure white */
-  color: rgba(235, 240, 245, 0.9);
-
-  /* ultra subtle glass band */
-  background: linear-gradient(
-    to bottom,
-    rgba(10, 14, 22, 0.18),
-    rgba(10, 14, 22, 0.04)
-  );
-
-  border-bottom: 1px solid rgba(120, 150, 180, 0.18);
-
-  /* THIS is what makes it not look default */
-  text-shadow:
-    0 1px 0 rgba(0, 0, 0, 0.9),   /* emboss edge */
-    0 0 6px rgba(140, 180, 220, 0.18); /* faint HUD glow */
-}
-
 
 /* thin “commlink” accent line */
 .chat-header::after{
