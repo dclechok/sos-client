@@ -2,6 +2,11 @@ import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { usePlayerInput } from "./usePlayerInput";
 import { useRemoteInterpolation } from "./useRemoteInterpolation";
 
+/**
+ * PlayerRenderer (DOM overlay)
+ * ✅ Uses the SAME snapped camera as the canvas renderer via camSmoothRef.
+ * ✅ Snaps REMOTE render positions to the same 1/zoom world grid to prevent 1px idle jiggle.
+ */
 export default function PlayerRenderer({
   socket,
   myId,
@@ -15,13 +20,15 @@ export default function PlayerRenderer({
   spriteW = 16,
   spriteH = 16,
 
-  //match world zoom (keep integer)
   zoom = 2,
 
   renderOthers = true,
   playerNames = {},
 
   canvasRef,
+
+  // ✅ pass from App (same ref MainViewport/useViewportRenderer uses)
+  camSmoothRef,
 }) {
   const [hoverId, setHoverId] = useState(null);
   const [myFacing, setMyFacing] = useState("right");
@@ -72,39 +79,66 @@ export default function PlayerRenderer({
     };
   }, [canvasRef]);
 
+  // ------------------------------
+  // ✅ Shared camera (snapped to match canvas pixel-art snap)
+  // ------------------------------
+  const getRenderCam = useCallback(() => {
+    const cam = camSmoothRef?.current;
+    const fallback = meRef.current || { x: 0, y: 0 };
+
+    const cx = Number.isFinite(cam?.x) ? Number(cam.x) : Number(fallback.x || 0);
+    const cy = Number.isFinite(cam?.y) ? Number(cam.y) : Number(fallback.y || 0);
+
+    // MUST match useViewportRenderer snap (1/z world units)
+    if (z > 1) {
+      return {
+        x: Math.round(cx * z) / z,
+        y: Math.round(cy * z) / z,
+      };
+    }
+
+    return { x: cx, y: cy };
+  }, [camSmoothRef, z]);
+
+  // ✅ Snap world-space values to the same 1/z grid to prevent 1px idle jiggle
+  const snapWorld = useCallback(
+    (v) => {
+      const n = Number(v || 0);
+      if (!Number.isFinite(n)) return 0;
+      return z > 1 ? Math.round(n * z) / z : Math.round(n);
+    },
+    [z]
+  );
+
   // world -> screen (CSS px)
   const worldToScreen = useCallback(
     (p) => {
       const { cx, cy, scale } = getCanvasMetrics();
-      const m = meRef.current;
-      if (!m) return { x: cx, y: cy };
+      const cam = getRenderCam();
 
-      const dxWorld = Number(p.x || 0) - Number(m.x || 0);
-      const dyWorld = Number(p.y || 0) - Number(m.y || 0);
+      const dxWorld = Number(p.x || 0) - cam.x;
+      const dyWorld = Number(p.y || 0) - cam.y;
 
-      // ✅ zoom makes world units appear larger in CSS px
       return { x: cx + (dxWorld * z) / scale, y: cy + (dyWorld * z) / scale };
     },
-    [getCanvasMetrics, z]
+    [getCanvasMetrics, getRenderCam, z]
   );
 
   // screen (CSS px) -> world
   const screenToWorld = useCallback(
     (clientX, clientY) => {
       const { cx, cy, scale } = getCanvasMetrics();
-      const m = meRef.current;
-      if (!m) return { x: 0, y: 0 };
+      const cam = getRenderCam();
 
-      // ✅ invert zoom
       const dxWorld = ((clientX - cx) * scale) / z;
       const dyWorld = ((clientY - cy) * scale) / z;
 
       return {
-        x: Number(m.x || 0) + dxWorld,
-        y: Number(m.y || 0) + dyWorld,
+        x: cam.x + dxWorld,
+        y: cam.y + dyWorld,
       };
     },
-    [getCanvasMetrics, z]
+    [getCanvasMetrics, getRenderCam, z]
   );
 
   const getDisplayName = (id, p) => {
@@ -118,7 +152,7 @@ export default function PlayerRenderer({
   };
 
   // -----------------------------------
-  // INPUT HOOK
+  // INPUT HOOK (ARPG drag-to-move)
   // -----------------------------------
   const inputEnabled = Boolean(socket);
 
@@ -135,11 +169,16 @@ export default function PlayerRenderer({
     sendRateHz,
     screenToWorld,
     onMoveTo,
-    getMyPos: () => meRef.current || { x: 0, y: 0 },
-    onFacingChange: (dir) => setMyFacing(dir),
-    onStopMove: () => socket?.emit("player:stop"), // ✅ add this
-  });
 
+    getMyPos: () => getRenderCam(),
+    onFacingChange: (dir) => setMyFacing(dir),
+
+    button: 2,
+    deadzoneWorld: 0.5,
+
+    // If your usePlayerInput supports it, this improves hold-drag consistency:
+    // targetRef: canvasRef,
+  });
 
   // -----------------------------------
   // REMOTE INTERPOLATION HOOK
@@ -202,20 +241,28 @@ export default function PlayerRenderer({
           const p = players[id];
           if (!p) return null;
 
-          const r =
+          const r0 =
             getRenderState(id) || {
               x: Number(p.x || 0),
               y: Number(p.y || 0),
+              facing: p?.facing === "left" ? "left" : "right",
             };
+
+          // ✅ snap remote render position to 1/z world grid (prevents idle 1px jiggle)
+          const r = {
+            ...r0,
+            x: snapWorld(r0.x),
+            y: snapWorld(r0.y),
+          };
 
           const { x, y } = worldToScreen(r);
           const hovered = hoverId === id;
 
-          // ✅ snap to whole CSS pixels (prevents shimmer)
+          // snap to pixels for DOM transform
           const tx = Math.round(x - drawW / 2);
           const ty = Math.round(y - drawH / 2);
 
-          const otherFacing = p?.facing === "left" ? "left" : "right";
+          const otherFacing = r?.facing === "left" ? "left" : "right";
 
           return (
             <div
@@ -259,7 +306,7 @@ export default function PlayerRenderer({
           );
         })}
 
-      {/* LOCAL PLAYER */}
+      {/* LOCAL PLAYER (centered) */}
       <div
         onMouseEnter={() => setHoverId(myId)}
         onMouseLeave={() => setHoverId((cur) => (cur === myId ? null : cur))}

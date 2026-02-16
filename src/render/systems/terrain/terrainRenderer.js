@@ -1,7 +1,5 @@
-// src/render/systems/terrain/terrainRenderer.js
 import { TILE, TERRAIN_ID } from "../../../world/worldConstants";
 
-// tiny deterministic hash (stable “random”)
 function hash2i(x, y, seed = 777) {
   let h = seed ^ (x * 374761393) ^ (y * 668265263);
   h = (h ^ (h >>> 13)) * 1274126177;
@@ -16,13 +14,6 @@ function drawTile(ctx, img, sx, sy, dx, dy, size, flipX, flipY) {
   ctx.restore();
 }
 
-// ✅ Underpaint colors so transparent pixels don't show black "grout"
-const UNDERPAINT = {
-  [TERRAIN_ID.GRASS]: "#176414",
-  [TERRAIN_ID.DEEP_OCEAN]: "#0e3a59",
-  [TERRAIN_ID.UNKNOWN]: "#000000",
-};
-
 export function renderTerrain(ctx, frame, deps) {
   const { w, h, camX, camY, zoom } = frame;
   const { meta, getTileId, preloadAroundWorldTile } = deps.world;
@@ -30,7 +21,6 @@ export function renderTerrain(ctx, frame, deps) {
 
   if (!meta || !atlas.img) return;
 
-  // Visible world rect in world-pixels
   const viewWorldW = w / zoom;
   const viewWorldH = h / zoom;
 
@@ -43,12 +33,9 @@ export function renderTerrain(ctx, frame, deps) {
   const tilesWide = Math.ceil(viewWorldW / TILE) + 3;
   const tilesHigh = Math.ceil(viewWorldH / TILE) + 3;
 
-  // Preload chunks around camera
   const camTileX = Math.floor(camX / TILE);
   const camTileY = Math.floor(camY / TILE);
   preloadAroundWorldTile(camTileX, camTileY);
-
-  const dstSize = TILE * zoom;
 
   for (let ty = 0; ty < tilesHigh; ty++) {
     const tileY = firstTileY + ty;
@@ -67,16 +54,18 @@ export function renderTerrain(ctx, frame, deps) {
 
       const { sx, sy } = atlas.tileIndexToSrc(variantIndex);
 
-      // destination in screen pixels (integer snapped)
-      const dx = Math.floor((tileX * TILE - worldLeft) * zoom);
-      const dy = Math.floor((tileY * TILE - worldTop) * zoom);
+      const dx = Math.round((tileX * TILE - worldLeft) * zoom);
+      const dy = Math.round((tileY * TILE - worldTop) * zoom);
 
-      // ✅ underpaint first (hides alpha holes on tile edges)
-      ctx.fillStyle = UNDERPAINT[id] ?? "#000";
-      ctx.fillRect(dx, dy, dstSize, dstSize);
 
-      // then draw tile art
-      drawTile(ctx, atlas.img, sx, sy, dx, dy, dstSize, flipX, flipY);
+      // draw unknown as black debug tile
+      if (id === TERRAIN_ID.UNKNOWN) {
+        ctx.fillStyle = "#000";
+        ctx.fillRect(dx, dy, TILE * zoom, TILE * zoom);
+        continue;
+      }
+
+      drawTile(ctx, atlas.img, sx, sy, dx, dy, TILE * zoom, flipX, flipY);
     }
   }
 }

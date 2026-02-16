@@ -6,26 +6,16 @@ import { useTerrainAtlas } from "./render/systems/terrain/useTerrainAtlas";
 import { renderTerrain } from "./render/systems/terrain/terrainRenderer";
 
 export default function MainViewport({
-  world, // ✅ world comes from App now
-  cameraX = 0,
-  cameraY = 0,
+  world,
   canvasRef,
   zoom = 2,
+
+  // ✅ provided by App
+  camTargetRef,
+  camSmoothRef,
 }) {
   const localCanvasRef = useRef(null);
   const refToUse = canvasRef || localCanvasRef;
-
-  const camTargetRef = useRef({ x: cameraX, y: cameraY });
-  const EPS = 0.25;
-
-  if (Math.abs(cameraX - camTargetRef.current.x) >= EPS) {
-    camTargetRef.current.x = cameraX;
-  }
-  if (Math.abs(cameraY - camTargetRef.current.y) >= EPS) {
-    camTargetRef.current.y = cameraY;
-  }
-
-  const camSmoothRef = useRef({ x: cameraX, y: cameraY });
 
   const atlas = useTerrainAtlas({
     atlasSrc: "/art/terrain/terrain.png",

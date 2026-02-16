@@ -48,24 +48,26 @@ export default function App() {
 
   const canvasRef = useRef(null);
 
-  // camera smoothing
-  const camStableRef = useRef({ x: 0, y: 0 });
-  const rawX =
-    typeof me?.x === "number" ? me.x : camStableRef.current.x ?? 0;
-  const rawY =
-    typeof me?.y === "number" ? me.y : camStableRef.current.y ?? 0;
+  // ✅ ONE shared camera for BOTH canvas + DOM overlays
+  const camTargetRef = useRef({ x: 0, y: 0 });
+  const camSmoothRef = useRef({ x: 0, y: 0 });
 
-  const EPS = 0.35;
+  // Keep camera target following "me"
+  useEffect(() => {
+    if (!me) return;
+    const x = Number(me.x);
+    const y = Number(me.y);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
 
-  const cameraX =
-    Math.abs(rawX - camStableRef.current.x) < EPS
-      ? camStableRef.current.x
-      : (camStableRef.current.x = rawX);
+    camTargetRef.current.x = x;
+    camTargetRef.current.y = y;
 
-  const cameraY =
-    Math.abs(rawY - camStableRef.current.y) < EPS
-      ? camStableRef.current.y
-      : (camStableRef.current.y = rawY);
+    // init smooth camera on first valid me
+    if (!Number.isFinite(camSmoothRef.current.x) || !Number.isFinite(camSmoothRef.current.y)) {
+      camSmoothRef.current.x = x;
+      camSmoothRef.current.y = y;
+    }
+  }, [me]);
 
   const world = useWorldChunks({
     metaUrl: "/world/meta.json",
@@ -141,6 +143,9 @@ export default function App() {
   const canMountWorld =
     hasPickedCharacter && isReady && Number.isFinite(worldSeed);
 
+  // choose ONE zoom value and pass it to both
+  const zoom = 2;
+
   return (
     <div className="App" onContextMenu={(e) => e.preventDefault()}>
       <NavBar
@@ -154,8 +159,9 @@ export default function App() {
           canvasRef={canvasRef}
           world={world}
           worldSeed={worldSeed}
-          cameraX={cameraX}
-          cameraY={cameraY}
+          zoom={zoom}
+          camTargetRef={camTargetRef}
+          camSmoothRef={camSmoothRef}
         />
       )}
 
@@ -165,6 +171,8 @@ export default function App() {
           myId={myId}
           players={players}
           canvasRef={canvasRef}
+          zoom={zoom}
+          camSmoothRef={camSmoothRef}
         />
       )}
 

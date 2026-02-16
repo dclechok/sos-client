@@ -1,5 +1,18 @@
 import { useCallback, useEffect, useRef } from "react";
 
+/**
+ * Hold-to-move (RMB by default) that *continuously* updates the server target
+ * to whatever is currently under your cursor while the button is held.
+ *
+ * Key differences vs your version:
+ * - Uses pointer capture on the target element (canvas) so moves keep flowing even off-canvas.
+ * - Uses a requestAnimationFrame loop + sendRateHz throttle (instead of setInterval).
+ * - Keeps latest callbacks in refs to avoid stale closures.
+ *
+ * Usage:
+ *   const { bindTarget } = usePlayerInput({ ..., targetRef: canvasRef });
+ *   // OR if you can't pass targetRef, it will fall back to window events.
+ */
 export function usePlayerInput({
   enabled,
   sendRateHz = 20,
@@ -9,106 +22,177 @@ export function usePlayerInput({
   getMyPos,
   onFacingChange,
 
-  // NEW: optional stop callback
-  onStopMove, // () => void
-}) {
-  const rightDownRef = useRef(false);
-  const mouseRef = useRef({ x: 0, y: 0 });
-  const facingRef = useRef("right");
+  // options
+  button = 2, // 2 = RMB
+  deadzoneWorld = 0.35,
 
-  // last world target we actually sent (deadzone)
+  // strongly recommended: your canvasRef (or container ref)
+  targetRef = null,
+}) {
+  const isDownRef = useRef(false);
+  const pointerIdRef = useRef(null);
+
+  // last known cursor in screen px
+  const mouseRef = useRef({ x: 0, y: 0 });
+
+  // last target we actually sent to server
   const lastSentWorldRef = useRef({ x: null, y: null });
 
-  const setFacingFromWorldX = useCallback(
-    (worldX) => {
-      if (!getMyPos) return;
-      const me = getMyPos();
-      if (!me || !Number.isFinite(me.x)) return;
+  const facingRef = useRef("right");
 
-      const dir = worldX < me.x ? "left" : "right";
-      if (dir !== facingRef.current) {
-        facingRef.current = dir;
-        onFacingChange?.(dir);
-      }
-    },
-    [getMyPos, onFacingChange]
-  );
+  // keep latest functions in refs (prevents stale closures)
+  const screenToWorldRef = useRef(screenToWorld);
+  const onMoveToRef = useRef(onMoveTo);
+  const getMyPosRef = useRef(getMyPos);
+  const onFacingChangeRef = useRef(onFacingChange);
 
+  useEffect(() => {
+    screenToWorldRef.current = screenToWorld;
+    onMoveToRef.current = onMoveTo;
+    getMyPosRef.current = getMyPos;
+    onFacingChangeRef.current = onFacingChange;
+  }, [screenToWorld, onMoveTo, getMyPos, onFacingChange]);
+
+  const BUTTON_MASK = button === 0 ? 1 : button === 1 ? 4 : 2; // left=1, middle=4, right=2
+
+  const setFacingFromWorldX = useCallback((worldX) => {
+    const getMyPosFn = getMyPosRef.current;
+    if (!getMyPosFn) return;
+
+    const me = getMyPosFn();
+    if (!me || !Number.isFinite(me.x)) return;
+
+    const dir = worldX < me.x ? "left" : "right";
+    if (dir !== facingRef.current) {
+      facingRef.current = dir;
+      onFacingChangeRef.current?.(dir);
+    }
+  }, []);
+
+  // pointer listeners
   useEffect(() => {
     if (!enabled) return;
 
-    const onMouseMove = (e) => {
+    const targetEl = targetRef?.current ?? window;
+
+    const onContextMenu = (e) => {
+      // prevents RMB menu interrupting drag/hold
+      e.preventDefault();
+    };
+
+    const onPointerDown = (e) => {
+      if (e.button !== button) return;
+
+      e.preventDefault();
+      isDownRef.current = true;
+      pointerIdRef.current = e.pointerId ?? null;
+
       mouseRef.current.x = e.clientX;
       mouseRef.current.y = e.clientY;
+
+      // capture pointer so we continue to get move/up even if we leave the element
+      if (targetEl !== window && targetEl?.setPointerCapture && e.pointerId != null) {
+        try {
+          targetEl.setPointerCapture(e.pointerId);
+        } catch {
+          // ignore (some elements/browsers may throw)
+        }
+      }
+
+      // send immediately
+      const { x, y } = screenToWorldRef.current(e.clientX, e.clientY);
+      const wx = Number(x);
+      const wy = Number(y);
+
+      lastSentWorldRef.current = { x: wx, y: wy };
+      setFacingFromWorldX(wx);
+      onMoveToRef.current?.({ x: wx, y: wy });
     };
 
-    const onContextMenu = (e) => e.preventDefault();
+    const onPointerMove = (e) => {
+      // update cursor location continuously (even if we don't send every move)
+      mouseRef.current.x = e.clientX;
+      mouseRef.current.y = e.clientY;
 
-    const onMouseDown = (e) => {
-      if (e.button !== 2) return; // RMB
-      e.preventDefault();
-      rightDownRef.current = true;
-
-      // send immediately on press
-      const { x, y } = screenToWorld(e.clientX, e.clientY);
-      setFacingFromWorldX(Number(x));
-      lastSentWorldRef.current = { x, y };
-      onMoveTo({ x: Number(x), y: Number(y) });
+      // If our configured button is no longer held, release.
+      if (isDownRef.current && (e.buttons & BUTTON_MASK) === 0) {
+        isDownRef.current = false;
+        pointerIdRef.current = null;
+      }
     };
 
-    const onMouseUp = (e) => {
-      if (e.button !== 2) return;
-      rightDownRef.current = false;
-      lastSentWorldRef.current = { x: null, y: null };
-
-      // ✅ tell server to stop (prevents “coast”)
-      onStopMove?.();
+    const endHold = (e) => {
+      // only end if our button isn't held anymore
+      if ((e.buttons & BUTTON_MASK) === 0) {
+        isDownRef.current = false;
+        pointerIdRef.current = null;
+      }
     };
 
-    window.addEventListener("mousemove", onMouseMove);
-    window.addEventListener("contextmenu", onContextMenu);
-    window.addEventListener("mousedown", onMouseDown);
-    window.addEventListener("mouseup", onMouseUp);
+    // attach
+    window.addEventListener("contextmenu", onContextMenu, { passive: false });
+
+    // If a targetRef is provided, prefer element-level events; otherwise fall back to window.
+    targetEl.addEventListener?.("pointerdown", onPointerDown, { passive: false });
+    window.addEventListener("pointermove", onPointerMove, { passive: false });
+    window.addEventListener("pointerup", endHold, { passive: false });
+    window.addEventListener("pointercancel", endHold, { passive: false });
+    window.addEventListener("blur", endHold);
 
     return () => {
-      window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("contextmenu", onContextMenu);
-      window.removeEventListener("mousedown", onMouseDown);
-      window.removeEventListener("mouseup", onMouseUp);
-    };
-  }, [enabled, screenToWorld, onMoveTo, onStopMove, setFacingFromWorldX]);
 
+      targetEl.removeEventListener?.("pointerdown", onPointerDown);
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", endHold);
+      window.removeEventListener("pointercancel", endHold);
+      window.removeEventListener("blur", endHold);
+    };
+  }, [enabled, button, BUTTON_MASK, setFacingFromWorldX, targetRef]);
+
+  // ✅ rAF loop that recomputes world under cursor every frame, throttled by sendRateHz + deadzone
   useEffect(() => {
     if (!enabled) return;
 
-    const intervalMs = Math.max(10, Math.floor(1000 / sendRateHz));
+    const minDt = 1000 / Math.max(1, sendRateHz);
+    const dz2 = deadzoneWorld * deadzoneWorld;
 
-    // ✅ tune: how much the target must change (world units) before we re-send
-    const DEADZONE_WORLD = 0.35;
+    let rafId = 0;
+    let lastSentAt = 0;
 
-    const tick = () => {
-      if (!rightDownRef.current) return;
+    const frame = (now) => {
+      rafId = requestAnimationFrame(frame);
 
-      const { x, y } = screenToWorld(mouseRef.current.x, mouseRef.current.y);
+      if (!isDownRef.current) return;
+
+      // throttle by sendRateHz
+      if (now - lastSentAt < minDt) return;
+
+      const { x, y } = screenToWorldRef.current(mouseRef.current.x, mouseRef.current.y);
+      const wx = Number(x);
+      const wy = Number(y);
 
       const lx = lastSentWorldRef.current.x;
       const ly = lastSentWorldRef.current.y;
 
       if (lx != null && ly != null) {
-        const dx = x - lx;
-        const dy = y - ly;
-        if (dx * dx + dy * dy < DEADZONE_WORLD * DEADZONE_WORLD) return;
+        const dx = wx - lx;
+        const dy = wy - ly;
+        if (dx * dx + dy * dy < dz2) return; // deadzone
       }
 
-      lastSentWorldRef.current = { x, y };
-
-      setFacingFromWorldX(Number(x));
-      onMoveTo({ x: Number(x), y: Number(y) });
+      lastSentAt = now;
+      lastSentWorldRef.current = { x: wx, y: wy };
+      setFacingFromWorldX(wx);
+      onMoveToRef.current?.({ x: wx, y: wy });
     };
 
-    const id = setInterval(tick, intervalMs);
-    return () => clearInterval(id);
-  }, [enabled, sendRateHz, screenToWorld, onMoveTo, setFacingFromWorldX]);
+    rafId = requestAnimationFrame(frame);
+    return () => cancelAnimationFrame(rafId);
+  }, [enabled, sendRateHz, deadzoneWorld, setFacingFromWorldX]);
 
-  return { rightDownRef, mouseRef };
+  return {
+    isDownRef,
+    mouseRef,
+  };
 }
