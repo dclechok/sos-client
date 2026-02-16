@@ -1,25 +1,25 @@
+/* CharacterSelection.css */
+
 /* ================================
    FANTASY RPG RESKIN (PARChMENT + IRON + TORCHLIGHT)
    ================================ */
 
-/* Fonts: readable serif + fantasy display */
 @import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=IM+Fell+English:ital@0;1&display=swap");
 
 :root{
-  --bg-0: #0b0a07;              /* deep tavern dark */
-  --bg-1: #14120d;              /* panel shadow */
-  --ink: #2b2115;               /* ink text */
-  --parchment: #f3e6c6;         /* parchment */
-  --parchment-2:#ead9b3;        /* warmer parchment */
-  --wax: #7a1d1b;               /* seal red */
-  --gold: #c2a35a;              /* gilt */
-  --iron: #4a453b;              /* iron trim */
-  --iron-2:#2e2b23;             /* dark iron */
+  --bg-0: #0b0a07;
+  --bg-1: #14120d;
+  --ink: #2b2115;
+  --parchment: #f3e6c6;
+  --parchment-2:#ead9b3;
+  --wax: #7a1d1b;
+  --gold: #c2a35a;
+  --iron: #4a453b;
+  --iron-2:#2e2b23;
   --ember: rgba(255, 170, 80, .45);
   --glow: rgba(255, 210, 140, .18);
 }
 
-/* Optional: a subtle "torchlight" background for the whole page */
 body{
   background:
     radial-gradient(900px 500px at 50% 10%, rgba(255, 190, 110, .10), transparent 55%),
@@ -57,6 +57,13 @@ body{
     0 0 18px rgba(255,200,120,.10);
 }
 
+.char-loading{
+  margin-top: 12px;
+  font-size: 18px;
+  opacity: 0.9;
+  text-shadow: 0 2px 0 rgba(0,0,0,.35);
+}
+
 .char-cont{
   display:flex;
   justify-content:center;
@@ -65,7 +72,6 @@ body{
   padding: 18px;
 }
 
-/* Parchment panel behind the list */
 .chars{
   width: 360px;
   padding: 16px 14px;
@@ -80,7 +86,6 @@ body{
 
   border-radius: 10px;
 
-  /* "torn paper" illusion via layered shadows */
   box-shadow:
     0 18px 50px rgba(0,0,0,.55),
     0 0 0 1px rgba(0,0,0,.35),
@@ -90,7 +95,6 @@ body{
   position: relative;
 }
 
-/* Decorative corner studs */
 .chars::before,
 .chars::after{
   content:"";
@@ -105,7 +109,6 @@ body{
   border: 1px solid rgba(80,60,25,.16);
 }
 
-/* Individual character rows = "ledger entries" */
 .chars > div{
   position: relative;
   padding: 12px 10px;
@@ -130,7 +133,6 @@ body{
     filter .22s ease;
 }
 
-/* Left "gilt" stripe like a bookmark */
 .chars > div::before{
   content:"";
   position:absolute;
@@ -144,7 +146,6 @@ body{
   opacity: .55;
 }
 
-/* Hover = enchanted warmth */
 .chars > div:hover{
   transform: translateY(-1px) scale(1.01);
   box-shadow:
@@ -155,7 +156,6 @@ body{
   filter: saturate(1.05);
 }
 
-/* Selected = wax seal + glow */
 .chars > div.selected{
   transform: translateY(-2px) scale(1.02);
   border-color: rgba(160,120,55,.55);
@@ -171,7 +171,6 @@ body{
     linear-gradient(90deg, rgba(0,0,0,.06), transparent 35%, rgba(0,0,0,.06));
 }
 
-/* little "seal" dot on selected */
 .chars > div.selected::after{
   content:"";
   position:absolute;
@@ -181,10 +180,75 @@ body{
   height: 14px;
   margin-top: -7px;
   border-radius: 50%;
-  background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.35), transparent 40%),
-              radial-gradient(circle at 60% 60%, rgba(0,0,0,.25), transparent 55%),
-              linear-gradient(180deg, #a42a23, var(--wax));
+  background:
+    radial-gradient(circle at 30% 30%, rgba(255,255,255,.35), transparent 40%),
+    radial-gradient(circle at 60% 60%, rgba(0,0,0,.25), transparent 55%),
+    linear-gradient(180deg, #a42a23, var(--wax));
   box-shadow:
     0 0 0 1px rgba(30,15,10,.55),
     0 0 14px rgba(255,180,120,.18);
+}
+
+.empty-slot{
+  opacity: 0.6;
+}
+
+/* ================================
+   CHARACTER SELECT LOGOUT (UTILITY)
+   Keeps your LogoutButton functionality, but positions/styles it for this screen.
+   ================================ */
+
+.char-screen .logout-btn{
+  position: fixed;
+  top: 16px;
+  right: 18px;
+  transform: none;
+
+  height: 26px;
+  padding: 0 12px;
+
+  font-family: "Cinzel", serif;
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+
+  color: rgba(40, 30, 18, 0.92);
+
+  background:
+    radial-gradient(140px 60px at 50% 0%, rgba(255,255,255,.35), transparent 60%),
+    linear-gradient(180deg, var(--parchment) 0%, var(--parchment-2) 100%);
+
+  border: 1px solid rgba(70,50,20,.32);
+  border-radius: 8px;
+
+  box-shadow:
+    0 10px 26px rgba(0,0,0,.35),
+    inset 0 1px 0 rgba(255,255,255,.35);
+
+  opacity: 0.92;
+  z-index: 2000;
+}
+
+.char-screen .logout-btn:hover{
+  opacity: 1;
+  transform: none;
+
+  box-shadow:
+    0 14px 34px rgba(0,0,0,.42),
+    0 0 18px rgba(255,190,110,.12),
+    inset 0 1px 0 rgba(255,255,255,.40);
+}
+
+/* Small “bookmark” accent to match your list stripe */
+.char-screen .logout-btn::before{
+  content:"";
+  display: inline-block;
+  width: 4px;
+  height: 12px;
+  margin-right: 8px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, rgba(220,180,90,.95), rgba(140,105,45,.9));
+  box-shadow: 0 0 0 1px rgba(40,25,8,.25);
+  opacity: .65;
 }

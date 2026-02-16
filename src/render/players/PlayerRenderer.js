@@ -191,7 +191,7 @@ export default function PlayerRenderer({
       style={{
         position: "fixed",
         inset: 0,
-        zIndex: 9999,
+        zIndex: 10,
         pointerEvents: "none",
       }}
     >

@@ -9,7 +9,6 @@ import useButtonClickSound from "./hooks/useButtonClickSound";
 import Login from "./Login";
 import NavBar from "./NavBar";
 import CharacterSelection from "./CharacterSelection";
-import LogoutButton from "./LogoutButton";
 
 import { loadStoredSession, verifyToken } from "./utils/session";
 import { useGameSocket } from "./hooks/useGameSocket";
@@ -68,14 +67,12 @@ export default function App() {
       ? camStableRef.current.y
       : (camStableRef.current.y = rawY);
 
-  // ✅ SINGLE WORLD INSTANCE (shared by terrain + minimap)
   const world = useWorldChunks({
     metaUrl: "/world/meta.json",
     chunkBaseUrl: "/world/chunks",
     preloadRadiusChunks: 2,
   });
 
-  // ✅ minimap uses SAME world
   const { renderMapFrame } = useWorldMapRenderer({
     world,
     me,
@@ -128,7 +125,6 @@ export default function App() {
   if (character === null) {
     return (
       <>
-        <LogoutButton setAccount={setAccount} setCharacter={setCharacter} />
         <CharacterSelection
           account={account}
           setAccount={setAccount}
@@ -147,9 +143,11 @@ export default function App() {
 
   return (
     <div className="App" onContextMenu={(e) => e.preventDefault()}>
-      <LogoutButton setAccount={setAccount} setCharacter={setCharacter} />
-
-      <NavBar onMapClick={() => setMapOpen(true)} />
+      <NavBar
+        onMapClick={() => setMapOpen(true)}
+        setAccount={setAccount}
+        setCharacter={setCharacter}
+      />
 
       {canMountWorld && (
         <MainViewport

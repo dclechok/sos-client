@@ -1,19 +1,19 @@
 import "./styles/LogoutButton.css";
-import buttonClickSound from './sounds/button_click2.wav';
-import { useState, useEffect } from 'react';
+import buttonClickSound from "./sounds/button_click2.wav";
+import { useEffect, useMemo, useState } from "react";
 
 function LogoutButton({ setAccount, setCharacter }) {
-
-  const clickSound = new Audio(buttonClickSound);
   const [warningMsg, setWarningMsg] = useState(false);
 
+  // ✅ create the Audio object ONCE (prevents lag / “browser breaking”)
+  const clickSound = useMemo(() => new Audio(buttonClickSound), []);
 
-    useEffect(() => {
+  useEffect(() => {
     if (!warningMsg) return;
 
     function handleKey(e) {
       if (e.key === "Escape") {
-        handleCancel();
+        setWarningMsg(false);
       }
     }
 
@@ -26,12 +26,15 @@ function LogoutButton({ setAccount, setCharacter }) {
     localStorage.removeItem("pd_account");
     localStorage.removeItem("pd_character");
 
-    clickSound.currentTime = 0;
-    clickSound.volume = 0.5;
-    clickSound.play().catch(() => {});
+    try {
+      clickSound.currentTime = 0;
+      clickSound.volume = 0.5;
+      clickSound.play().catch(() => {});
+    } catch {}
 
     setAccount(null);
     setCharacter(null);
+    setWarningMsg(false);
   }
 
   function handleLogoutCheck() {
@@ -43,27 +46,26 @@ function LogoutButton({ setAccount, setCharacter }) {
   }
 
   return (
-    <div className="logout-wrapper">
-
-      {/* LOGOUT BUTTON */}
+    <>
+      {/* LOGOUT BUTTON (styled/positioned by your CSS) */}
       <button className="logout-btn" onClick={handleLogoutCheck}>
         LOG OUT
       </button>
 
       {/* CONFIRMATION BOX */}
-      {warningMsg && (<div className="validate-logout-cont">
-        <div className="validate-logout">
-          <div>Are you sure you wish to logout here?</div>
+      {warningMsg && (
+        <div className="validate-logout-cont" onMouseDown={handleCancel}>
+          <div className="validate-logout" onMouseDown={(e) => e.stopPropagation()}>
+            <div>Are you sure you wish to logout here?</div>
 
-          <div className="logout-choice-buttons">
-            <button className="logout-yes" onClick={handleLogout}>Yes</button>
-            <button className="logout-no" onClick={handleCancel}>No</button>
+            <div className="logout-choice-buttons">
+              <button className="logout-yes" onClick={handleLogout}>Yes</button>
+              <button className="logout-no" onClick={handleCancel}>No</button>
+            </div>
           </div>
         </div>
-        </div>
       )}
-
-    </div>
+    </>
   );
 }
 

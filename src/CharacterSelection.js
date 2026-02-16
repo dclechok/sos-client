@@ -1,57 +1,56 @@
+// CharacterSelection.jsx
 import { useEffect, useState } from "react";
 import { fetchCharacterList } from "./api/characterApi";
 import LogoutButton from "./LogoutButton";
 import "./styles/CharacterSelection.css";
 
 function CharacterSelection({ account, setAccount, setCharacter }) {
-
   const [characters, setCharacters] = useState(null);
 
   // Load characters from server
   useEffect(() => {
     if (!account || !account.id) return;
+
     async function loadChars() {
       const chars = await fetchCharacterList(account, account.token);
       setCharacters(chars);
     }
+
     loadChars();
   }, [account]);
-  
+
   // When player selects a character save it in localStorage
   const handleSelect = (char) => {
     localStorage.setItem("pd_character", JSON.stringify(char));
     setCharacter(char);
   };
 
+  // Loading state
   if (characters === null) {
     return (
-      <div className="char-wrapper">
-        <LogoutButton setAccount={setAccount} />
-        Loading vessels...
+      <div className="char-wrapper char-screen">
+        <LogoutButton setAccount={setAccount} setCharacter={setCharacter} />
+        <div className="char-title">Select Your Vessel</div>
+        <div className="char-loading">Loading vessels...</div>
       </div>
     );
   }
 
   return (
-    <div className="char-wrapper">
+    <div className="char-wrapper char-screen">
+      {/* Utility logout for this screen (styled via .char-screen overrides) */}
       <LogoutButton setAccount={setAccount} setCharacter={setCharacter} />
 
       <div className="char-title">Select Your Vessel</div>
 
       <div className="char-cont">
         <div className="chars">
-
           {/* No characters */}
-          {characters.length === 0 && (
-            <div>No vessels found. Create one?</div>
-          )}
+          {characters.length === 0 && <div>No vessels found. Create one?</div>}
 
           {/* Character list */}
           {characters.map((c, index) => (
-            <div 
-              key={index}
-              onClick={() => handleSelect(c)}
-            >
+            <div key={index} onClick={() => handleSelect(c)}>
               {c.charName}
             </div>
           ))}
@@ -64,7 +63,6 @@ function CharacterSelection({ account, setAccount, setCharacter }) {
               </div>
             )
           )}
-
         </div>
       </div>
     </div>

@@ -121,3 +121,25 @@
   border-left: 1px solid #4a4a56;
   border-right: 1px solid #4a4a56;
 }
+
+.nav-bar{
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  height: 36px;
+
+  /* IMPORTANT so absolute logout doesn’t overlap center buttons */
+  padding: 0 90px;
+
+  /* IMPORTANT so the bar sits above canvas/world */
+  z-index: 1000;
+}
+
+.nav-center{
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
