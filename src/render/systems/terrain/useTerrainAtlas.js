@@ -1,3 +1,4 @@
+// src/render/systems/terrain/useTerrainAtlas.js
 import { useEffect, useMemo, useState } from "react";
 import { TILE, TERRAIN_ID } from "../../../world/worldConstants";
 
@@ -11,29 +12,28 @@ function loadImage(src) {
 }
 
 /**
- * Your atlas (confirmed by inspecting terrain.png):
- * - tiles are EXACTLY 16x16
- * - there is a 2px GAP between tiles (empty space)
- * - there is a 2px MARGIN from the top/left before the first tile
+ * Terrain atlas rules:
+ * - tiles are EXACTLY TILE x TILE (16x16)
+ * - there is a GAP (empty pixels) between tiles
+ * - there is a MARGIN from the top/left before the first tile
  *
- * So each tile "slot" starts every (16 + 2) pixels.
- * No inner padding. Just spacing.
+ * Each tile "slot" starts every (TILE + GAP) pixels.
  */
 export function useTerrainAtlas({
   atlasSrc = "/art/terrain/terrain.png",
 
-  // Your sheet has 3 tiles per row (grass x3 on row 0, water x3 on row 1)
-  atlasCols = 3,
+  // ✅ UPDATED: your sheet is now 5 tiles across (grass x5 on row 0)
+  atlasCols = 5,
 
-  // ✅ correct for your file
+  // ✅ keep these if your file still has 2px spacing + 2px margin
   gap = 2,
   margin = 2,
 
-  // Layout:
-  // grass: row 0 col 0..2 => indices 0,1,2
-  // water: row 1 col 0..2 => indices 3,4,5
-  grassTiles = [0, 1, 2],
-  waterTiles = [3, 4, 5],
+  // ✅ UPDATED layout (assuming):
+  // row 0: grass x5 => indices 0..4
+  // row 1: water x3 => indices 5..7  (water at row 1 col 0..2)
+  grassTiles = [0, 1, 2, 3, 4],
+  waterTiles = [5, 6, 7],
 } = {}) {
   const [img, setImg] = useState(null);
 

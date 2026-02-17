@@ -21,7 +21,6 @@
   opacity: 0;
   pointer-events: none;
 
-  /* compact width: only as big as the map area needs */
   width: min(760px, calc(100vw - 24px));
   background: rgba(10, 10, 14, 0.94);
   border: 1px solid rgba(255,255,255,0.10);
@@ -67,10 +66,15 @@
   border-radius: 10px;
   cursor: pointer;
   line-height: 1;
+  user-select: none;
 }
 
 .mapBtn:hover {
   background: rgba(255,255,255,0.10);
+}
+
+.mapBtn:active {
+  transform: translateY(1px);
 }
 
 .mapBtn.subtle {
@@ -86,24 +90,44 @@
   opacity: 0.8;
   min-width: 48px;
   text-align: center;
+  user-select: none;
 }
 
 .mapModalBody {
   padding: 12px;
 }
 
+/* ✅ Canvas: drag/pan friendly */
 .mapCanvas {
   width: 100%;
-  /* give it a consistent “map-ish” size without being huge */
   height: min(60vh, 520px);
   display: block;
   background: rgba(0,0,0,0.28);
   border: 1px solid rgba(255,255,255,0.08);
   border-radius: 12px;
+
+  /* IMPORTANT for touch + pointer dragging */
+  touch-action: none;
+
+  /* UX for dragging */
+  cursor: grab;
+  user-select: none;
+}
+
+.mapCanvas:active {
+  cursor: grabbing;
+}
+
+/* Optional: slightly nicer focus outline for accessibility */
+.mapBtn:focus-visible,
+.mapCanvas:focus-visible {
+  outline: 2px solid rgba(255,255,255,0.25);
+  outline-offset: 2px;
 }
 
 .mapHint {
   padding: 0 12px 12px 12px;
   font-size: 12px;
   opacity: 0.65;
+  user-select: none;
 }

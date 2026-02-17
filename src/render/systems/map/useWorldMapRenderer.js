@@ -3,6 +3,10 @@ import { TILE } from "../../../world/worldConstants";
 
 const MAP_SRC = "/world/map.png";
 
+function clamp(v, min, max) {
+  return Math.max(min, Math.min(max, v));
+}
+
 export function useWorldMapRenderer({ world, me }) {
   const imgRef = useRef(null);
   const [ready, setReady] = useState(false);
@@ -33,7 +37,11 @@ export function useWorldMapRenderer({ world, me }) {
   const renderMapFrame = useCallback(
     (ctx, w, h, opts = {}) => {
       const meta = world?.meta;
+
       const zoom = Number.isFinite(opts.zoom) ? opts.zoom : 1;
+      const pan = opts.pan && Number.isFinite(opts.pan.x) && Number.isFinite(opts.pan.y)
+        ? opts.pan
+        : { x: 0, y: 0 };
 
       // bg
       ctx.fillStyle = "rgba(0,0,0,0.18)";
@@ -54,16 +62,31 @@ export function useWorldMapRenderer({ world, me }) {
         return;
       }
 
-      // Fit image into available rect
+      // Fit image into available rect (base scale)
       const baseScale = Math.min(w / img.width, h / img.height);
       const scale = baseScale * zoom;
 
       const drawW = Math.floor(img.width * scale);
       const drawH = Math.floor(img.height * scale);
 
-      // center it
-      const ox = Math.floor((w - drawW) / 2);
-      const oy = Math.floor((h - drawH) / 2);
+      // center it, THEN apply pan (pan is in screen/CSS pixels)
+      let ox = Math.floor((w - drawW) / 2) + pan.x;
+      let oy = Math.floor((h - drawH) / 2) + pan.y;
+
+      // OPTIONAL: clamp pan so you can't fling map completely away.
+      // This keeps at least a small portion onscreen.
+      const margin = 80; // allow some overscroll
+      const minOx = w - drawW - margin;
+      const maxOx = margin;
+      const minOy = h - drawH - margin;
+      const maxOy = margin;
+
+      // Only clamp if the map is larger than the view in that dimension.
+      if (drawW > w) ox = clamp(ox, minOx, maxOx);
+      else ox = Math.floor((w - drawW) / 2); // if it fits, keep centered horizontally
+
+      if (drawH > h) oy = clamp(oy, minOy, maxOy);
+      else oy = Math.floor((h - drawH) / 2); // if it fits, keep centered vertically
 
       ctx.imageSmoothingEnabled = false;
       ctx.drawImage(img, ox, oy, drawW, drawH);
@@ -83,7 +106,6 @@ export function useWorldMapRenderer({ world, me }) {
         const px = ox + nx * drawW;
         const py = oy + ny * drawH;
 
-        // smaller + cleaner
         ctx.fillStyle = "rgba(255,255,255,0.92)";
         ctx.beginPath();
         ctx.arc(px, py, 2, 0, Math.PI * 2);
