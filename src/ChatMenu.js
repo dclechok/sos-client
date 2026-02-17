@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useGameSocket } from "./hooks/useGameSocket";
 import "./styles/ChatMenu.css";
 
@@ -8,13 +8,47 @@ function ChatMenu({ character, myId }) {
   const { send, useSocketEvent } = useGameSocket(); // shared socket
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
+  const [chatActive, setChatActive] = useState(false);
+
   const bottomRef = useRef(null);
+  const inputRef = useRef(null);
 
   const scroll = useCallback(() => {
     setTimeout(() => {
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }, 30);
   }, []);
+
+  // Global keybinds:
+  // - Enter opens chat (arms input)
+  // - Esc closes chat
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      // If user is typing somewhere else (like a form), don’t hijack it
+      const tag = (e.target?.tagName || "").toLowerCase();
+      const isTypingElsewhere =
+        tag === "input" || tag === "textarea" || e.target?.isContentEditable;
+
+      // ENTER to open chat when inactive (unless already typing elsewhere)
+      if (!chatActive && e.key === "Enter" && !isTypingElsewhere) {
+        e.preventDefault();
+        setChatActive(true);
+        setTimeout(() => inputRef.current?.focus(), 0);
+        return;
+      }
+
+      // ESC to close chat
+      if (chatActive && e.key === "Escape") {
+        e.preventDefault();
+        setChatActive(false);
+        setInput("");
+        inputRef.current?.blur();
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [chatActive]);
 
   // Listen for full history
   useSocketEvent("chatHistory", (history) => {
@@ -45,7 +79,7 @@ function ChatMenu({ character, myId }) {
     );
   });
 
-  const sendMessage = () => {
+  const sendMessage = useCallback(() => {
     const text = input.trim();
     if (!text) return;
 
@@ -71,15 +105,30 @@ function ChatMenu({ character, myId }) {
     });
 
     setInput("");
-  };
+  }, [input, myId, character, send]);
 
   const onChange = (e) => {
     const next = e.target.value;
     setInput(next.length > MAX_CHARS ? next.slice(0, MAX_CHARS) : next);
   };
 
+  const onInputKeyDown = (e) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+
+    // Enter while active:
+    // - if text: send
+    // - if empty: close chat (nice “old school” behavior)
+    if (input.trim()) {
+      sendMessage();
+    } else {
+      setChatActive(false);
+      inputRef.current?.blur();
+    }
+  };
+
   return (
-    <div className="chat-container">
+    <div className={`chat-container ${chatActive ? "active" : "inactive"}`}>
       <div className="chat-messages">
         {messages.map((msg, i) => (
           <div key={i} className="chat-line">
@@ -92,20 +141,15 @@ function ChatMenu({ character, myId }) {
 
       <div className="chat-input-wrapper">
         <input
+          ref={inputRef}
           className="chat-input"
           value={input}
-          placeholder="Type a message..."
+          placeholder={chatActive ? "Say something..." : "Press Enter to chat"}
           onChange={onChange}
-          onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+          onKeyDown={onInputKeyDown}
+          disabled={!chatActive}
         />
-        <div
-          style={{
-            marginTop: 4,
-            fontSize: 10,
-            opacity: 0.55,
-            userSelect: "none",
-          }}
-        >
+        <div className="chat-counter">
           {input.length}/{MAX_CHARS}
         </div>
       </div>
