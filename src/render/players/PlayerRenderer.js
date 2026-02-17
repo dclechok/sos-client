@@ -6,6 +6,11 @@ import { useRemoteInterpolation } from "./useRemoteInterpolation";
  * PlayerRenderer (DOM overlay)
  * ✅ Uses the SAME snapped camera as the canvas renderer via camSmoothRef.
  * ✅ Snaps REMOTE render positions to the same 1/zoom world grid to prevent 1px idle jiggle.
+ *
+ * ✅ NEW:
+ * - Overhead chat bubbles (supports senderId OR fallback to display name)
+ * - Bubble duration scales with message length
+ * - Bubble text renders left-to-right (fixes 1-letter-per-line stacking)
  */
 export default function PlayerRenderer({
   socket,
@@ -27,30 +32,26 @@ export default function PlayerRenderer({
 
   canvasRef,
 
-  // ✅ pass from App (same ref MainViewport/useViewportRenderer uses)
   camSmoothRef,
 }) {
   const [hoverId, setHoverId] = useState(null);
   const [myFacing, setMyFacing] = useState("right");
 
+  // bubbles keyed by senderId string OR displayName string:
+  // { [key]: { text, t, expiresAt } }
+  const [bubbles, setBubbles] = useState({});
+
   const me = myId && players ? players[myId] : null;
 
-  // Keep latest me in a ref so listeners use fresh state
   const meRef = useRef(null);
   useEffect(() => {
     meRef.current = me;
   }, [me]);
 
-  // safe integer zoom
   const z = Math.max(1, Math.floor(Number(zoom) || 1));
-
-  // final DOM sprite size in CSS pixels
   const drawW = spriteW * z;
   const drawH = spriteH * z;
 
-  // ------------------------------
-  // Canvas metrics (center + UNIFORM CSS->canvas scaling)
-  // ------------------------------
   const getCanvasMetrics = useCallback(() => {
     const canvas = canvasRef?.current;
 
@@ -63,25 +64,15 @@ export default function PlayerRenderer({
     }
 
     const r = canvas.getBoundingClientRect();
-
     const scaleX = r.width ? canvas.width / r.width : 1;
-    const scaleY = r.height ? canvas.height / r.height : 1;
-
-    // ✅ uniform scale: CSS px -> canvas px factor
-    const scale = scaleX;
 
     return {
       cx: r.left + r.width / 2,
       cy: r.top + r.height / 2,
-      scale,
-      scaleX,
-      scaleY,
+      scale: scaleX,
     };
   }, [canvasRef]);
 
-  // ------------------------------
-  // ✅ Shared camera (snapped to match canvas pixel-art snap)
-  // ------------------------------
   const getRenderCam = useCallback(() => {
     const cam = camSmoothRef?.current;
     const fallback = meRef.current || { x: 0, y: 0 };
@@ -89,18 +80,15 @@ export default function PlayerRenderer({
     const cx = Number.isFinite(cam?.x) ? Number(cam.x) : Number(fallback.x || 0);
     const cy = Number.isFinite(cam?.y) ? Number(cam.y) : Number(fallback.y || 0);
 
-    // MUST match useViewportRenderer snap (1/z world units)
     if (z > 1) {
       return {
         x: Math.round(cx * z) / z,
         y: Math.round(cy * z) / z,
       };
     }
-
     return { x: cx, y: cy };
   }, [camSmoothRef, z]);
 
-  // ✅ Snap world-space values to the same 1/z grid to prevent 1px idle jiggle
   const snapWorld = useCallback(
     (v) => {
       const n = Number(v || 0);
@@ -110,7 +98,6 @@ export default function PlayerRenderer({
     [z]
   );
 
-  // world -> screen (CSS px)
   const worldToScreen = useCallback(
     (p) => {
       const { cx, cy, scale } = getCanvasMetrics();
@@ -124,7 +111,6 @@ export default function PlayerRenderer({
     [getCanvasMetrics, getRenderCam, z]
   );
 
-  // screen (CSS px) -> world
   const screenToWorld = useCallback(
     (clientX, clientY) => {
       const { cx, cy, scale } = getCanvasMetrics();
@@ -133,26 +119,108 @@ export default function PlayerRenderer({
       const dxWorld = ((clientX - cx) * scale) / z;
       const dyWorld = ((clientY - cy) * scale) / z;
 
-      return {
-        x: cam.x + dxWorld,
-        y: cam.y + dyWorld,
-      };
+      return { x: cam.x + dxWorld, y: cam.y + dyWorld };
     },
     [getCanvasMetrics, getRenderCam, z]
   );
 
-  const getDisplayName = (id, p) => {
-    const fromSnapshot = p?.name;
-    if (fromSnapshot && String(fromSnapshot).trim()) return String(fromSnapshot);
+  const getDisplayName = useCallback(
+    (id, p) => {
+      const fromSnapshot = p?.name;
+      if (fromSnapshot && String(fromSnapshot).trim()) return String(fromSnapshot);
 
-    const fromMap = playerNames?.[id];
-    if (fromMap && String(fromMap).trim()) return String(fromMap);
+      const fromMap = playerNames?.[id];
+      if (fromMap && String(fromMap).trim()) return String(fromMap);
 
-    return `Player ${String(id).slice(0, 4)}`;
-  };
+      return `Player ${String(id).slice(0, 4)}`;
+    },
+    [playerNames]
+  );
 
   // -----------------------------------
-  // INPUT HOOK (ARPG drag-to-move)
+  // CHAT BUBBLES
+  // -----------------------------------
+  useEffect(() => {
+    // ✅ linger tuning (more readable / “old heads” friendly)
+    // - base time raised
+    // - per-char time raised
+    // - max cap raised
+    function ttlFor(text) {
+      const len = String(text || "").length;
+      return Math.max(3000, Math.min(18000, 2000 + len * 80));
+    }
+
+    function onBubble(e) {
+      const d = e?.detail || {};
+      const senderIdRaw = d.senderId;
+      const user = String(d.user || "").trim();
+      const message = String(d.message || "").trim();
+      const t = Number(d.t || Date.now());
+      if (!message) return;
+
+      const key =
+        senderIdRaw != null && String(senderIdRaw).trim()
+          ? String(senderIdRaw)
+          : user;
+
+      if (!key) return;
+
+      const ttl = ttlFor(message);
+
+      setBubbles((prev) => ({
+        ...prev,
+        [key]: { text: message, t, expiresAt: t + ttl },
+      }));
+    }
+
+    window.addEventListener("chat:bubble", onBubble);
+    return () => window.removeEventListener("chat:bubble", onBubble);
+  }, []);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      const now = Date.now();
+      setBubbles((prev) => {
+        let changed = false;
+        const next = { ...prev };
+        for (const k of Object.keys(next)) {
+          if (!next[k] || now >= next[k].expiresAt) {
+            delete next[k];
+            changed = true;
+          }
+        }
+        return changed ? next : prev;
+      });
+    }, 250);
+
+    return () => clearInterval(id);
+  }, []);
+
+  // ✅ IMPORTANT FIX:
+  // Try bubble by playerId, else fallback to displayName (when senderId missing)
+  const getBubbleForPlayer = useCallback(
+    (id, p) => {
+      if (id == null) return null;
+
+      const byId = bubbles?.[String(id)];
+      const byName = bubbles?.[getDisplayName(id, p)];
+      const b = byId || byName;
+      if (!b) return null;
+
+      const now = Date.now();
+      const remaining = Math.max(0, b.expiresAt - now);
+
+      // ✅ slightly longer fade-out to feel less “snappy”
+      const fadeMs = 1100;
+      const alpha = remaining < fadeMs ? remaining / fadeMs : 1;
+
+      return { ...b, alpha };
+    },
+    [bubbles, getDisplayName]
+  );
+
+  // -----------------------------------
+  // INPUT
   // -----------------------------------
   const inputEnabled = Boolean(socket);
 
@@ -169,19 +237,14 @@ export default function PlayerRenderer({
     sendRateHz,
     screenToWorld,
     onMoveTo,
-
     getMyPos: () => getRenderCam(),
     onFacingChange: (dir) => setMyFacing(dir),
-
     button: 2,
     deadzoneWorld: 0.5,
-
-    // If your usePlayerInput supports it, this improves hold-drag consistency:
-    // targetRef: canvasRef,
   });
 
   // -----------------------------------
-  // REMOTE INTERPOLATION HOOK
+  // REMOTE INTERPOLATION
   // -----------------------------------
   const { remoteIds, getRenderState } = useRemoteInterpolation({
     players,
@@ -213,6 +276,70 @@ export default function PlayerRenderer({
     textShadow: "0 1px 2px rgba(0,0,0,0.75)",
     pointerEvents: "none",
   };
+
+  // ✅ Gothic RPG bubble styling (subtle, readable, not gold)
+  const bubbleStyle = (alpha = 1) => ({
+    position: "absolute",
+    left: "50%",
+    top: -14,
+    transform: "translate(-50%, -100%)",
+
+    // ✅ critical: do NOT become the tiny parent width
+    display: "inline-block",
+    width: "max-content",
+    maxWidth: 260,
+
+    padding: "7px 10px",
+    borderRadius: 12,
+
+    // ink parchment vibe without being bright
+    background: `linear-gradient(180deg,
+      rgba(20,16,24,${0.92 * alpha}) 0%,
+      rgba(10,8,12,${0.86 * alpha}) 60%,
+      rgba(6,5,8,${0.90 * alpha}) 100%)`,
+
+    // iron/stone rim (no gold)
+    border: `1px solid rgba(135, 140, 160, ${0.35 * alpha})`,
+    boxShadow: `
+      0 6px 16px rgba(0,0,0,${0.55 * alpha}),
+      inset 0 1px 0 rgba(255,255,255,${0.06 * alpha}),
+      inset 0 -1px 0 rgba(0,0,0,${0.35 * alpha})
+    `,
+
+    color: `rgba(235, 232, 245, ${0.98 * alpha})`,
+    fontSize: 12,
+    lineHeight: "14px",
+    letterSpacing: "0.15px",
+
+    whiteSpace: "pre-wrap",
+    wordBreak: "break-word",
+
+    // tiny arcane glow, still subtle
+    textShadow: `
+      0 1px 2px rgba(0,0,0,0.85),
+      0 0 8px rgba(120, 90, 160, ${0.14 * alpha})
+    `,
+
+    pointerEvents: "none",
+    filter: `drop-shadow(0 6px 14px rgba(0,0,0,${0.40 * alpha}))`,
+    transition: "opacity 220ms linear",
+    opacity: alpha,
+    zIndex: 50,
+  });
+
+  const bubbleTailStyle = (alpha = 1) => ({
+    position: "absolute",
+    left: "50%",
+    bottom: -4,
+    width: 9,
+    height: 9,
+    transform: "translateX(-50%) rotate(45deg)",
+    background: `rgba(10, 8, 12, ${0.88 * alpha})`,
+    borderRight: `1px solid rgba(135, 140, 160, ${0.26 * alpha})`,
+    borderBottom: `1px solid rgba(135, 140, 160, ${0.26 * alpha})`,
+    boxShadow: `0 4px 10px rgba(0,0,0,${0.35 * alpha})`,
+    pointerEvents: "none",
+  });
 
   const displayX = me ? Math.round(me.x) : 0;
   const displayY = me ? Math.round(me.y) : 0;
@@ -248,21 +375,18 @@ export default function PlayerRenderer({
               facing: p?.facing === "left" ? "left" : "right",
             };
 
-          // ✅ snap remote render position to 1/z world grid (prevents idle 1px jiggle)
-          const r = {
-            ...r0,
-            x: snapWorld(r0.x),
-            y: snapWorld(r0.y),
-          };
+          const r = { ...r0, x: snapWorld(r0.x), y: snapWorld(r0.y) };
 
           const { x, y } = worldToScreen(r);
           const hovered = hoverId === id;
 
-          // snap to pixels for DOM transform
           const tx = Math.round(x - drawW / 2);
           const ty = Math.round(y - drawH / 2);
 
           const otherFacing = r?.facing === "left" ? "left" : "right";
+
+          // ✅ bubble by id OR name
+          const bub = getBubbleForPlayer(id, p);
 
           return (
             <div
@@ -284,9 +408,14 @@ export default function PlayerRenderer({
                   : "none",
               }}
             >
-              {hovered && (
-                <div style={nameLabelStyle}>{getDisplayName(id, p)}</div>
+              {bub && (
+                <div style={bubbleStyle(bub.alpha)}>
+                  {bub.text}
+                  <div style={bubbleTailStyle(bub.alpha)} />
+                </div>
               )}
+
+              {hovered && <div style={nameLabelStyle}>{getDisplayName(id, p)}</div>}
 
               <div style={flipStyle(otherFacing)}>
                 <img
@@ -306,7 +435,7 @@ export default function PlayerRenderer({
           );
         })}
 
-      {/* LOCAL PLAYER (centered) */}
+      {/* LOCAL PLAYER */}
       <div
         onMouseEnter={() => setHoverId(myId)}
         onMouseLeave={() => setHoverId((cur) => (cur === myId ? null : cur))}
@@ -325,6 +454,18 @@ export default function PlayerRenderer({
               : "none",
         }}
       >
+        {me &&
+          (() => {
+            const bub = getBubbleForPlayer(myId, me);
+            if (!bub) return null;
+            return (
+              <div style={bubbleStyle(bub.alpha)}>
+                {bub.text}
+                <div style={bubbleTailStyle(bub.alpha)} />
+              </div>
+            );
+          })()}
+
         {me && hoverId === myId && (
           <div style={nameLabelStyle}>{getDisplayName(myId, me)}</div>
         )}
@@ -334,10 +475,6 @@ export default function PlayerRenderer({
             src={mySpriteSrc}
             alt="My player"
             draggable={false}
-            onError={(e) => {
-              console.error("Sprite failed to load:", mySpriteSrc);
-              e.currentTarget.style.outline = "2px solid red";
-            }}
             style={{
               width: "100%",
               height: "100%",

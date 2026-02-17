@@ -63,7 +63,10 @@ export default function App() {
     camTargetRef.current.y = y;
 
     // init smooth camera on first valid me
-    if (!Number.isFinite(camSmoothRef.current.x) || !Number.isFinite(camSmoothRef.current.y)) {
+    if (
+      !Number.isFinite(camSmoothRef.current.x) ||
+      !Number.isFinite(camSmoothRef.current.y)
+    ) {
       camSmoothRef.current.x = x;
       camSmoothRef.current.y = y;
     }
@@ -176,7 +179,9 @@ export default function App() {
         />
       )}
 
-      <ChatMenu character={character} />
+      {/* ✅ PASS myId so ChatMenu can attach senderId + bubble keying */}
+      {/* ✅ (Optional) Only mount chat once the world is ready */}
+      {canMountWorld && <ChatMenu character={character} myId={myId} />}
 
       <MapDrawer
         open={mapOpen}
