@@ -33,16 +33,26 @@ export function useTerrainAtlas({ atlasSrc = "/art/terrain/terrain.png" } = {}) 
     };
   }, [atlasSrc]);
 
-  const grassTiles = useMemo(() => rowDescToIndices(rows.grass, atlasCols), []);
-  const waterTiles = useMemo(() => rowDescToIndices(rows.water, atlasCols), []);
-  const shoreTiles = useMemo(() => rowDescToIndices(rows.shore, atlasCols), []);
+  // ✅ add missing deps
+  const grassTiles = useMemo(
+    () => rowDescToIndices(rows.grass, atlasCols),
+    [rows.grass, atlasCols]
+  );
+  const waterTiles = useMemo(
+    () => rowDescToIndices(rows.water, atlasCols),
+    [rows.water, atlasCols]
+  );
+  const shoreTiles = useMemo(
+    () => rowDescToIndices(rows.shore, atlasCols),
+    [rows.shore, atlasCols]
+  );
   const shoreOuterCornerTiles = useMemo(
     () => rowDescToIndices(rows.shoreOuterCorner, atlasCols),
-    []
+    [rows.shoreOuterCorner, atlasCols]
   );
   const shoreInnerCornerTiles = useMemo(
     () => rowDescToIndices(rows.shoreInnerCorner, atlasCols),
-    []
+    [rows.shoreInnerCorner, atlasCols]
   );
 
   const tileIndexToSrc = useMemo(

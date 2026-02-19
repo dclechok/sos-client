@@ -8,21 +8,22 @@ export function resizeCanvasToParent(canvas, ctx, dprCap = 2) {
   const cssW = Math.max(1, rect.width | 0);
   const cssH = Math.max(1, rect.height | 0);
 
-  const dpr = Math.min(dprCap, window.devicePixelRatio || 1);
-
-  const bufW = Math.max(1, (cssW * dpr) | 0);
-  const bufH = Math.max(1, (cssH * dpr) | 0);
-
-  if (canvas.width !== bufW) canvas.width = bufW;
-  if (canvas.height !== bufH) canvas.height = bufH;
+  // ✅ Canvas buffer = CSS size, no DPR scaling
+  // DOM overlay (PlayerRenderer) lives in CSS pixel space,
+  // so canvas must also live in CSS pixel space or worldToScreen breaks.
+  if (canvas.width !== cssW) canvas.width = cssW;
+  if (canvas.height !== cssH) canvas.height = cssH;
 
   canvas.style.width = `${cssW}px`;
   canvas.style.height = `${cssH}px`;
 
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.imageSmoothingEnabled = true;
+  // ✅ Reset transform — no DPR scale applied
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
 
-  return { w: cssW, h: cssH, dpr };
+  // ✅ Pixel art mode — no smoothing
+  ctx.imageSmoothingEnabled = false;
+
+  return { w: cssW, h: cssH, dpr: 1 };
 }
 
 export function clamp01(x) {
