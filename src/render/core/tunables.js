@@ -1,19 +1,20 @@
 // Central tunables for background rendering.
 // This is intentionally verbose so you can tweak "feel" without hunting through code.
 
+export const OCEAN_GLISTEN = {
+  ENABLED:       true,
+  ALPHA_MAX:     0.3,    // peak opacity of each dot
+  SPEED:         1.0,    // twinkle speed multiplier
+  COVERAGE:      0.4,    // fraction of candidate dots that are active (0-1)
+  DOTS_PER_TILE:     3,      // candidate dot positions checked per tile — raise for denser shimmer
+  POSITION_INTERVAL: 0.8,   // seconds before dot positions reshuffle — lower = more chaotic
+  COLOR:         "49,141,178",
+};
+
 export const TUNABLES = {
   // Virtual wrap space (stars/dust/nebula positions wrap within this range)
   WORLD: 7000,
 
-  // Parallax scales (higher = moves more relative to camera)
-  SCALES: {
-    FAR: 0.616,
-    DUST: 0.953,
-    NEBULA: 0.374,
-    NEAR: 2.949,
-  },
-
-  // Camera smoothing (higher = tighter follow)
   CAMERA_FOLLOW: 18,
 
   // Cap DPR for perf
@@ -31,9 +32,9 @@ export const WEATHER_TUNABLES = {
   // rainChance + snowChance + fogChance should sum to <= 1.0; remainder = clear.
   regions: {
     world: {
-      rainChance:    1.0,
-      snowChance:    0.0,
-      fogChance:     0.0,
+      rainChance:    0.5,
+      snowChance:    0.2,
+      fogChance:     0.1,
       rainIntensity: 0.8,
       snowIntensity: 0.6,
       fogIntensity:  0.7,
