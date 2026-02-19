@@ -8,10 +8,8 @@ export function useWorldChunks({
 } = {}) {
   const [meta, setMeta] = useState(null);
 
-  const cacheRef = useRef(new Map()); // "cx,cy" => Uint8Array
-  const inflightRef = useRef(new Set()); // "cx,cy"
-
-  // increments whenever a chunk finishes loading
+  const cacheRef = useRef(new Map());
+  const inflightRef = useRef(new Set());
   const [chunkVersion, setChunkVersion] = useState(0);
 
   useEffect(() => {
@@ -41,8 +39,6 @@ export function useWorldChunks({
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const buf = await res.arrayBuffer();
         cacheRef.current.set(key, new Uint8Array(buf));
-
-        // notify listeners (minimap, etc.) WITHOUT changing world object identity
         setChunkVersion((v) => v + 1);
       } catch (e) {
         console.error("Failed to fetch chunk", cx, cy, e);
@@ -81,8 +77,10 @@ export function useWorldChunks({
 
   const getTileId = useCallback(
     (tileX, tileY) => {
-      if (!meta) return TERRAIN_ID.DEEP_OCEAN;
+      // ✅ if meta not ready, treat as UNKNOWN (debug black), not ocean
+      if (!meta) return TERRAIN_ID.UNKNOWN;
 
+      // out of bounds = ocean edge
       if (
         tileX < 0 ||
         tileY < 0 ||
@@ -97,33 +95,27 @@ export function useWorldChunks({
       const cy = Math.floor(tileY / cs);
 
       const chunk = getChunk(cx, cy);
-      if (!chunk) return TERRAIN_ID.DEEP_OCEAN;
+
+      // ✅ THIS FIXES YOUR "MISSING LAND":
+      // if chunk not loaded, return UNKNOWN (black), NOT ocean
+      if (!chunk) return TERRAIN_ID.UNKNOWN;
 
       const lx = tileX - cx * cs;
       const ly = tileY - cy * cs;
-      return chunk[ly * cs + lx] ?? TERRAIN_ID.DEEP_OCEAN;
+      return chunk[ly * cs + lx] ?? TERRAIN_ID.UNKNOWN;
     },
     [meta, getChunk]
   );
 
-  // ✅ IMPORTANT: world object should NOT depend on chunkVersion
-  const world = useMemo(
+  return useMemo(
     () => ({
       meta,
       preloadAroundWorldTile,
       getTileId,
       fetchChunk,
       getChunk,
+      chunkVersion,
     }),
-    [meta, preloadAroundWorldTile, getTileId, fetchChunk, getChunk]
-  );
-
-  // Return both: a stable world object + a changing version number
-  return useMemo(
-    () => ({
-      ...world,
-      worldChunkVersion: chunkVersion, // renamed to discourage using it as a dep for world identity
-    }),
-    [world, chunkVersion]
+    [meta, preloadAroundWorldTile, getTileId, fetchChunk, getChunk, chunkVersion]
   );
 }
