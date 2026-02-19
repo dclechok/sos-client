@@ -9,7 +9,6 @@ export function useWeatherCycle({ regionId = "world" } = {}) {
     const id = setInterval(() => {
       setWeather(pickWeather(regionId));
     }, WEATHER_TUNABLES.CYCLE_DURATION_MS);
-
     return () => clearInterval(id);
   }, [regionId]);
 
@@ -17,8 +16,8 @@ export function useWeatherCycle({ regionId = "world" } = {}) {
 }
 
 function pickWeather(regionId) {
-  const cfg = WEATHER_TUNABLES.regions[regionId]
-           ?? WEATHER_TUNABLES.regions.world;  // fallback
+  const cfg =
+    WEATHER_TUNABLES.regions[regionId] ?? WEATHER_TUNABLES.regions.world;
 
   const roll = Math.random();
 
@@ -28,6 +27,10 @@ function pickWeather(regionId) {
 
   if (roll < cfg.rainChance + cfg.snowChance) {
     return { regionId, type: "snow", intensity: cfg.snowIntensity };
+  }
+
+  if (roll < cfg.rainChance + cfg.snowChance + cfg.fogChance) {
+    return { regionId, type: "fog", intensity: cfg.fogIntensity };
   }
 
   return { regionId, type: "clear", intensity: 0 };

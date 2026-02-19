@@ -18,7 +18,7 @@ export const TUNABLES = {
 
   // Cap DPR for perf
   DPR_CAP: 1.25,
-}
+};
 
 export const WEATHER_TUNABLES = {
 
@@ -27,29 +27,34 @@ export const WEATHER_TUNABLES = {
   CYCLES_PER_DAY: 6,                    // informational, 6 cycles × 10min = 1hr "day"
 
   // ---- Per region config ----
-  // When you add real regions later, just add a key here
+  // When you add real regions later, just add a key here.
+  // rainChance + snowChance + fogChance should sum to <= 1.0; remainder = clear.
   regions: {
     world: {
-      world: {
-        rainChance:  1.0,    // 100% rain
-        snowChance:  0.0,
-        rainIntensity: 0.8,
-        snowIntensity: 0.6,
-      },
+      rainChance:    1.0,
+      snowChance:    0.0,
+      fogChance:     0.0,
+      rainIntensity: 0.8,
+      snowIntensity: 0.6,
+      fogIntensity:  0.7,
     },
 
     // future regions, uncomment when ready:
     // tundra: {
-    //   rainChance:  0.1,
-    //   snowChance:  0.7,
+    //   rainChance:    0.1,
+    //   snowChance:    0.7,
+    //   fogChance:     0.05,
     //   rainIntensity: 0.4,
     //   snowIntensity: 1.0,
+    //   fogIntensity:  0.3,
     // },
     // desert: {
-    //   rainChance:  0.05,
-    //   snowChance:  0.0,
+    //   rainChance:    0.05,
+    //   snowChance:    0.0,
+    //   fogChance:     0.02,
     //   rainIntensity: 0.3,
     //   snowIntensity: 0.0,
+    //   fogIntensity:  0.2,
     // },
   },
 };
