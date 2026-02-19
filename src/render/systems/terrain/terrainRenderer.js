@@ -1,4 +1,3 @@
-// src/render/systems/terrain/terrainRenderer.js
 import { TILE, TERRAIN_ID } from "../../../world/worldConstants";
 
 function hash2i(x, y, seed = 777) {
@@ -48,11 +47,9 @@ export function renderTerrain(ctx, frame, deps) {
   const variantsById = atlas.terrainToVariants || {};
 
   const straight    = Array.isArray(atlas.shoreTiles)            ? atlas.shoreTiles            : [];
+  const depth       = Array.isArray(atlas.shoreDepthTiles)       ? atlas.shoreDepthTiles       : []; // ✅
   const outerCorner = Array.isArray(atlas.shoreOuterCornerTiles) ? atlas.shoreOuterCornerTiles : [];
   const innerCorner = Array.isArray(atlas.shoreInnerCornerTiles) ? atlas.shoreInnerCornerTiles : [];
-  // outerCorner: [SE=0, SW=1, NE=2, NW=3]
-  // innerCorner: [SE=0, SW=1, NW=2, NE=3]
-  // straight: grass bank at bottom, rotation 0 = grass is south
 
   const OCEAN = TERRAIN_ID.DEEP_OCEAN;
   const GRASS = TERRAIN_ID.GRASS;
@@ -105,7 +102,6 @@ export function renderTerrain(ctx, frame, deps) {
           neId !== TERRAIN_ID.UNKNOWN && seId !== TERRAIN_ID.UNKNOWN &&
           swId !== TERRAIN_ID.UNKNOWN && nwId !== TERRAIN_ID.UNKNOWN;
 
-        // Always draw base water
         const waterVariants = variantsById[id];
         if (waterVariants && waterVariants.length > 0) {
           const r = hash2i(tileX, tileY, 777);
@@ -128,19 +124,15 @@ export function renderTerrain(ctx, frame, deps) {
         const cardinalGrass     = nGrass || eGrass || sGrass || wGrass;
         const diagonalOnlyGrass = !cardinalGrass && (neGrass || seGrass || swGrass || nwGrass);
 
-        // ── CARDINAL TRANSITION ────────────────────────────────────────────
         if (cardinalGrass) {
           const grassCount = (nGrass?1:0) + (eGrass?1:0) + (sGrass?1:0) + (wGrass?1:0);
 
-          // ── INNER CORNER: two adjacent cardinal grass neighbours ──────────
-          // innerCorner: [SE=0, SW=1, NW=2, NE=3]
           if (grassCount >= 2 && innerCorner.length >= 4) {
             let pick = undefined;
-
-            if      (nGrass && wGrass) { pick = innerCorner[2]; } // NW
-            else if (nGrass && eGrass) { pick = innerCorner[3]; } // NE
-            else if (sGrass && eGrass) { pick = innerCorner[0]; } // SE
-            else if (sGrass && wGrass) { pick = innerCorner[1]; } // SW
+            if      (nGrass && wGrass) { pick = innerCorner[2]; }
+            else if (nGrass && eGrass) { pick = innerCorner[3]; }
+            else if (sGrass && eGrass) { pick = innerCorner[0]; }
+            else if (sGrass && wGrass) { pick = innerCorner[1]; }
 
             if (pick !== undefined) {
               const { sx, sy } = atlas.tileIndexToSrc(pick);
@@ -149,14 +141,23 @@ export function renderTerrain(ctx, frame, deps) {
             }
           }
 
-          // ── STRAIGHT EDGE ─────────────────────────────────────────────────
           if (straight.length > 0) {
-            const r    = hash2i(tileX, tileY, 777);
+            const r = hash2i(tileX, tileY, 777);
+
+            // ✅ only change: grass to north = would have been 180° rotation
+            // use depth pool instead, no rotation, cliff face already correct
+            if (nGrass && !sGrass) {
+              const pool = depth.length > 0 ? depth : straight;
+              const pick = pool[r % pool.length];
+              const { sx, sy } = atlas.tileIndexToSrc(pick);
+              drawTile(ctx, atlas.img, sx, sy, dx, dy, size, 0);
+              continue;
+            }
+
+            // all other directions unchanged
             const pick = straight[r % straight.length];
             let rotation = 0;
-
             if      (sGrass && !nGrass) rotation = 0;
-            else if (nGrass && !sGrass) rotation = Math.PI;
             else if (wGrass && !eGrass) rotation = Math.PI / 2;
             else if (eGrass && !wGrass) rotation = -Math.PI / 2;
             else if (sGrass && nGrass)  rotation = 0;
@@ -168,15 +169,12 @@ export function renderTerrain(ctx, frame, deps) {
           }
         }
 
-        // ── DIAGONAL TRANSITION: outer corner pieces ───────────────────────
-        // outerCorner: [SE=0, SW=1, NE=2, NW=3]
         if (diagonalOnlyGrass && outerCorner.length >= 4) {
           let pick = undefined;
-
-          if      (seGrass) pick = outerCorner[0]; // SE
-          else if (swGrass) pick = outerCorner[1]; // SW
-          else if (neGrass) pick = outerCorner[2]; // NE
-          else if (nwGrass) pick = outerCorner[3]; // NW
+          if      (seGrass) pick = outerCorner[0];
+          else if (swGrass) pick = outerCorner[1];
+          else if (neGrass) pick = outerCorner[2];
+          else if (nwGrass) pick = outerCorner[3];
 
           if (pick !== undefined) {
             const { sx, sy } = atlas.tileIndexToSrc(pick);

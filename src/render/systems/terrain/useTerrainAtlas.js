@@ -1,4 +1,3 @@
-// src/render/systems/terrain/useTerrainAtlas.js
 import { useEffect, useMemo, useState } from "react";
 import { TERRAIN_ID } from "../../../world/worldConstants";
 import { TERRAIN_ATLAS_LAYOUT } from "./terrainLayout";
@@ -28,12 +27,9 @@ export function useTerrainAtlas({ atlasSrc = "/art/terrain/terrain.png" } = {}) 
     loadImage(atlasSrc)
       .then((i) => alive && setImg(i))
       .catch((e) => console.error("Failed to load terrain atlas", e));
-    return () => {
-      alive = false;
-    };
+    return () => { alive = false; };
   }, [atlasSrc]);
 
-  // ✅ add missing deps
   const grassTiles = useMemo(
     () => rowDescToIndices(rows.grass, atlasCols),
     [rows.grass, atlasCols]
@@ -45,6 +41,11 @@ export function useTerrainAtlas({ atlasSrc = "/art/terrain/terrain.png" } = {}) 
   const shoreTiles = useMemo(
     () => rowDescToIndices(rows.shore, atlasCols),
     [rows.shore, atlasCols]
+  );
+  // ✅ cols 5-9 of row 2
+  const shoreDepthTiles = useMemo(
+    () => rowDescToIndices(rows.shoreDepth, atlasCols),
+    [rows.shoreDepth, atlasCols]
   );
   const shoreOuterCornerTiles = useMemo(
     () => rowDescToIndices(rows.shoreOuterCorner, atlasCols),
@@ -81,6 +82,7 @@ export function useTerrainAtlas({ atlasSrc = "/art/terrain/terrain.png" } = {}) 
       tileIndexToSrc,
       terrainToVariants,
       shoreTiles,
+      shoreDepthTiles,       // ✅
       shoreOuterCornerTiles,
       shoreInnerCornerTiles,
     }),
@@ -89,6 +91,7 @@ export function useTerrainAtlas({ atlasSrc = "/art/terrain/terrain.png" } = {}) 
       tileIndexToSrc,
       terrainToVariants,
       shoreTiles,
+      shoreDepthTiles,
       shoreOuterCornerTiles,
       shoreInnerCornerTiles,
     ]
