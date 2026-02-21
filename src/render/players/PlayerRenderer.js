@@ -1,7 +1,10 @@
+// src/render/players/PlayerRenderer.js
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { usePlayerInput } from "./usePlayerInput";
 import { useRemoteInterpolation } from "./useRemoteInterpolation";
 import { getSpriteByClassId } from "./characterClasses";
+import { getRoleColor } from "../../utils/roles";
+import "../../styles/PlayerRenderer.css";
 
 export default function PlayerRenderer({
   socket,
@@ -10,7 +13,7 @@ export default function PlayerRenderer({
 
   sendRateHz = 20,
 
-  // ✅ keep props for backward-compat, but we won't use them as the primary source now
+  // keep props for backward-compat, but we won't use them as the primary source now
   mySpriteSrc = "/art/items/sprites/AdeptNecromancer.gif",
   otherSpriteSrc = "/art/items/sprites/NovicePyromancer.gif",
 
@@ -30,7 +33,7 @@ export default function PlayerRenderer({
   const [myFacing, setMyFacing] = useState("right");
 
   // bubbles keyed by senderId string OR displayName string:
-  // { [key]: { text, t, expiresAt } }
+  // { [key]: { text, t, expiresAt, role } }
   const [bubbles, setBubbles] = useState({});
 
   const me = myId && players ? players[myId] : null;
@@ -129,6 +132,17 @@ export default function PlayerRenderer({
     [playerNames]
   );
 
+  // Normalize role so OWNER/Admin/etc still map to roles.js keys
+  const normalizeRole = useCallback((role) => {
+    const raw =
+      role && typeof role === "object"
+        ? role.name ?? role.role ?? role.type ?? ""
+        : role;
+
+    const key = String(raw || "player").trim().toLowerCase();
+    return key || "player";
+  }, []);
+
   // -----------------------------------
   // CHAT BUBBLES
   // -----------------------------------
@@ -144,6 +158,7 @@ export default function PlayerRenderer({
       const user = String(d.user || "").trim();
       const message = String(d.message || "").trim();
       const t = Number(d.t || Date.now());
+      const role = d.role ?? null;
       if (!message) return;
 
       const key =
@@ -157,7 +172,7 @@ export default function PlayerRenderer({
 
       setBubbles((prev) => ({
         ...prev,
-        [key]: { text: message, t, expiresAt: t + ttl },
+        [key]: { text: message, t, expiresAt: t + ttl, role },
       }));
     }
 
@@ -243,113 +258,33 @@ export default function PlayerRenderer({
   }, [renderOthers, remoteIds]);
 
   // -----------------------------------
-  // ✅ NEW: sprite resolution (class -> sprite)
+  // Sprite resolution (class -> sprite)
   // -----------------------------------
-  const getSpriteForPlayer = useCallback(
-    (p, fallbackSrc) => {
-      const cls = p?.class;
-      // If class exists, use it. Otherwise fallback to the old prop sprite.
-      return cls ? getSpriteByClassId(cls, fallbackSrc) : fallbackSrc;
-    },
-    []
-  );
+  const getSpriteForPlayer = useCallback((p, fallbackSrc) => {
+    const cls = p?.class;
+    return cls ? getSpriteByClassId(cls, fallbackSrc) : fallbackSrc;
+  }, []);
 
   const myResolvedSprite = useMemo(() => {
-    // Prefer `me.class` if server sends it; otherwise fall back to the old prop
     return getSpriteForPlayer(me, mySpriteSrc);
   }, [getSpriteForPlayer, me, mySpriteSrc]);
 
   // -----------------------------------
-  // Styles
+  // Dynamic helpers
   // -----------------------------------
-  const nameLabelStyle = {
-    position: "absolute",
-    left: "50%",
-    top: -10,
-    transform: "translate(-50%, -100%)",
-    padding: "2px 6px",
-    fontSize: 12,
-    lineHeight: "12px",
-    borderRadius: 6,
-    background: "rgba(0,0,0,0.55)",
-    border: "1px solid rgba(200,160,80,0.35)",
-    color: "rgba(245,235,215,0.95)",
-    whiteSpace: "nowrap",
-    textShadow: "0 1px 2px rgba(0,0,0,0.75)",
-    pointerEvents: "none",
-  };
-
-  const bubbleStyle = (alpha = 1) => ({
-    position: "absolute",
-    left: "50%",
-    top: -14,
-    transform: "translate(-50%, -100%)",
-    display: "inline-block",
-    width: "max-content",
-    maxWidth: 260,
-    padding: "7px 10px",
-    borderRadius: 12,
-    background: `linear-gradient(180deg,
-      rgba(20,16,24,${0.92 * alpha}) 0%,
-      rgba(10,8,12,${0.86 * alpha}) 60%,
-      rgba(6,5,8,${0.90 * alpha}) 100%)`,
-    border: `1px solid rgba(135, 140, 160, ${0.35 * alpha})`,
-    boxShadow: `
-      0 6px 16px rgba(0,0,0,${0.55 * alpha}),
-      inset 0 1px 0 rgba(255,255,255,${0.06 * alpha}),
-      inset 0 -1px 0 rgba(0,0,0,${0.35 * alpha})
-    `,
-    color: `rgba(235, 232, 245, ${0.98 * alpha})`,
-    fontSize: 12,
-    lineHeight: "14px",
-    letterSpacing: "0.15px",
-    whiteSpace: "pre-wrap",
-    wordBreak: "break-word",
-    textShadow: `
-      0 1px 2px rgba(0,0,0,0.85),
-      0 0 8px rgba(120, 90, 160, ${0.14 * alpha})
-    `,
-    pointerEvents: "none",
-    filter: `drop-shadow(0 6px 14px rgba(0,0,0,${0.40 * alpha}))`,
-    transition: "opacity 220ms linear",
-    opacity: alpha,
-    zIndex: 50,
-  });
-
-  const bubbleTailStyle = (alpha = 1) => ({
-    position: "absolute",
-    left: "50%",
-    bottom: -4,
-    width: 9,
-    height: 9,
-    transform: "translateX(-50%) rotate(45deg)",
-    background: `rgba(10, 8, 12, ${0.88 * alpha})`,
-    borderRight: `1px solid rgba(135, 140, 160, ${0.26 * alpha})`,
-    borderBottom: `1px solid rgba(135, 140, 160, ${0.26 * alpha})`,
-    boxShadow: `0 4px 10px rgba(0,0,0,${0.35 * alpha})`,
-    pointerEvents: "none",
-  });
+  const roleToColor = useCallback(
+    (role) => {
+      const rc = getRoleColor(normalizeRole(role));
+      return rc?.primary || "#e9e6f2";
+    },
+    [normalizeRole]
+  );
 
   const displayX = me ? Math.round(me.x) : 0;
   const displayY = me ? Math.round(me.y) : 0;
 
-  const flipStyle = (dir) => ({
-    width: "100%",
-    height: "100%",
-    transform: dir === "left" ? "scaleX(-1)" : "scaleX(1)",
-    transformOrigin: "50% 50%",
-    willChange: "transform",
-  });
-
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 10,
-        pointerEvents: "none",
-      }}
-    >
+    <div className="pr-root">
       {/* OTHER PLAYERS */}
       {players &&
         myId &&
@@ -373,55 +308,57 @@ export default function PlayerRenderer({
           const ty = Math.round(y - drawH / 2);
 
           const otherFacing = r?.facing === "left" ? "left" : "right";
-
-          // ✅ NEW: resolve sprite from player class (fallback to old prop)
           const otherResolvedSprite = getSpriteForPlayer(p, otherSpriteSrc);
 
           const bub = getBubbleForPlayer(id, p);
+          const name = getDisplayName(id, p);
 
           return (
             <div
               key={id}
+              className={`pr-player ${hovered ? "is-hover" : ""}`}
               onMouseEnter={() => setHoverId(id)}
               onMouseLeave={() => setHoverId((cur) => (cur === id ? null : cur))}
               style={{
-                position: "absolute",
-                left: 0,
-                top: 0,
                 width: drawW,
                 height: drawH,
                 transform: `translate3d(${tx}px, ${ty}px, 0)`,
-                transformOrigin: "0 0",
-                pointerEvents: "auto",
-                willChange: "transform",
-                filter: hovered
-                  ? "drop-shadow(0 0 10px rgba(200, 160, 80, 0.22))"
-                  : "none",
               }}
             >
               {bub && (
-                <div style={bubbleStyle(bub.alpha)}>
+                <div
+                  className="pr-bubble"
+                  style={{
+                    "--bubbleA": bub.alpha,
+                  }}
+                >
                   {bub.text}
-                  <div style={bubbleTailStyle(bub.alpha)} />
+                  <div className="pr-bubbleTail" />
                 </div>
               )}
 
+              {/* ✅ NAME (hover) */}
               {hovered && (
-                <div style={nameLabelStyle}>{getDisplayName(id, p)}</div>
+                <div
+                  className="pr-name"
+                  style={{
+                    "--nameColor": roleToColor(p?.role),
+                  }}
+                >
+                  {name}
+                </div>
               )}
 
-              <div style={flipStyle(otherFacing)}>
+              <div
+                className={`pr-spriteWrap ${
+                  otherFacing === "left" ? "is-left" : ""
+                }`}
+              >
                 <img
+                  className="pr-sprite"
                   src={otherResolvedSprite}
                   alt="Other player"
                   draggable={false}
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    display: "block",
-                    imageRendering: "pixelated",
-                    userSelect: "none",
-                  }}
                 />
               </div>
             </div>
@@ -430,21 +367,12 @@ export default function PlayerRenderer({
 
       {/* LOCAL PLAYER */}
       <div
+        className={`pr-local ${hoverId === myId ? "is-hover" : ""}`}
         onMouseEnter={() => setHoverId(myId)}
         onMouseLeave={() => setHoverId((cur) => (cur === myId ? null : cur))}
         style={{
-          position: "absolute",
-          left: "50%",
-          top: "50%",
           width: drawW,
           height: drawH,
-          transform: "translate(-50%, -50%)",
-          transformOrigin: "50% 50%",
-          pointerEvents: "auto",
-          filter:
-            hoverId === myId
-              ? "drop-shadow(0 0 10px rgba(200, 160, 80, 0.22))"
-              : "none",
         }}
       >
         {me &&
@@ -452,51 +380,38 @@ export default function PlayerRenderer({
             const bub = getBubbleForPlayer(myId, me);
             if (!bub) return null;
             return (
-              <div style={bubbleStyle(bub.alpha)}>
+              <div className="pr-bubble" style={{ "--bubbleA": bub.alpha }}>
                 {bub.text}
-                <div style={bubbleTailStyle(bub.alpha)} />
+                <div className="pr-bubbleTail" />
               </div>
             );
           })()}
 
+        {/* ✅ NAME (hover) */}
         {me && hoverId === myId && (
-          <div style={nameLabelStyle}>{getDisplayName(myId, me)}</div>
+          <div
+            className="pr-name"
+            style={{
+              "--nameColor": roleToColor(me?.role),
+            }}
+          >
+            {getDisplayName(myId, me)}
+          </div>
         )}
 
-        <div style={flipStyle(myFacing)}>
+        <div className={`pr-spriteWrap ${myFacing === "left" ? "is-left" : ""}`}>
           <img
+            className="pr-sprite"
             src={myResolvedSprite}
             alt="My player"
             draggable={false}
-            style={{
-              width: "100%",
-              height: "100%",
-              display: "block",
-              imageRendering: "pixelated",
-              userSelect: "none",
-            }}
           />
         </div>
       </div>
 
       {/* DEBUG */}
       {me && (
-        <div
-          style={{
-            position: "fixed",
-            right: 12,
-            bottom: 10,
-            fontSize: 11,
-            fontFamily: "monospace",
-            color: "rgba(200,160,80,0.75)",
-            background: "rgba(0,0,0,0.35)",
-            padding: "4px 6px",
-            borderRadius: 4,
-            pointerEvents: "none",
-            zIndex: 10000,
-            textAlign: "right",
-          }}
-        >
+        <div className="pr-debug">
           x: {displayX}
           <br />
           y: {displayY}
@@ -505,8 +420,9 @@ export default function PlayerRenderer({
           <br />
           face: {myFacing}
           <br />
-          {/* ✅ helpful debug: shows class id when present */}
           class: {String(me?.class || "—")}
+          <br />
+          role: {String(me?.role || "player")}
         </div>
       )}
     </div>

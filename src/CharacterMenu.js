@@ -1,92 +1,172 @@
-import './styles/CharacterMenu.css';
-import { useState } from 'react';
+import { useState, useRef, useCallback, useEffect } from "react";
+import { useGameSocket } from "./hooks/useGameSocket";
+import { getRoleColor } from "./utils/roleColors";
+import "./styles/ChatMenu.css";
 
-import clickSound from "./sounds/button_click1.wav";
-import InventoryMenu from './InventoryMenu';
+const MAX_CHARS = 120;
 
-import CharacterEquipment from './CharacterEquipment';
+function ChatMenu({ character, myId }) {
+  const { send, useSocketEvent } = useGameSocket(); // shared socket
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+  const [chatActive, setChatActive] = useState(false);
 
-//utils
-import { levelFormat } from './utils/levelFormatter';
-import SkillsMenu from './SkillsMenu';
+  const bottomRef = useRef(null);
+  const inputRef = useRef(null);
 
-function CharacterMenu({ account, character }){
+  const scroll = useCallback(() => {
+    setTimeout(() => {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 30);
+  }, []);
 
-    // Load from localStorage or default to "stats"
-    const [activeTab, setActiveTab] = useState(
-        () => localStorage.getItem("pd_character_tab") || "stats"
-    );
+  // Global keybinds:
+  // - Enter opens chat (arms input)
+  // - Esc closes chat
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      // If user is typing somewhere else (like a form), don't hijack it
+      const tag = (e.target?.tagName || "").toLowerCase();
+      const isTypingElsewhere =
+        tag === "input" || tag === "textarea" || e.target?.isContentEditable;
 
-    const audio = new Audio(clickSound);
+      // ENTER to open chat when inactive (unless already typing elsewhere)
+      if (!chatActive && e.key === "Enter" && !isTypingElsewhere) {
+        e.preventDefault();
+        setChatActive(true);
+        setTimeout(() => inputRef.current?.focus(), 0);
+        return;
+      }
 
-    const handleTabClick = (tabName) => {
-        setActiveTab(tabName);
-
-        // 🔥 Save selected tab for persistence
-        localStorage.setItem("pd_character_tab", tabName);
-
-        audio.currentTime = 0;
-        audio.volume = 0.3;
-        audio.play().catch(() => {});
+      // ESC to close chat
+      if (chatActive && e.key === "Escape") {
+        e.preventDefault();
+        setChatActive(false);
+        setInput("");
+        inputRef.current?.blur();
+      }
     };
 
-    return (
-        <div className="char-menu-cont noselect">
-            <div className="char-equip-cont">
-            <div className="name">
-                {character?.charName ? <h3>{character.charName}</h3> : ""}
-            </div>
-            <div className="class">
-                {character?.exp ? <div>Level: {levelFormat(character.exp)} - {character.class} </div> : ""}
-            </div>
-            <CharacterEquipment />
-            </div>
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [chatActive]);
 
-            <div className="char-menu-tabs">
+  // Listen for full history
+  useSocketEvent("chatHistory", (history) => {
+    setMessages(Array.isArray(history) ? history : []);
+    scroll();
+  });
 
-                <div 
-                    className={`tab ${activeTab === "stats" ? "tab-active" : ""}`} 
-                    onClick={() => handleTabClick("stats")}
-                >
-                    Stats
-                </div>
+  // Listen for new messages (from server)
+  useSocketEvent("newMessage", (msg) => {
+    if (!msg) return;
 
-                <div 
-                    className={`tab ${activeTab === "inventory" ? "tab-active" : ""}`} 
-                    onClick={() => handleTabClick("inventory")}
-                >
-                    Inventory
-                </div>
+    setMessages((prev) => [...prev, msg]);
+    scroll();
 
-                <div 
-                    className={`tab ${activeTab === "loadout" ? "tab-active" : ""}`} 
-                    onClick={() => handleTabClick("loadout")}
-                >
-                    Loadout
-                </div>
+    // Try to read senderId (if server provides it)
+    const senderId = msg.senderId ?? msg.playerId ?? msg.id ?? null;
 
-                <div 
-                    className={`tab ${activeTab === "skills" ? "tab-active" : ""}`} 
-                    onClick={() => handleTabClick("skills")}
-                >
-                    Skills
-                </div>
-
-            </div>
-
-            <div className="char-menu-display">
-                {activeTab === "inventory" && (
-                    <InventoryMenu account={account} character={character} />
-                )}
-            </div>
-
-            <div>
-                {activeTab === "skills" && (
-                    <SkillsMenu />
-                )}
-            </div>
-        </div>
+    // Dispatch bubble for overhead rendering
+    window.dispatchEvent(
+      new CustomEvent("chat:bubble", {
+        detail: {
+          senderId: senderId != null ? String(senderId) : null,
+          user: String(msg.user || ""),
+          message: String(msg.message || ""),
+          role: msg.role ?? null,
+          t: Date.now(),
+        },
+      })
     );
+  });
+
+  const sendMessage = useCallback(() => {
+    const text = input.trim();
+    if (!text) return;
+
+    const clipped = text.slice(0, MAX_CHARS);
+
+    // Immediate local bubble (works even if server doesn't echo senderId)
+    window.dispatchEvent(
+      new CustomEvent("chat:bubble", {
+        detail: {
+          senderId: myId != null ? String(myId) : null,
+          user: String(character?.charName || "Unknown"),
+          message: clipped,
+          role: character?.role ?? null,
+          t: Date.now(),
+        },
+      })
+    );
+
+    // Send to server (chatbox + other clients)
+    send("sendMessage", {
+      user: character?.charName || "Unknown",
+      message: clipped,
+      senderId: myId != null ? String(myId) : undefined,
+      role: character?.role ?? undefined,
+    });
+
+    setInput("");
+  }, [input, myId, character, send]);
+
+  const onChange = (e) => {
+    const next = e.target.value;
+    setInput(next.length > MAX_CHARS ? next.slice(0, MAX_CHARS) : next);
+  };
+
+  const onInputKeyDown = (e) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+
+    // Enter while active:
+    // - if text: send
+    // - if empty: close chat (nice "old school" behavior)
+    if (input.trim()) {
+      sendMessage();
+    } else {
+      setChatActive(false);
+      inputRef.current?.blur();
+    }
+  };
+
+  return (
+    <div className={`chat-container ${chatActive ? "active" : "inactive"}`}>
+      <div className="chat-messages">
+        {messages.map((msg, i) => {
+          const roleColor = getRoleColor(msg.role ?? null);
+          return (
+            <div key={i} className="chat-line">
+              <span
+                className="chat-user"
+                style={{ color: roleColor.primary }}
+              >
+                &nbsp;&nbsp;{msg.user}:
+              </span>
+              <span className="chat-text">&nbsp;&nbsp;{msg.message}</span>
+            </div>
+          );
+        })}
+        <div ref={bottomRef}></div>
+      </div>
+
+      <div className="chat-input-wrapper">
+        <input
+          ref={inputRef}
+          className="chat-input"
+          value={input}
+          placeholder={chatActive ? "Say something..." : "Press Enter to chat"}
+          onChange={onChange}
+          onKeyDown={onInputKeyDown}
+          disabled={!chatActive}
+        />
+        <div className="chat-counter">
+          {input.length}/{MAX_CHARS}
+        </div>
+      </div>
+    </div>
+  );
 }
 
-export default CharacterMenu;
+export default ChatMenu;

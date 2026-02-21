@@ -26,7 +26,6 @@ export async function fetchCharacterList(account, token) {
     });
 
     if (!response.ok) {
-      // Optional: log server message for easier debugging
       const data = await response.json().catch(() => ({}));
       console.warn("fetchCharacterList failed:", response.status, data);
       return [];
@@ -43,7 +42,7 @@ export async function fetchCharacterList(account, token) {
 /**
  * CREATE character for account
  * POST /api/characters/:accountId
- * Body: { charName, class }  (or classId)
+ * Body: { charName, class }
  * Returns: { character }
  */
 export async function createCharacter(account, token, { charName, classId }) {
@@ -62,14 +61,13 @@ export async function createCharacter(account, token, { charName, classId }) {
       },
       body: JSON.stringify({
         charName,
-        class: classId, // ✅ store class id string in DB
+        class: classId,
       }),
     });
 
     const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
-      // backend sends { message }
       throw new Error(data?.message || "Failed to create character");
     }
 
@@ -114,5 +112,52 @@ export async function deleteCharacter(account, token, charId) {
   } catch (err) {
     console.error("Error deleting character:", err);
     throw err;
+  }
+}
+
+/**
+ * PATCH character position
+ * PATCH /api/characters/:accountId/:charId/position
+ * Body: { x, y }
+ *
+ * NOTE: You generally do NOT need to call this manually from the client.
+ * The socket server auto-saves position to MongoDB every ~5 seconds.
+ * Use this only if you need an immediate/forced save (e.g. on logout).
+ */
+export async function updateCharacterPosition(account, token, charId, { x, y }) {
+  const accountId = getAccountId(account);
+  const cid = charId ? String(charId) : "";
+
+  try {
+    if (!accountId || !token) {
+      throw new Error("Missing accountId or token");
+    }
+    if (!cid) {
+      throw new Error("Missing charId");
+    }
+    if (!Number.isFinite(Number(x)) || !Number.isFinite(Number(y))) {
+      throw new Error("Invalid coordinates");
+    }
+
+    const response = await fetch(BASE_URL + accountId + "/" + cid + "/position", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ x: Number(x), y: Number(y) }),
+    });
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      console.warn("updateCharacterPosition failed:", response.status, data);
+      return null;
+    }
+
+    return data; // { ok: true }
+  } catch (err) {
+    console.error("Error updating character position:", err);
+    return null;
   }
 }

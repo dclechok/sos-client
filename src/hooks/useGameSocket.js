@@ -90,6 +90,7 @@ export function useGameSocket() {
 
   /* ------------------------------------------------------
      player:self -> my socket id + optional initial ship
+     ✅ includes role + name from server identify response
   ------------------------------------------------------ */
   useEffect(() => {
     const handler = (payload) => {
@@ -107,8 +108,10 @@ export function useGameSocket() {
             vx: Number(payload.ship.vx ?? 0),
             vy: Number(payload.ship.vy ?? 0),
             angle: Number(payload.ship.angle ?? 0),
+            // ✅ persist name + role from identify response
             name: payload.ship.name ?? prev[payload.id]?.name ?? null,
-            // Don't stamp here; snapshots carry t. Keeping it stable is fine.
+            role: payload.ship.role ?? payload.role ?? prev[payload.id]?.role ?? "player",
+            class: payload.ship.class ?? prev[payload.id]?.class ?? null,
           },
         }));
       }
@@ -119,31 +122,46 @@ export function useGameSocket() {
   }, []);
 
   /* ------------------------------------------------------
-     world:snapshot -> players (✅ STAMP snapshot time, include vx/vy)
+     world:snapshot -> players
+     ✅ Merges positional data but PRESERVES role/name/class
+        that were set by player:self or identify so they
+        are never wiped by a snapshot that omits them.
   ------------------------------------------------------ */
   useEffect(() => {
     const handler = (snap) => {
       if (!snap?.players || typeof snap.players !== "object") return;
 
-      // Server sends { players, t }, where t is Date.now() on server.
       const t = Number.isFinite(snap?.t) ? Number(snap.t) : Date.now();
 
-      const stamped = {};
-      for (const [id, p] of Object.entries(snap.players)) {
-        if (!p) continue;
+      setPlayers((prev) => {
+        const next = {};
 
-        stamped[id] = {
-          ...p,
-          x: Number(p.x ?? 0),
-          y: Number(p.y ?? 0),
-          vx: Number(p.vx ?? 0),
-          vy: Number(p.vy ?? 0),
-          angle: Number(p.angle ?? 0),
-          t, // ✅ crucial for interpolation/prediction alignment
-        };
-      }
+        for (const [id, p] of Object.entries(snap.players)) {
+          if (!p) continue;
 
-      setPlayers(stamped);
+          const existing = prev[id] || {};
+
+          next[id] = {
+            // ✅ positional fields always overwritten by snapshot
+            x: Number(p.x ?? 0),
+            y: Number(p.y ?? 0),
+            vx: Number(p.vx ?? 0),
+            vy: Number(p.vy ?? 0),
+            angle: Number(p.angle ?? 0),
+            facing: p.facing ?? existing.facing ?? "right",
+            t,
+
+            // ✅ identity fields: prefer snapshot value, fall back to
+            //    whatever we already know about this player so role/name
+            //    survive snapshots that don't carry them
+            name:  p.name  ?? existing.name  ?? null,
+            class: p.class ?? existing.class ?? null,
+            role:  p.role  ?? existing.role  ?? "player",
+          };
+        }
+
+        return next;
+      });
     };
 
     socket.on("world:snapshot", handler);
@@ -168,19 +186,16 @@ export function useGameSocket() {
     if (socket.connected) socket.emit("identify", { characterId });
   }, []);
 
-  // Manual thrust only
   const sendInput = useCallback((thrust) => {
     if (!socket.connected) return;
     socket.emit("player:input", { thrust: !!thrust });
   }, []);
 
-  // Right-click destination
   const moveTo = useCallback((x, y) => {
     if (!socket.connected) return;
     const tx = Number(x);
     const ty = Number(y);
     if (!Number.isFinite(tx) || !Number.isFinite(ty)) return;
-
     socket.emit("player:moveTo", { x: tx, y: ty });
   }, []);
 

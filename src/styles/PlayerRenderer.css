@@ -1,0 +1,166 @@
+/* src/render/players/PlayerRenderer.css */
+
+/* Full-screen overlay that sits above the canvas */
+.pr-root {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* Generic per-player container (remote players) */
+.pr-player {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: auto;
+  will-change: transform;
+  transform-origin: 0 0;
+}
+
+/* Local player container (locked to screen center) */
+.pr-local {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  transform-origin: 50% 50%;
+  pointer-events: auto;
+}
+
+/* Hover glow (no tan) */
+.pr-player.is-hover,
+.pr-local.is-hover {
+  filter: drop-shadow(0 0 14px rgba(0, 0, 0, 0.78))
+    drop-shadow(0 2px 0 rgba(0, 0, 0, 0.9));
+}
+
+/* NAME: hover label above head */
+.pr-name {
+  position: absolute;
+  left: 50%;
+  top: -10px;
+  transform: translate(-50%, -100%);
+  color: var(--nameColor, rgba(235, 232, 245, 0.95));
+
+  /* ✅ True lowercase medieval/gothic fonts */
+  font-family: "IM Fell English", "Cormorant Garamond", "Cinzel", serif;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  white-space: nowrap;
+
+  /* ✅ Force real casing even if global CSS tries to uppercase/small-caps */
+  text-transform: none;
+  font-variant: normal;
+  font-variant-caps: normal;
+
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.95), 0 2px 4px rgba(0, 0, 0, 0.88),
+    0 0 10px rgba(0, 0, 0, 0.55);
+
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Sprite wrapper (handles facing flip) */
+.pr-spriteWrap {
+  width: 100%;
+  height: 100%;
+  transform: scaleX(1);
+  transform-origin: 50% 50%;
+  will-change: transform;
+}
+
+.pr-spriteWrap.is-left {
+  transform: scaleX(-1);
+}
+
+/* Sprite image */
+.pr-sprite {
+  width: 100%;
+  height: 100%;
+  display: block;
+  image-rendering: pixelated;
+  user-select: none;
+}
+
+/* Bubble */
+.pr-bubble {
+  /* bubble alpha injected from JS: style={{"--bubbleA": alpha}} */
+  --a: var(--bubbleA, 1);
+
+  position: absolute;
+  left: 50%;
+  top: -14px;
+  transform: translate(-50%, -100%);
+
+  display: inline-block;
+  width: max-content;
+  max-width: 260px;
+  padding: 7px 10px;
+  border-radius: 12px;
+
+  background: linear-gradient(
+    180deg,
+    rgba(20, 16, 24, calc(0.92 * var(--a))) 0%,
+    rgba(10, 8, 12, calc(0.86 * var(--a))) 60%,
+    rgba(6, 5, 8, calc(0.9 * var(--a))) 100%
+  );
+  border: 1px solid rgba(135, 140, 160, calc(0.35 * var(--a)));
+  box-shadow: 0 6px 16px rgba(0, 0, 0, calc(0.55 * var(--a))),
+    inset 0 1px 0 rgba(255, 255, 255, calc(0.06 * var(--a))),
+    inset 0 -1px 0 rgba(0, 0, 0, calc(0.35 * var(--a)));
+
+  color: rgba(235, 232, 245, calc(0.98 * var(--a)));
+  font-size: 12px;
+  line-height: 14px;
+  letter-spacing: 0.15px;
+  white-space: pre-wrap;
+  word-break: break-word;
+
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85),
+    0 0 8px rgba(120, 90, 160, calc(0.14 * var(--a)));
+
+  opacity: var(--a);
+  transition: opacity 220ms linear;
+
+  pointer-events: none;
+  z-index: 50;
+
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, calc(0.4 * var(--a))));
+}
+
+/* Bubble tail */
+.pr-bubbleTail {
+  --a: var(--bubbleA, 1);
+
+  position: absolute;
+  left: 50%;
+  bottom: -4px;
+  width: 9px;
+  height: 9px;
+  transform: translateX(-50%) rotate(45deg);
+
+  background: rgba(10, 8, 12, calc(0.88 * var(--a)));
+  border-right: 1px solid rgba(135, 140, 160, calc(0.26 * var(--a)));
+  border-bottom: 1px solid rgba(135, 140, 160, calc(0.26 * var(--a)));
+  box-shadow: 0 4px 10px rgba(0, 0, 0, calc(0.35 * var(--a)));
+
+  pointer-events: none;
+}
+
+/* Debug box */
+.pr-debug {
+  position: fixed;
+  right: 12px;
+  bottom: 10px;
+  font-size: 11px;
+  font-family: monospace;
+  color: rgba(200, 160, 80, 0.75);
+  background: rgba(0, 0, 0, 0.35);
+  padding: 4px 6px;
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 10000;
+  text-align: right;
+}
