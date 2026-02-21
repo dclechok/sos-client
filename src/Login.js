@@ -74,7 +74,7 @@ function Login({ setAccount }) {
 
       {/* your existing box */}
       <div className="login-box">
-        <h1>Shards of Self</h1>
+        <h1>Lorn Online</h1>
 
         <form onSubmit={handleLoginClick}>
           <div className="inputs">

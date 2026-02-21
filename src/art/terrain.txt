@@ -1,6 +1,9 @@
 #176414 - GREEN GRASS
-
-#0e3a59 - deep ocean (impassables)
+#0E3A59 - DEEP OCEAN (impassables)
+ - DIRT
+ - SAND
+ - SWAMP
+ - MOUNTAIN
 
 
 

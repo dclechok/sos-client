@@ -107,6 +107,7 @@ export default function App() {
       }
 
       setAccount(valid);
+      // Only restore character from storage if it actually exists
       setCharacter(storedChar || null);
     }
     init();
@@ -123,22 +124,30 @@ export default function App() {
   }, [isReady, character, identify]);
 
   // -------------------------
+  // Guard: window not measured yet
   if (width === 0 || height === 0) return <Spinner />;
   if (width < 800 || height < 500) return <DisplayCheck />;
+
+  // Guard: session still loading (undefined = not resolved yet)
+  if (account === undefined) return <Spinner />;
+
+  // Guard: not logged in
   if (account === null) return <Login setAccount={setAccount} />;
 
+  // Guard: session loaded but character not resolved yet
+  if (character === undefined) return <Spinner />;
+
+  // Guard: logged in but no character selected → show character selection
   if (character === null) {
     return (
-      <>
-        <CharacterSelection
-          account={account}
-          setAccount={setAccount}
-          setCharacter={(char) => {
-            setCharacter(char);
-            localStorage.setItem("pd_character", JSON.stringify(char));
-          }}
-        />
-      </>
+      <CharacterSelection
+        account={account}
+        setAccount={setAccount}
+        setCharacter={(char) => {
+          setCharacter(char);
+          localStorage.setItem("pd_character", JSON.stringify(char));
+        }}
+      />
     );
   }
 
@@ -173,14 +182,13 @@ export default function App() {
           socket={socket}
           myId={myId}
           players={players}
+          character={character}
           canvasRef={canvasRef}
           zoom={zoom}
           camSmoothRef={camSmoothRef}
         />
       )}
 
-      {/* ✅ PASS myId so ChatMenu can attach senderId + bubble keying */}
-      {/* ✅ (Optional) Only mount chat once the world is ready */}
       {canMountWorld && <ChatMenu character={character} myId={myId} />}
 
       <MapDrawer

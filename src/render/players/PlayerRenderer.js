@@ -1,17 +1,8 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { usePlayerInput } from "./usePlayerInput";
 import { useRemoteInterpolation } from "./useRemoteInterpolation";
+import { getSpriteByClassId } from "./characterClasses";
 
-/**
- * PlayerRenderer (DOM overlay)
- * ✅ Uses the SAME snapped camera as the canvas renderer via camSmoothRef.
- * ✅ Snaps REMOTE render positions to the same 1/zoom world grid to prevent 1px idle jiggle.
- *
- * ✅ NEW:
- * - Overhead chat bubbles (supports senderId OR fallback to display name)
- * - Bubble duration scales with message length
- * - Bubble text renders left-to-right (fixes 1-letter-per-line stacking)
- */
 export default function PlayerRenderer({
   socket,
   myId,
@@ -19,6 +10,7 @@ export default function PlayerRenderer({
 
   sendRateHz = 20,
 
+  // ✅ keep props for backward-compat, but we won't use them as the primary source now
   mySpriteSrc = "/art/items/sprites/AdeptNecromancer.gif",
   otherSpriteSrc = "/art/items/sprites/NovicePyromancer.gif",
 
@@ -141,10 +133,6 @@ export default function PlayerRenderer({
   // CHAT BUBBLES
   // -----------------------------------
   useEffect(() => {
-    // ✅ linger tuning (more readable / “old heads” friendly)
-    // - base time raised
-    // - per-char time raised
-    // - max cap raised
     function ttlFor(text) {
       const len = String(text || "").length;
       return Math.max(3000, Math.min(18000, 2000 + len * 80));
@@ -196,8 +184,6 @@ export default function PlayerRenderer({
     return () => clearInterval(id);
   }, []);
 
-  // ✅ IMPORTANT FIX:
-  // Try bubble by playerId, else fallback to displayName (when senderId missing)
   const getBubbleForPlayer = useCallback(
     (id, p) => {
       if (id == null) return null;
@@ -210,7 +196,6 @@ export default function PlayerRenderer({
       const now = Date.now();
       const remaining = Math.max(0, b.expiresAt - now);
 
-      // ✅ slightly longer fade-out to feel less “snappy”
       const fadeMs = 1100;
       const alpha = remaining < fadeMs ? remaining / fadeMs : 1;
 
@@ -258,6 +243,23 @@ export default function PlayerRenderer({
   }, [renderOthers, remoteIds]);
 
   // -----------------------------------
+  // ✅ NEW: sprite resolution (class -> sprite)
+  // -----------------------------------
+  const getSpriteForPlayer = useCallback(
+    (p, fallbackSrc) => {
+      const cls = p?.class;
+      // If class exists, use it. Otherwise fallback to the old prop sprite.
+      return cls ? getSpriteByClassId(cls, fallbackSrc) : fallbackSrc;
+    },
+    []
+  );
+
+  const myResolvedSprite = useMemo(() => {
+    // Prefer `me.class` if server sends it; otherwise fall back to the old prop
+    return getSpriteForPlayer(me, mySpriteSrc);
+  }, [getSpriteForPlayer, me, mySpriteSrc]);
+
+  // -----------------------------------
   // Styles
   // -----------------------------------
   const nameLabelStyle = {
@@ -277,49 +279,36 @@ export default function PlayerRenderer({
     pointerEvents: "none",
   };
 
-  // ✅ Gothic RPG bubble styling (subtle, readable, not gold)
   const bubbleStyle = (alpha = 1) => ({
     position: "absolute",
     left: "50%",
     top: -14,
     transform: "translate(-50%, -100%)",
-
-    // ✅ critical: do NOT become the tiny parent width
     display: "inline-block",
     width: "max-content",
     maxWidth: 260,
-
     padding: "7px 10px",
     borderRadius: 12,
-
-    // ink parchment vibe without being bright
     background: `linear-gradient(180deg,
       rgba(20,16,24,${0.92 * alpha}) 0%,
       rgba(10,8,12,${0.86 * alpha}) 60%,
       rgba(6,5,8,${0.90 * alpha}) 100%)`,
-
-    // iron/stone rim (no gold)
     border: `1px solid rgba(135, 140, 160, ${0.35 * alpha})`,
     boxShadow: `
       0 6px 16px rgba(0,0,0,${0.55 * alpha}),
       inset 0 1px 0 rgba(255,255,255,${0.06 * alpha}),
       inset 0 -1px 0 rgba(0,0,0,${0.35 * alpha})
     `,
-
     color: `rgba(235, 232, 245, ${0.98 * alpha})`,
     fontSize: 12,
     lineHeight: "14px",
     letterSpacing: "0.15px",
-
     whiteSpace: "pre-wrap",
     wordBreak: "break-word",
-
-    // tiny arcane glow, still subtle
     textShadow: `
       0 1px 2px rgba(0,0,0,0.85),
       0 0 8px rgba(120, 90, 160, ${0.14 * alpha})
     `,
-
     pointerEvents: "none",
     filter: `drop-shadow(0 6px 14px rgba(0,0,0,${0.40 * alpha}))`,
     transition: "opacity 220ms linear",
@@ -385,7 +374,9 @@ export default function PlayerRenderer({
 
           const otherFacing = r?.facing === "left" ? "left" : "right";
 
-          // ✅ bubble by id OR name
+          // ✅ NEW: resolve sprite from player class (fallback to old prop)
+          const otherResolvedSprite = getSpriteForPlayer(p, otherSpriteSrc);
+
           const bub = getBubbleForPlayer(id, p);
 
           return (
@@ -415,11 +406,13 @@ export default function PlayerRenderer({
                 </div>
               )}
 
-              {hovered && <div style={nameLabelStyle}>{getDisplayName(id, p)}</div>}
+              {hovered && (
+                <div style={nameLabelStyle}>{getDisplayName(id, p)}</div>
+              )}
 
               <div style={flipStyle(otherFacing)}>
                 <img
-                  src={otherSpriteSrc}
+                  src={otherResolvedSprite}
                   alt="Other player"
                   draggable={false}
                   style={{
@@ -472,7 +465,7 @@ export default function PlayerRenderer({
 
         <div style={flipStyle(myFacing)}>
           <img
-            src={mySpriteSrc}
+            src={myResolvedSprite}
             alt="My player"
             draggable={false}
             style={{
@@ -511,6 +504,9 @@ export default function PlayerRenderer({
           zoom: {z}x
           <br />
           face: {myFacing}
+          <br />
+          {/* ✅ helpful debug: shows class id when present */}
+          class: {String(me?.class || "—")}
         </div>
       )}
     </div>

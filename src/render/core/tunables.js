@@ -3,7 +3,7 @@
 
 export const OCEAN_GLISTEN = {
   ENABLED:       true,
-  ALPHA_MAX:     0.3,    // peak opacity of each dot
+  ALPHA_MAX:     0.5,    // peak opacity of each dot
   SPEED:         1.0,    // twinkle speed multiplier
   COVERAGE:      0.4,    // fraction of candidate dots that are active (0-1)
   DOTS_PER_TILE:     3,      // candidate dot positions checked per tile — raise for denser shimmer
