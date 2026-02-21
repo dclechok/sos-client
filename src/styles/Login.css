@@ -1,223 +1,8 @@
 /* ================================
-   FONT IMPORTS (must be first line)
+   FONT IMPORTS
    ================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=IM+Fell+English&display=swap');
-
-
-/* ================================
-   LOGIN BOX (Fantasy)
-   ================================ */
-
-.login-box{
-  font-family: "IM Fell English", serif;
-  text-align:center;
-  position: relative;
-
-  margin: 5% 18% 0 18%;
-  padding: 30px 26px;
-  min-height: 320px;
-
-  color: var(--ink);
-
-  background:
-    radial-gradient(900px 220px at 50% 0%, rgba(255,255,255,.18), transparent 60%),
-    linear-gradient(180deg, var(--parchment) 0%, var(--parchment-2) 100%);
-
-  border-radius: 12px;
-  border: 1px solid rgba(60,40,15,.40);
-
-  box-shadow:
-    0 24px 70px rgba(0,0,0,.55),
-    0 0 0 6px rgba(20,15,10,.30),
-    inset 0 0 0 2px rgba(255,255,255,.18),
-    inset 0 -20px 40px rgba(70,50,20,.20);
-
-  letter-spacing: .6px;
-}
-
-/* ================================
-   GAME TITLE — SHARDS OF SELF
-   ================================ */
-
-.game-title{
-  font-family: "Cinzel Decorative", serif;
-  font-weight: 900;
-  font-size: 56px;
-  letter-spacing: 3px;
-  margin-bottom: 18px;
-
-  color: #1a120c;
-
-  text-shadow:
-    0 1px 0 rgba(255,255,255,.18),
-    0 3px 8px rgba(0,0,0,.55),
-    0 0 18px rgba(40,20,5,.35);
-
-  position: relative;
-}
-
-/* rune underline */
-.game-title::after{
-  content:"";
-  display:block;
-  margin: 12px auto 0 auto;
-  width: 160px;
-  height: 2px;
-
-  background:
-    linear-gradient(90deg,
-      transparent,
-      rgba(120,80,25,.6),
-      rgba(200,160,80,.8),
-      rgba(120,80,25,.6),
-      transparent
-    );
-
-  box-shadow: 0 0 10px rgba(200,160,80,.25);
-  opacity:.8;
-}
-
-/* ================================
-   SIGIL WATERMARK
-   ================================ */
-
-.login-box::before{
-  content:"";
-  position:absolute;
-  inset: 18px;
-  border-radius: 10px;
-  pointer-events:none;
-  background:
-    radial-gradient(circle at 50% 50%, rgba(120,80,25,.10), transparent 55%),
-    conic-gradient(from 180deg,
-      rgba(120,80,25,.08),
-      transparent 18%,
-      rgba(120,80,25,.08) 36%,
-      transparent 54%,
-      rgba(120,80,25,.08) 72%,
-      transparent 90%,
-      rgba(120,80,25,.08)
-    );
-  opacity: .35;
-  filter: blur(.2px);
-}
-
-/* ================================
-   HEADINGS
-   ================================ */
-
-.login-box h1,
-.login-box h2{
-  font-family: "Cinzel Decorative", serif;
-  letter-spacing: 1px;
-  margin: 0 0 10px 0;
-  color: #2a1e12;
-  text-shadow: 0 1px 0 rgba(255,255,255,.25);
-}
-
-/* ================================
-   INPUTS
-   ================================ */
-
-.login-box input{
-  width: 72%;
-  margin-top: 10px;
-  margin-bottom: 16px;
-  padding: 11px 12px;
-
-  background:
-    linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,.10));
-  border: 1px solid rgba(70,50,20,.35);
-  border-radius: 10px;
-
-  color: #251a10;
-  font-family: "IM Fell English", serif;
-  font-size: 16px;
-
-  box-shadow:
-    inset 0 2px 6px rgba(0,0,0,.12),
-    inset 0 1px 0 rgba(255,255,255,.25);
-
-  transition:
-    box-shadow .2s ease,
-    transform .12s ease,
-    border-color .2s ease;
-}
-
-.login-box input:focus{
-  outline:none;
-  border-color: rgba(170,125,60,.65);
-  box-shadow:
-    0 0 0 3px rgba(255,190,110,.20),
-    inset 0 2px 6px rgba(0,0,0,.12),
-    inset 0 1px 0 rgba(255,255,255,.25);
-  transform: translateY(-1px);
-}
-
-/* ================================
-   BUTTON
-   ================================ */
-
-.login-box button{
-  border: 1px solid rgba(70,50,20,.55);
-  border-radius: 12px;
-
-  padding: 10px 26px;
-  margin-top: 10px;
-  margin-bottom: 18px;
-
-  cursor:pointer;
-
-  font-family: "Cinzel Decorative", serif;
-  font-weight: 700;
-  font-size: 15px;
-  letter-spacing: 1.2px;
-
-  color: #2a1e12;
-
-  background:
-    radial-gradient(180px 80px at 40% 20%, rgba(255,255,255,.35), transparent 55%),
-    linear-gradient(180deg, rgba(220,180,90,.95), rgba(140,105,45,.95));
-
-  box-shadow:
-    0 10px 18px rgba(0,0,0,.28),
-    inset 0 1px 0 rgba(255,255,255,.30),
-    inset 0 -6px 14px rgba(60,40,15,.22);
-
-  transition:
-    transform .12s ease,
-    box-shadow .2s ease,
-    filter .2s ease;
-}
-
-.login-box button:hover{
-  transform: translateY(-1px) scale(1.02);
-  filter: saturate(1.06);
-}
-
-.login-box button:active{
-  transform: translateY(0px) scale(.99);
-}
-
-/* ================================
-   DISCORD ICON
-   ================================ */
-
-.login-box img{
-  width: 42px;
-  margin-top: 10px;
-
-  filter: saturate(.85) contrast(1.05);
-  transition: transform .15s ease, filter .2s ease;
-}
-
-.login-box img:hover{
-  transform: scale(1.07);
-  filter:
-    drop-shadow(0 0 10px rgba(255,190,110,.22))
-    saturate(1) contrast(1.1);
-}
+@import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cinzel:wght@400;600&family=IM+Fell+English:ital@0;1&display=swap');
 
 /* ================================
    PAGE + WALLPAPER
@@ -228,8 +13,7 @@
   position: relative;
   display: flex;
   justify-content: center;
-  align-items: flex-start;
-  padding-top: 5vh;
+  align-items: center;
   overflow: hidden;
 }
 
@@ -237,42 +21,268 @@
   position: fixed;
   inset: 0;
   z-index: -1;
-
   background-position: center;
   background-size: cover;
   background-repeat: no-repeat;
-
-  filter: brightness(0.75) saturate(1.05);
+  /* crush brightness way down, keep the tree silhouettes */
+  filter: brightness(0.22) saturate(0.6);
   transform: translateZ(0);
 }
 
 /* ================================
-   DARK VIGNETTE OVER VIEWPORT
+   VIGNETTE — edges bleed to pure black
    ================================ */
 
-.login-page::after{
-  content:"";
+.login-page::after {
+  content: "";
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: 0;
-
-  /* layered vignette for depth */
   background:
     radial-gradient(
       ellipse at center,
-      rgba(0,0,0,0) 45%,
-      rgba(0,0,0,.25) 65%,
-      rgba(0,0,0,.55) 82%,
-      rgba(0,0,0,.85) 100%
+      rgba(0,0,0,0) 30%,
+      rgba(0,0,0,0.45) 60%,
+      rgba(0,0,0,0.82) 85%,
+      rgba(0,0,0,0.97) 100%
     );
-
-  /* subtle extra darkness at top for title drama */
   box-shadow:
-    inset 0 140px 180px rgba(0,0,0,.55),
-    inset 0 -120px 180px rgba(0,0,0,.45);
+    inset 0 120px 160px rgba(0,0,0,0.75),
+    inset 0 -120px 160px rgba(0,0,0,0.75);
 }
 
+/* ================================
+   LOGIN BOX — obsidian card
+   ================================ */
+
 .login-box {
+  position: relative;
   z-index: 1;
+
+  width: min(400px, 88vw);
+  padding: 36px 32px 28px;
+
+  font-family: 'IM Fell English', serif;
+  text-align: center;
+  color: rgba(225, 220, 240, 0.92);
+
+  background: linear-gradient(
+    170deg,
+    rgba(18, 16, 22, 0.97) 0%,
+    rgba(9, 8, 11, 0.98) 100%
+  );
+
+  border-radius: 18px;
+  border: 1px solid rgba(120, 110, 140, 0.28);
+
+  box-shadow:
+    0 32px 80px rgba(0, 0, 0, 0.85),
+    0 0 0 1px rgba(255, 255, 255, 0.02),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+
+  /* subtle inner sigil */
+  overflow: hidden;
+}
+
+/* ember glow behind content */
+.login-box::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 300px 200px at 50% 0%,
+    rgba(195, 140, 65, 0.07),
+    transparent 65%
+  );
+}
+
+/* corner rune */
+.login-box::after {
+  content: "◈";
+  position: absolute;
+  bottom: 14px;
+  right: 16px;
+  font-size: 11px;
+  color: rgba(140, 125, 165, 0.2);
+  pointer-events: none;
+}
+
+/* ================================
+   TITLE (h1)
+   ================================ */
+
+.login-box h1,
+.login-box h2 {
+  font-family: 'Cinzel Decorative', serif;
+  font-weight: 700;
+  font-size: 26px;
+  letter-spacing: 2.5px;
+  margin: 0 0 6px 0;
+  color: rgba(235, 230, 245, 0.97);
+  text-shadow:
+    0 0 40px rgba(120, 100, 160, 0.2),
+    0 2px 10px rgba(0, 0, 0, 0.9);
+  position: relative;
+  z-index: 1;
+}
+
+/* gold ornament under title */
+.login-box h1::after,
+.login-box h2::after {
+  content: "— ✦ —";
+  display: block;
+  font-family: 'IM Fell English', serif;
+  font-size: 13px;
+  letter-spacing: 5px;
+  font-weight: 400;
+  color: rgba(195, 140, 65, 0.6);
+  margin-top: 8px;
+  margin-bottom: 20px;
+}
+
+/* ================================
+   LABELS
+   ================================ */
+
+.login-box .inputs,
+.login-box label,
+.login-box br + * {
+  font-family: 'Cinzel', serif;
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: rgba(175, 168, 192, 0.7);
+}
+
+/* plain text labels (User, Password written directly) */
+.login-box .inputs {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  font-family: 'Cinzel', serif;
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: rgba(175, 168, 192, 0.7);
+}
+
+/* ================================
+   INPUTS
+   ================================ */
+
+.login-box input {
+  width: 100%;
+  margin-top: 8px;
+  margin-bottom: 18px;
+  padding: 11px 14px;
+
+  background: rgba(6, 5, 8, 0.7);
+  border: 1px solid rgba(120, 110, 140, 0.25);
+  border-radius: 10px;
+
+  color: rgba(235, 230, 245, 0.95);
+  font-family: 'IM Fell English', serif;
+  font-size: 15px;
+
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.4);
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.12s ease;
+
+  box-sizing: border-box;
+  outline: none;
+}
+
+.login-box input::placeholder {
+  color: rgba(140, 130, 160, 0.3);
+  font-style: italic;
+}
+
+.login-box input:focus {
+  border-color: rgba(195, 140, 65, 0.45);
+  box-shadow:
+    0 0 0 3px rgba(195, 140, 65, 0.08),
+    inset 0 2px 6px rgba(0, 0, 0, 0.4);
+  transform: translateY(-1px);
+}
+
+/* ================================
+   BUTTON
+   ================================ */
+
+.login-box button {
+  border: 1px solid rgba(195, 140, 65, 0.5);
+  border-radius: 12px;
+
+  padding: 11px 36px;
+  margin-top: 4px;
+  margin-bottom: 20px;
+
+  cursor: pointer;
+  width: 100%;
+
+  font-family: 'Cinzel', serif;
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+
+  color: rgba(230, 175, 90, 1);
+
+  background: linear-gradient(
+    160deg,
+    rgba(195, 140, 65, 0.18),
+    rgba(135, 90, 35, 0.15)
+  );
+
+  box-shadow:
+    0 0 20px rgba(195, 140, 65, 0.1),
+    inset 0 1px 0 rgba(255, 210, 120, 0.06);
+
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.login-box button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(215, 160, 80, 0.75);
+  box-shadow:
+    0 0 28px rgba(195, 140, 65, 0.18),
+    inset 0 1px 0 rgba(255, 210, 120, 0.1);
+  color: rgba(248, 200, 110, 1);
+}
+
+.login-box button:active {
+  transform: translateY(0px) scale(0.99);
+}
+
+/* ================================
+   DISCORD
+   ================================ */
+
+.login-box img {
+  width: 38px;
+  margin-top: 8px;
+  filter: brightness(0.7) saturate(0.5);
+  transition: transform 0.15s ease, filter 0.2s ease;
+}
+
+.login-box img:hover {
+  transform: scale(1.08);
+  filter: brightness(0.9) saturate(0.7) drop-shadow(0 0 8px rgba(195, 140, 65, 0.2));
+}
+
+/* "Join our Discord!" text */
+.login-box > br ~ * {
+  font-family: 'IM Fell English', serif;
+  font-style: italic;
+  font-size: 12px;
+  color: rgba(160, 152, 178, 0.6);
 }

@@ -132,7 +132,7 @@ export default function CharacterCreation({ account, onCreated, onCancel }) {
               className="cc-input"
               value={charName}
               onChange={(e) => setCharName(e.target.value)}
-              placeholder="e.g. Vael, Lira, Lorn..."
+              placeholder="e.g. Mourne, Selvek, Ithara..."
               maxLength={32}
               autoFocus
             />
