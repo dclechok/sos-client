@@ -54,8 +54,8 @@ export function useGameSocket() {
   useEffect(() => {
     const onConnect = () => {
       setIsReady(true);
-      const characterId = pendingIdentifyRef.current;
-      if (characterId) socket.emit("identify", { characterId });
+      const pending = pendingIdentifyRef.current;
+      if (pending) socket.emit("identify", pending);
     };
 
     const onDisconnect = () => setIsReady(false);
@@ -108,7 +108,6 @@ export function useGameSocket() {
             vx: Number(payload.ship.vx ?? 0),
             vy: Number(payload.ship.vy ?? 0),
             angle: Number(payload.ship.angle ?? 0),
-            // ✅ persist name + role from identify response
             name: payload.ship.name ?? prev[payload.id]?.name ?? null,
             role: payload.ship.role ?? payload.role ?? prev[payload.id]?.role ?? "player",
             class: payload.ship.class ?? prev[payload.id]?.class ?? null,
@@ -124,8 +123,6 @@ export function useGameSocket() {
   /* ------------------------------------------------------
      world:snapshot -> players
      ✅ Merges positional data but PRESERVES role/name/class
-        that were set by player:self or identify so they
-        are never wiped by a snapshot that omits them.
   ------------------------------------------------------ */
   useEffect(() => {
     const handler = (snap) => {
@@ -142,7 +139,6 @@ export function useGameSocket() {
           const existing = prev[id] || {};
 
           next[id] = {
-            // ✅ positional fields always overwritten by snapshot
             x: Number(p.x ?? 0),
             y: Number(p.y ?? 0),
             vx: Number(p.vx ?? 0),
@@ -150,10 +146,6 @@ export function useGameSocket() {
             angle: Number(p.angle ?? 0),
             facing: p.facing ?? existing.facing ?? "right",
             t,
-
-            // ✅ identity fields: prefer snapshot value, fall back to
-            //    whatever we already know about this player so role/name
-            //    survive snapshots that don't carry them
             name:  p.name  ?? existing.name  ?? null,
             class: p.class ?? existing.class ?? null,
             role:  p.role  ?? existing.role  ?? "player",
@@ -169,6 +161,29 @@ export function useGameSocket() {
   }, []);
 
   /* ------------------------------------------------------
+     teleported -> snap local position immediately
+     ✅ Prevents next snapshot from rubber-banding back
+  ------------------------------------------------------ */
+  useEffect(() => {
+    const handler = ({ x, y }) => {
+      if (!myId) return;
+      setPlayers((prev) => ({
+        ...prev,
+        [myId]: {
+          ...(prev[myId] || {}),
+          x: Number(x),
+          y: Number(y),
+          vx: 0,
+          vy: 0,
+        },
+      }));
+    };
+
+    socket.on("teleported", handler);
+    return () => socket.off("teleported", handler);
+  }, [myId]);
+
+  /* ------------------------------------------------------
      Server errors
   ------------------------------------------------------ */
   useEffect(() => {
@@ -180,10 +195,13 @@ export function useGameSocket() {
   /* ------------------------------------------------------
      OPEN WORLD API
   ------------------------------------------------------ */
-  const identify = useCallback((characterId) => {
+
+  // ✅ identify now accepts an optional role to pass to the server as fallback
+  const identify = useCallback((characterId, role) => {
     if (!characterId) return;
-    pendingIdentifyRef.current = characterId;
-    if (socket.connected) socket.emit("identify", { characterId });
+    const payload = { characterId, ...(role ? { role } : {}) };
+    pendingIdentifyRef.current = payload;
+    if (socket.connected) socket.emit("identify", payload);
   }, []);
 
   const sendInput = useCallback((thrust) => {

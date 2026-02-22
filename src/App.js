@@ -22,6 +22,7 @@ import MapDrawer from "./MapDrawer";
 import { useWorldMapRenderer } from "./render/systems/map/useWorldMapRenderer";
 
 import { useWorldChunks } from "./world/useWorldChunks";
+import AdminPanel from "./AdminPanel";
 
 function useWindowSize() {
   const [size, setSize] = useState({ width: 0, height: 0 });
@@ -105,11 +106,10 @@ export default function App() {
       }
 
       setAccount({
-      ...storedAccount,
-      ...valid,
-      role: valid?.role ?? storedAccount?.role, // ✅ preserve role
-    });
-      // Only restore character from storage if it actually exists
+        ...storedAccount,
+        ...valid,
+        role: valid?.role ?? storedAccount?.role,
+      });
       setCharacter(storedChar || null);
     }
     init();
@@ -122,8 +122,9 @@ export default function App() {
     const characterId = character._id || character.id;
     if (!characterId) return;
 
-    identify(characterId);
-  }, [isReady, character, identify]);
+    // ✅ Pass role so server can use it as fallback if player_data has no role field
+    identify(characterId, account?.role);
+  }, [isReady, character, identify, account?.role]);
 
   // -------------------------
   // Guard: window not measured yet
@@ -157,7 +158,6 @@ export default function App() {
   const canMountWorld =
     hasPickedCharacter && isReady && Number.isFinite(worldSeed);
 
-  // choose ONE zoom value and pass it to both
   const zoom = 2;
 
   return (
@@ -193,6 +193,18 @@ export default function App() {
       )}
 
       {canMountWorld && <ChatMenu character={character} myId={myId} />}
+
+      {/* Admin panel — only for admins/owners, toggled with backtick ` */}
+      {canMountWorld && ["owner", "admin"].includes(account?.role) && (
+        <AdminPanel
+          socket={socket}
+          canvasRef={canvasRef}
+          camSmoothRef={camSmoothRef}
+          camTargetRef={camTargetRef}
+          zoom={zoom}
+          me={me}
+        />
+      )}
 
       <MapDrawer
         open={mapOpen}
