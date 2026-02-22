@@ -62,12 +62,35 @@ function clamp01(x) {
   return Math.max(0, Math.min(1, x));
 }
 
-// Smooth-ish flicker: blend a couple sine waves with per-object phase.
 // frame.t should be time in seconds OR ms; we handle both.
 function getTimeSeconds(frame) {
   const t = frame?.t ?? frame?.time ?? performance.now();
   // if it's huge, assume ms
   return t > 10_000 ? t / 1000 : t;
+}
+
+/**
+ * Pick sprite source for an object.
+ * Supports:
+ *   - def.frames (array of PNG frame URLs) + optional def.fps
+ *   - def.sprite / obj.sprite fallback (single image)
+ */
+function pickSpriteSrc(def, obj, t) {
+  const frames = def?.frames;
+
+  if (Array.isArray(frames) && frames.length) {
+    const fps = Math.max(1, Number(def?.fps || 8));
+
+    // per-object stable phase so multiple fires don't sync perfectly
+    const key = obj?._id || `${obj?.defId}:${obj?.x},${obj?.y}`;
+    const phase = stableRand01(key); // 0..1
+
+    const len = frames.length;
+    const idx = Math.floor(t * fps + phase * len) % len;
+    return frames[(idx + len) % len];
+  }
+
+  return def?.sprite || obj?.sprite || "";
 }
 
 export function renderWorldObjects(ctx, frame, { objects = [], objectDefs = {} } = {}) {
@@ -90,13 +113,16 @@ export function renderWorldObjects(ctx, frame, { objects = [], objectDefs = {} }
     const defId = String(obj.defId || "");
     const def = objectDefs?.[defId] || null;
 
-    const spriteSrc = def?.sprite || obj?.sprite;
+    // ✅ NEW: supports animated frame lists
+    const spriteSrc = pickSpriteSrc(def, obj, t);
+
     if (!spriteSrc) {
       console.log("[renderWorldObjects] NO spriteSrc for obj:", {
         _id: obj?._id,
         defId: obj?.defId,
         objSprite: obj?.sprite,
         defSprite: def?.sprite,
+        defFrames: def?.frames,
       });
       continue;
     }
@@ -113,6 +139,7 @@ export function renderWorldObjects(ctx, frame, { objects = [], objectDefs = {} }
           defId: obj?.defId,
           objSprite: obj?.sprite,
           defSprite: def?.sprite,
+          defFrames: def?.frames,
         });
       }
       continue;
@@ -128,7 +155,8 @@ export function renderWorldObjects(ctx, frame, { objects = [], objectDefs = {} }
     const sx = cx + (wx - camX) * z;
     const sy = cy + (wy - camY) * z;
 
-    const baseSize = Number(def?.sizePx || obj?.sizePx || 32);
+    // ✅ safer defaulting
+    const baseSize = Number(def?.sizePx ?? obj?.sizePx ?? 16);
     const dw = baseSize * z;
     const dh = baseSize * z;
 
@@ -151,10 +179,9 @@ export function renderWorldObjects(ctx, frame, { objects = [], objectDefs = {} }
       // Flicker:
       // - radius wobble ~ +/- 6%
       // - intensity wobble ~ +/- 18%
-      // Keep it subtle; too much looks like a strobe.
       const w1 = Math.sin(t * 9.5 + phase);
       const w2 = Math.sin(t * 13.7 + phase * 1.7);
-      const flick = (w1 * 0.6 + w2 * 0.4); // -1..1-ish
+      const flick = w1 * 0.6 + w2 * 0.4; // ~ -1..1
 
       const radiusMul = 1 + flick * 0.06;
       const intensityMul = 1 + flick * 0.18;
@@ -170,13 +197,11 @@ export function renderWorldObjects(ctx, frame, { objects = [], objectDefs = {} }
       const outerCol = "#ff3b2f"; // deep ember red (very low alpha)
 
       const grad = ctx.createRadialGradient(sx, sy, 0, sx, sy, r);
-      grad.addColorStop(0.00, hexToRGBA(baseCol, a0));
+      grad.addColorStop(0.0, hexToRGBA(baseCol, a0));
       grad.addColorStop(0.18, hexToRGBA(baseCol, a1));
       grad.addColorStop(0.45, hexToRGBA(baseCol, a2));
-
-      // smoother falloff / edge fade
       grad.addColorStop(0.72, hexToRGBA(outerCol, 0.028 * intensityMul));
-      grad.addColorStop(1.00, hexToRGBA(outerCol, 0.0));
+      grad.addColorStop(1.0, hexToRGBA(outerCol, 0.0));
 
       ctx.save();
       ctx.globalCompositeOperation = "lighter";
