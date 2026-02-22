@@ -23,7 +23,7 @@ export const ROLE_COLORS = {
     label: "Owner",
   },
   admin: {
-    primary: "#B347EA",    // purple
+    primary: "#ff6600",    // purple
     background: "#1A1A1E",
     text: "#8058EA",
     label: "Admin",
