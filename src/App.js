@@ -22,7 +22,12 @@ import MapDrawer from "./MapDrawer";
 import { useWorldMapRenderer } from "./render/systems/map/useWorldMapRenderer";
 
 import { useWorldChunks } from "./world/useWorldChunks";
-import AdminPanel from "./AdminPanel";
+import AdminPanel from "./AdminPanel.js";
+
+// ✅ NEW
+import { useWorldObjects } from "./world/useWorldObjects";
+
+const API = process.env.REACT_APP_API_BASE_URL || "";
 
 function useWindowSize() {
   const [size, setSize] = useState({ width: 0, height: 0 });
@@ -41,6 +46,9 @@ export default function App() {
   const [character, setCharacter] = useState(undefined);
   const [mapOpen, setMapOpen] = useState(false);
 
+  // ✅ NEW: object defs map for renderer (defId -> def)
+  const [objectDefs, setObjectDefs] = useState({});
+
   useButtonClickSound();
   const { width, height } = useWindowSize();
 
@@ -49,11 +57,9 @@ export default function App() {
 
   const canvasRef = useRef(null);
 
-  // ✅ ONE shared camera for BOTH canvas + DOM overlays
   const camTargetRef = useRef({ x: 0, y: 0 });
   const camSmoothRef = useRef({ x: 0, y: 0 });
 
-  // Keep camera target following "me"
   useEffect(() => {
     if (!me) return;
     const x = Number(me.x);
@@ -63,7 +69,6 @@ export default function App() {
     camTargetRef.current.x = x;
     camTargetRef.current.y = y;
 
-    // init smooth camera on first valid me
     if (
       !Number.isFinite(camSmoothRef.current.x) ||
       !Number.isFinite(camSmoothRef.current.y)
@@ -81,6 +86,27 @@ export default function App() {
     world,
     me,
   });
+
+  // ✅ NEW: keep world objects in client state
+  const { objects: worldObjects } = useWorldObjects({ socket, me, radius: 2400 });
+
+  // ✅ NEW: fetch defs once (sprites + light config)
+  useEffect(() => {
+    if (!isReady) return;
+    fetch(`${API}/api/defs/objects`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((j) => {
+        const list = j?.objects || [];
+        const map = {};
+        for (const o of list) {
+          const id = String(o.id ?? o.key ?? o.name ?? "");
+          if (!id) continue;
+          map[id] = o;
+        }
+        setObjectDefs(map);
+      })
+      .catch(() => {});
+  }, [isReady]);
 
   // -------------------------
   // session boot logic
@@ -122,25 +148,15 @@ export default function App() {
     const characterId = character._id || character.id;
     if (!characterId) return;
 
-    // ✅ Pass role so server can use it as fallback if player_data has no role field
     identify(characterId, account?.role);
   }, [isReady, character, identify, account?.role]);
 
-  // -------------------------
-  // Guard: window not measured yet
   if (width === 0 || height === 0) return <Spinner />;
   if (width < 800 || height < 500) return <DisplayCheck />;
-
-  // Guard: session still loading (undefined = not resolved yet)
   if (account === undefined) return <Spinner />;
-
-  // Guard: not logged in
   if (account === null) return <Login setAccount={setAccount} />;
-
-  // Guard: session loaded but character not resolved yet
   if (character === undefined) return <Spinner />;
 
-  // Guard: logged in but no character selected → show character selection
   if (character === null) {
     return (
       <CharacterSelection
@@ -176,6 +192,9 @@ export default function App() {
           zoom={zoom}
           camTargetRef={camTargetRef}
           camSmoothRef={camSmoothRef}
+          // ✅ NEW
+          worldObjects={worldObjects}
+          objectDefs={objectDefs}
         />
       )}
 
@@ -194,7 +213,6 @@ export default function App() {
 
       {canMountWorld && <ChatMenu character={character} myId={myId} />}
 
-      {/* Admin panel — only for admins/owners, toggled with backtick ` */}
       {canMountWorld && ["owner", "admin"].includes(account?.role) && (
         <AdminPanel
           socket={socket}

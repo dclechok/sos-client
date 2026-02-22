@@ -15,17 +15,22 @@ import {
 import { useWeatherCycle } from "./render/systems/weather/useWeather";
 import { renderWeather } from "./render/systems/weather/weatherRenderer";
 
+// ✅ keep the path that exists in YOUR repo
+import { renderWorldObjects } from "./render/objects/objectRenderer";
+
 export default function MainViewport({
   world,
   canvasRef,
   zoom = 2,
   camTargetRef,
   camSmoothRef,
+
+  worldObjects = [],
+  objectDefs = {},
 }) {
   const localCanvasRef = useRef(null);
   const refToUse = canvasRef || localCanvasRef;
 
-  // ✅ block browser zoom on canvas
   useEffect(() => {
     const canvas = refToUse.current;
     if (!canvas) return;
@@ -58,6 +63,7 @@ export default function MainViewport({
   const render = useCallback(
     (ctx, frame) => {
       renderTerrain(ctx, frame, { world, atlas });
+
       renderFoliage(ctx, frame, {
         world,
         foliage: {
@@ -66,9 +72,16 @@ export default function MainViewport({
           seed: 4242,
         },
       });
+
+      // ✅ draw objects here (no functional change)
+      renderWorldObjects(ctx, frame, {
+        objects: worldObjects,
+        objectDefs,
+      });
+
       renderWeather(ctx, frame, { weather });
     },
-    [world, atlas, foliageAssets, foliageRegistry, weather]
+    [world, atlas, foliageAssets, foliageRegistry, weather, worldObjects, objectDefs]
   );
 
   useViewportRenderer({
