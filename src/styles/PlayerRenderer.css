@@ -1,5 +1,7 @@
 /* src/render/players/PlayerRenderer.css */
 
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400&display=swap');
+
 /* Full-screen overlay that sits above the canvas */
 .pr-root {
   position: fixed;
@@ -41,22 +43,24 @@
   left: 50%;
   top: -10px;
   transform: translate(-50%, -100%);
-  color: var(--nameColor, rgba(235, 232, 245, 0.95));
+  color: var(--nameColor, #ffffff);
 
-  /* ✅ True lowercase medieval/gothic fonts */
-  font-family: "IM Fell English", "Cormorant Garamond", "Cinzel", serif;
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: 0.6px;
+  font-family: "Outfit", sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0.8px;
   white-space: nowrap;
 
-  /* ✅ Force real casing even if global CSS tries to uppercase/small-caps */
   text-transform: none;
   font-variant: normal;
   font-variant-caps: normal;
 
-  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.95), 0 2px 4px rgba(0, 0, 0, 0.88),
-    0 0 10px rgba(0, 0, 0, 0.55);
+  text-shadow: none;
+
+  background: rgba(0, 0, 0, 0.82);
+  padding: 2px 6px;
+  border-radius: 2px;
+  line-height: normal;
 
   pointer-events: none;
   user-select: none;
@@ -86,7 +90,6 @@
 
 /* Bubble */
 .pr-bubble {
-  /* bubble alpha injected from JS: style={{"--bubbleA": alpha}} */
   --a: var(--bubbleA, 1);
 
   position: absolute;

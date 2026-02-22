@@ -6,6 +6,7 @@ export function normalizeAccount(acc) {
     id: acc.id || acc._id,
     username: acc.username,
     characters: acc.characters || [],
+    role: acc.role || "player",
   };
 }
 
@@ -49,9 +50,10 @@ export async function verifyToken(token) {
 
     const data = await res.json();
     return {
-      id: data.user._id,
+      id: data.user._id || data.user.id,
       username: data.user.username,
       characters: data.user.characters || [],
+      role: data.user.role || "player",
       token,
     };
   } catch (err) {

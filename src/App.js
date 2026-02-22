@@ -104,7 +104,11 @@ export default function App() {
         return;
       }
 
-      setAccount(valid);
+      setAccount({
+      ...storedAccount,
+      ...valid,
+      role: valid?.role ?? storedAccount?.role, // ✅ preserve role
+    });
       // Only restore character from storage if it actually exists
       setCharacter(storedChar || null);
     }
@@ -181,6 +185,7 @@ export default function App() {
           myId={myId}
           players={players}
           character={character}
+          accountRole={account?.role}
           canvasRef={canvasRef}
           zoom={zoom}
           camSmoothRef={camSmoothRef}

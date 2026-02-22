@@ -22,28 +22,39 @@ function Login({ setAccount }) {
         return;
       }
 
+      console.log("LOGIN RESPONSE:", data);
+
+      const user = data.user || {};
+
+      // ✅ accept id OR _id OR accountId
+      const id =
+        user.id ??
+        user._id ??
+        user.accountId ??
+        null;
+
+      // ✅ accept role from multiple possible backend shapes
+      const role =
+        user.role ??
+        user.accountRole ??
+        data.role ??
+        data.accountRole ??
+        "player";
+
+      const accountObj = {
+        id,
+        username: user.username,
+        role,
+        characters: user.characters || [],
+        token: data.token,
+      };
+
+      // ✅ persist token + account with role included
       localStorage.setItem("pd_token", data.token);
-
-      localStorage.setItem(
-        "pd_account",
-        JSON.stringify({
-          id: data.user.id,
-          username: data.user.username,
-          characters: data.user.characters || [],
-        })
-      );
-
+      localStorage.setItem("pd_account", JSON.stringify(accountObj));
       localStorage.removeItem("pd_character");
 
-      setAccount({
-        id: data.user.id,
-        username: data.user.username,
-        characters: data.user.characters || [],
-        token: data.token,
-      });
-
-      // optional: if your app navigates away on login, leave loading true
-      // otherwise, you could setLoading(false) here if you stay on this screen
+      setAccount(accountObj);
     } catch (err) {
       console.error(err);
       alert("Login failed");
@@ -51,7 +62,7 @@ function Login({ setAccount }) {
     }
   }
 
-  // If loading: show spinner, but keep the wallpaper behind it
+  // If loading: show spinner, but keep wallpaper behind it
   if (loading) {
     return (
       <div className="login-page">
@@ -66,13 +77,11 @@ function Login({ setAccount }) {
 
   return (
     <div className="login-page">
-      {/* full viewport wallpaper layer */}
       <div
         className="login-wallpaper"
         style={{ backgroundImage: `url(${bgUrl})` }}
       />
 
-      {/* your existing box */}
       <div className="login-box">
         <h1>Lorn Online</h1>
 

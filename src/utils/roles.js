@@ -17,27 +17,29 @@ export const ROLE_HIERARCHY = {
 
 export const ROLE_COLORS = {
   owner: {
-    primary: "#8058EA",   // ✅ UPDATED purple (matches screenshot)
-    background: "#1A1A1E", // darker neutral backing if used anywhere
-    text: "#8058EA",       // ✅ ensures letters stay purple everywhere
+    primary: "#ff6600",    // purple
+    background: "#1A1A1E",
+    text: "#8058EA",
     label: "Owner",
   },
   admin: {
-    primary: "#8058EA",   // ✅ same purple as owner
+    primary: "#B347EA",    // purple
     background: "#1A1A1E",
     text: "#8058EA",
     label: "Admin",
   },
   seer: {
-    primary: "#4FC3F7",
+    primary: "#4FC3F7",    // light blue
     background: "#0D2A3A",
     text: "#4FC3F7",
     label: "Seer",
   },
+
+  // ✅ UPDATED: player is now blue-ish (instead of gray)
   player: {
-    primary: "#A0A0A0",
-    background: "#121216",
-    text: "#A0A0A0",
+    primary: "#7AA7FF",     // blue-ish
+    background: "#0F1626",  // deep navy backing
+    text: "#7AA7FF",        // keep text consistent everywhere
     label: "Player",
   },
 };

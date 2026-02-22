@@ -10,30 +10,21 @@ export default function PlayerRenderer({
   socket,
   myId,
   players,
-
+  character,
+  accountRole,
   sendRateHz = 20,
-
-  // keep props for backward-compat, but we won't use them as the primary source now
   mySpriteSrc = "/art/items/sprites/AdeptNecromancer.gif",
   otherSpriteSrc = "/art/items/sprites/NovicePyromancer.gif",
-
   spriteW = 16,
   spriteH = 16,
-
   zoom = 2,
-
   renderOthers = true,
   playerNames = {},
-
   canvasRef,
-
   camSmoothRef,
 }) {
   const [hoverId, setHoverId] = useState(null);
   const [myFacing, setMyFacing] = useState("right");
-
-  // bubbles keyed by senderId string OR displayName string:
-  // { [key]: { text, t, expiresAt, role } }
   const [bubbles, setBubbles] = useState({});
 
   const me = myId && players ? players[myId] : null;
@@ -49,37 +40,21 @@ export default function PlayerRenderer({
 
   const getCanvasMetrics = useCallback(() => {
     const canvas = canvasRef?.current;
-
     if (!canvas) {
-      return {
-        cx: window.innerWidth / 2,
-        cy: window.innerHeight / 2,
-        scale: 1,
-      };
+      return { cx: window.innerWidth / 2, cy: window.innerHeight / 2, scale: 1 };
     }
-
     const r = canvas.getBoundingClientRect();
     const scaleX = r.width ? canvas.width / r.width : 1;
-
-    return {
-      cx: r.left + r.width / 2,
-      cy: r.top + r.height / 2,
-      scale: scaleX,
-    };
+    return { cx: r.left + r.width / 2, cy: r.top + r.height / 2, scale: scaleX };
   }, [canvasRef]);
 
   const getRenderCam = useCallback(() => {
     const cam = camSmoothRef?.current;
     const fallback = meRef.current || { x: 0, y: 0 };
-
     const cx = Number.isFinite(cam?.x) ? Number(cam.x) : Number(fallback.x || 0);
     const cy = Number.isFinite(cam?.y) ? Number(cam.y) : Number(fallback.y || 0);
-
     if (z > 1) {
-      return {
-        x: Math.round(cx * z) / z,
-        y: Math.round(cy * z) / z,
-      };
+      return { x: Math.round(cx * z) / z, y: Math.round(cy * z) / z };
     }
     return { x: cx, y: cy };
   }, [camSmoothRef, z]);
@@ -97,10 +72,8 @@ export default function PlayerRenderer({
     (p) => {
       const { cx, cy, scale } = getCanvasMetrics();
       const cam = getRenderCam();
-
       const dxWorld = Number(p.x || 0) - cam.x;
       const dyWorld = Number(p.y || 0) - cam.y;
-
       return { x: cx + (dxWorld * z) / scale, y: cy + (dyWorld * z) / scale };
     },
     [getCanvasMetrics, getRenderCam, z]
@@ -110,10 +83,8 @@ export default function PlayerRenderer({
     (clientX, clientY) => {
       const { cx, cy, scale } = getCanvasMetrics();
       const cam = getRenderCam();
-
       const dxWorld = ((clientX - cx) * scale) / z;
       const dyWorld = ((clientY - cy) * scale) / z;
-
       return { x: cam.x + dxWorld, y: cam.y + dyWorld };
     },
     [getCanvasMetrics, getRenderCam, z]
@@ -123,22 +94,19 @@ export default function PlayerRenderer({
     (id, p) => {
       const fromSnapshot = p?.name;
       if (fromSnapshot && String(fromSnapshot).trim()) return String(fromSnapshot);
-
       const fromMap = playerNames?.[id];
       if (fromMap && String(fromMap).trim()) return String(fromMap);
-
+      if (id === myId && character?.charName) return String(character.charName);
       return `Player ${String(id).slice(0, 4)}`;
     },
-    [playerNames]
+    [playerNames, myId, character]
   );
 
-  // Normalize role so OWNER/Admin/etc still map to roles.js keys
   const normalizeRole = useCallback((role) => {
     const raw =
       role && typeof role === "object"
-        ? role.name ?? role.role ?? role.type ?? ""
+        ? role.name ?? role.role ?? role.type ?? role.title ?? role.key ?? role.rank ?? role.level ?? ""
         : role;
-
     const key = String(raw || "player").trim().toLowerCase();
     return key || "player";
   }, []);
@@ -165,11 +133,9 @@ export default function PlayerRenderer({
         senderIdRaw != null && String(senderIdRaw).trim()
           ? String(senderIdRaw)
           : user;
-
       if (!key) return;
 
       const ttl = ttlFor(message);
-
       setBubbles((prev) => ({
         ...prev,
         [key]: { text: message, t, expiresAt: t + ttl, role },
@@ -195,25 +161,20 @@ export default function PlayerRenderer({
         return changed ? next : prev;
       });
     }, 250);
-
     return () => clearInterval(id);
   }, []);
 
   const getBubbleForPlayer = useCallback(
     (id, p) => {
       if (id == null) return null;
-
       const byId = bubbles?.[String(id)];
       const byName = bubbles?.[getDisplayName(id, p)];
       const b = byId || byName;
       if (!b) return null;
-
       const now = Date.now();
       const remaining = Math.max(0, b.expiresAt - now);
-
       const fadeMs = 1100;
       const alpha = remaining < fadeMs ? remaining / fadeMs : 1;
-
       return { ...b, alpha };
     },
     [bubbles, getDisplayName]
@@ -258,7 +219,7 @@ export default function PlayerRenderer({
   }, [renderOthers, remoteIds]);
 
   // -----------------------------------
-  // Sprite resolution (class -> sprite)
+  // Sprite resolution
   // -----------------------------------
   const getSpriteForPlayer = useCallback((p, fallbackSrc) => {
     const cls = p?.class;
@@ -280,6 +241,9 @@ export default function PlayerRenderer({
     [normalizeRole]
   );
 
+  // ✅ accountRole prop is the source of truth — never use me?.role (that's class/archetype)
+  const myRole = me?.accountRole ?? accountRole ?? "player";
+
   const displayX = me ? Math.round(me.x) : 0;
   const displayY = me ? Math.round(me.y) : 0;
 
@@ -292,24 +256,19 @@ export default function PlayerRenderer({
           const p = players[id];
           if (!p) return null;
 
-          const r0 =
-            getRenderState(id) || {
-              x: Number(p.x || 0),
-              y: Number(p.y || 0),
-              facing: p?.facing === "left" ? "left" : "right",
-            };
+          const r0 = getRenderState(id) || {
+            x: Number(p.x || 0),
+            y: Number(p.y || 0),
+            facing: p?.facing === "left" ? "left" : "right",
+          };
 
           const r = { ...r0, x: snapWorld(r0.x), y: snapWorld(r0.y) };
-
           const { x, y } = worldToScreen(r);
           const hovered = hoverId === id;
-
           const tx = Math.round(x - drawW / 2);
           const ty = Math.round(y - drawH / 2);
-
           const otherFacing = r?.facing === "left" ? "left" : "right";
           const otherResolvedSprite = getSpriteForPlayer(p, otherSpriteSrc);
-
           const bub = getBubbleForPlayer(id, p);
           const name = getDisplayName(id, p);
 
@@ -326,34 +285,25 @@ export default function PlayerRenderer({
               }}
             >
               {bub && (
-                <div
-                  className="pr-bubble"
-                  style={{
-                    "--bubbleA": bub.alpha,
-                  }}
-                >
+                <div className="pr-bubble" style={{ "--bubbleA": bub.alpha }}>
                   {bub.text}
                   <div className="pr-bubbleTail" />
                 </div>
               )}
 
-              {/* ✅ NAME (hover) */}
               {hovered && (
                 <div
                   className="pr-name"
                   style={{
-                    "--nameColor": roleToColor(p?.role),
+                    // ✅ only use accountRole from snapshot, never p?.role (class)
+                    "--nameColor": roleToColor(p?.accountRole ?? "player"),
                   }}
                 >
                   {name}
                 </div>
               )}
 
-              <div
-                className={`pr-spriteWrap ${
-                  otherFacing === "left" ? "is-left" : ""
-                }`}
-              >
+              <div className={`pr-spriteWrap ${otherFacing === "left" ? "is-left" : ""}`}>
                 <img
                   className="pr-sprite"
                   src={otherResolvedSprite}
@@ -370,10 +320,7 @@ export default function PlayerRenderer({
         className={`pr-local ${hoverId === myId ? "is-hover" : ""}`}
         onMouseEnter={() => setHoverId(myId)}
         onMouseLeave={() => setHoverId((cur) => (cur === myId ? null : cur))}
-        style={{
-          width: drawW,
-          height: drawH,
-        }}
+        style={{ width: drawW, height: drawH }}
       >
         {me &&
           (() => {
@@ -387,14 +334,8 @@ export default function PlayerRenderer({
             );
           })()}
 
-        {/* ✅ NAME (hover) */}
         {me && hoverId === myId && (
-          <div
-            className="pr-name"
-            style={{
-              "--nameColor": roleToColor(me?.role),
-            }}
-          >
+          <div className="pr-name" style={{ "--nameColor": roleToColor(myRole) }}>
             {getDisplayName(myId, me)}
           </div>
         )}
@@ -422,7 +363,7 @@ export default function PlayerRenderer({
           <br />
           class: {String(me?.class || "—")}
           <br />
-          role: {String(me?.role || "player")}
+          role: {String(myRole)}
         </div>
       )}
     </div>
