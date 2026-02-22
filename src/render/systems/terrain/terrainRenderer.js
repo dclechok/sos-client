@@ -1,6 +1,9 @@
 import { TILE, TERRAIN_ID } from "../../../world/worldConstants";
 import { OCEAN_GLISTEN } from "../../core/tunables";
 
+// ✅ Toggle this to show/hide transition tile debug boxes
+const DEBUG_TRANSITION_TILES = true;
+
 function hash2i(x, y, seed = 777) {
   let h = seed ^ (x * 374761393) ^ (y * 668265263);
   h = (h ^ (h >>> 13)) * 1274126177;
@@ -19,14 +22,10 @@ function drawTile(ctx, img, sx, sy, dx, dy, size, rotation) {
   ctx.restore();
 }
 
-// Draws subtle 1px shimmer dots scattered within a water tile.
-// Each dot has a stable position (via hash) and independent phase so they twinkle asynchronously.
 function drawGlisten(ctx, tileX, tileY, dx, dy, size, t) {
   if (!OCEAN_GLISTEN.ENABLED) return;
 
   const dotCount = OCEAN_GLISTEN.DOTS_PER_TILE;
-  // Bucket time so positions reshuffle every POSITION_INTERVAL seconds
-  // Each tile gets a unique time offset so their buckets never roll over in sync
   const tileOffset  = (hash2i(tileX * 13, tileY * 17, 55) % 1000) / 1000 * OCEAN_GLISTEN.POSITION_INTERVAL;
   const timeBucket  = Math.floor((t + tileOffset) / OCEAN_GLISTEN.POSITION_INTERVAL);
 
@@ -34,23 +33,20 @@ function drawGlisten(ctx, tileX, tileY, dx, dy, size, t) {
     const h     = hash2i(tileX * 97 + i + timeBucket * 1000, tileY * 73 + i, 42);
     const h2    = hash2i(tileX * 31 + i, tileY * 53 + i + timeBucket * 1000, 99);
 
-    // Skip dots outside COVERAGE probability
     if ((h % 1000) / 1000 > OCEAN_GLISTEN.COVERAGE) continue;
 
-    const phase = (h2 % 628) / 100;                                    // stable 0–2π per dot
+    const phase = (h2 % 628) / 100;
     const alpha = (Math.sin(t * OCEAN_GLISTEN.SPEED + phase) * 0.5 + 0.5) * OCEAN_GLISTEN.ALPHA_MAX;
     if (alpha < 0.01) continue;
 
-    // Stable pixel position within the tile
     const px = dx + (h  % Math.max(size, 1));
     const py = dy + (h2 % Math.max(size, 1));
 
-    // Per-dot color: interpolate between teal and seafoam
     const h3    = hash2i(tileX * 11 + i, tileY * 19 + i + timeBucket * 7, 33);
-    const blend = (h3 % 100) / 100; // 0 = teal, 1 = seafoam
-    const r     = Math.round(60  + blend * 100); // 60  → 160
-    const g     = Math.round(180 + blend * 40);  // 180 → 220
-    const b     = Math.round(170 + blend * 50);  // 170 → 220
+    const blend = (h3 % 100) / 100;
+    const r     = Math.round(60  + blend * 100);
+    const g     = Math.round(180 + blend * 40);
+    const b     = Math.round(170 + blend * 50);
 
     ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
     ctx.fillRect(px, py, 2, 2);
@@ -150,9 +146,23 @@ export function renderTerrain(ctx, frame, deps) {
           drawTile(ctx, atlas.img, sx, sy, dx, dy, size, 0);
         }
 
-        // ── GLISTEN ───────────────────────────────────────────────────────
         drawGlisten(ctx, tileX, tileY, dx, dy, size, t);
-        // ─────────────────────────────────────────────────────────────────
+
+        // ── DEBUG: boxes on transition tiles (cardinal grass neighbors only)
+        // Runs BEFORE allLoaded check so it always draws regardless of chunk state
+        if (DEBUG_TRANSITION_TILES) {
+          const isTransition =
+            nId === GRASS || eId === GRASS ||
+            sId === GRASS || wId === GRASS;
+          if (isTransition) {
+            ctx.save();
+            ctx.strokeStyle = "rgba(255, 80, 80, 0.9)";
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(dx + 1, dy + 1, size - 2, size - 2);
+            ctx.restore();
+          }
+        }
+        // ──────────────────────────────────────────────────────────────────
 
         if (!allLoaded) continue;
 
