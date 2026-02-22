@@ -1,15 +1,22 @@
+// src/world/useWorldChunks.js
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { TERRAIN_ID } from "./worldConstants";
 
+// ✅ IMPORTANT (Vercel client + Render server):
+// Point world fetches at your backend base URL in production.
+// Set this in Vercel env vars:
+//   REACT_APP_API_BASE_URL=https://sos-server-e1g3.onrender.com
+const API = process.env.REACT_APP_API_BASE_URL || "";
+console.log("API:", process.env.REACT_APP_API_BASE_URL);
 export function useWorldChunks({
-  metaUrl = "/world/meta.json",
-  chunkBaseUrl = "/world/chunks",
+  metaUrl = `${API}/world/meta.json`,
+  chunkBaseUrl = `${API}/world/chunks`,
   preloadRadiusChunks = 2,
 } = {}) {
   const [meta, setMeta] = useState(null);
 
   const cacheRef = useRef(new Map());
-  const inflightRef = useRef(new Set());
+  const inflightRef = useRef(new Set()); 
   const [chunkVersion, setChunkVersion] = useState(0);
 
   useEffect(() => {
@@ -96,8 +103,7 @@ export function useWorldChunks({
 
       const chunk = getChunk(cx, cy);
 
-      // ✅ THIS FIXES YOUR "MISSING LAND":
-      // if chunk not loaded, return UNKNOWN (black), NOT ocean
+      // ✅ if chunk not loaded, return UNKNOWN (black), NOT ocean
       if (!chunk) return TERRAIN_ID.UNKNOWN;
 
       const lx = tileX - cx * cs;

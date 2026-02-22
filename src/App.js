@@ -73,8 +73,6 @@ export default function App() {
   }, [me]);
 
   const world = useWorldChunks({
-    metaUrl: "/world/meta.json",
-    chunkBaseUrl: "/world/chunks",
     preloadRadiusChunks: 2,
   });
 

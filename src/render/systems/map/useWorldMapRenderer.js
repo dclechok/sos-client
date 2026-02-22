@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { TILE } from "../../../world/worldConstants";
 
-const MAP_SRC = "/world/map.png";
+const API = process.env.REACT_APP_API_BASE_URL || "";
+const MAP_SRC = `${API}/world/map.png`;
 
 function clamp(v, min, max) {
   return Math.max(min, Math.min(max, v));
