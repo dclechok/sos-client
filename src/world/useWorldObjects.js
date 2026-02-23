@@ -60,8 +60,6 @@ export function useWorldObjects({
       worldId
     )}&x=${x}&y=${y}&r=${Math.round(radius)}`;
 
-    console.log("[useWorldObjects] fetchNearby:", url);
-
     const res = await fetch(url, { credentials: "include" });
     if (!res.ok) {
       const txt = await res.text().catch(() => "");

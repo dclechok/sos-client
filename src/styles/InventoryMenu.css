@@ -1,130 +1,367 @@
-/* --- INVENTORY GRID --- */
-.inventory-grid {
+/* ============================================================
+   INVENTORY — ULTRA SLEEK STEALTH CHARCOAL
+   (sharp plates, minimal glow, tight spacing, premium feel)
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=IM+Fell+English:ital@0;1&display=swap');
+
+:root{
+  --inv-bg0: rgba(8,9,11,0.94);
+  --inv-bg1: rgba(14,15,18,0.94);
+
+  --inv-plate0: rgba(22,23,27,0.92);
+  --inv-plate1: rgba(12,13,16,0.92);
+
+  --inv-line: rgba(205,215,240,0.10);
+  --inv-line-2: rgba(205,215,240,0.16);
+
+  --inv-text: rgba(240,244,252,0.90);
+  --inv-dim: rgba(200,205,220,0.62);
+
+  --inv-shadow: rgba(0,0,0,0.72);
+  --inv-sheen: rgba(255,255,255,0.035);
+
+  --inv-radius: 10px;
+  --inv-radius-sm: 8px;
+
+  --inv-gap: 7px;
+  --inv-pad: 10px;
+}
+
+/* ------------------------------------------
+   POP-OUT
+------------------------------------------ */
+.inventory-popout{
+  position: fixed;
+  z-index: 9999;
+
+  width: 364px;
+  padding: 10px 10px 12px;
+  border-radius: var(--inv-radius);
+
+  background:
+    radial-gradient(900px 420px at 20% -10%, rgba(255,255,255,0.03), transparent 58%),
+    linear-gradient(180deg, var(--inv-bg1), var(--inv-bg0));
+
+  border: 1px solid var(--inv-line);
+
+  box-shadow:
+    0 22px 60px var(--inv-shadow),
+    inset 0 1px 0 var(--inv-sheen),
+    inset 0 0 0 1px rgba(0,0,0,0.30);
+
+  color: var(--inv-text);
+  font-family: 'IM Fell English', serif;
+  font-size: 13px;
+
+  user-select: none;
+  cursor: default;
+
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+
+  transform: translateZ(0);
+}
+
+/* hairline inner frame (premium "device" feel) */
+.inventory-popout::before{
+  content:"";
+  position:absolute;
+  inset: 6px;
+  border-radius: calc(var(--inv-radius) - 6px);
+  border: 1px solid rgba(255,255,255,0.035);
+  pointer-events:none;
+}
+
+/* ------------------------------------------
+   TOPBAR (drag handle)
+------------------------------------------ */
+.inventory-topbar{
+  position: relative;
+
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+
+  padding: 9px 9px 10px;
+  margin-bottom: 9px;
+
+  background:
+    linear-gradient(180deg, var(--inv-plate0), var(--inv-plate1));
+
+  border: 1px solid rgba(205,215,240,0.10);
+  border-radius: var(--inv-radius-sm);
+
+  cursor: grab;
+
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.03),
+    inset 0 -1px 0 rgba(0,0,0,0.35);
+}
+
+.inventory-topbar:active{ cursor: grabbing; }
+
+/* micro-divider line under title area */
+.inventory-topbar::after{
+  content:"";
+  position:absolute;
+  left: 10px;
+  right: 10px;
+  bottom: -9px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(205,215,240,0.10), transparent);
+}
+
+/* ------------------------------------------
+   TITLE + GOLD
+------------------------------------------ */
+.inventory-title{
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+
+  font-family: 'Cinzel', serif;
+  font-weight: 600;
+  font-size: 10.5px;
+  letter-spacing: 3.2px;
+  text-transform: uppercase;
+
+  color: rgba(240,244,252,0.88);
+  text-shadow: 0 1px 10px rgba(0,0,0,0.70);
+}
+
+.inventory-gold{
+  font-family: 'Cinzel', serif;
+  font-weight: 600;
+  font-size: 9.5px;
+  letter-spacing: 2.6px;
+  text-transform: uppercase;
+
+  color: rgba(205,210,225,0.62);
+}
+
+/* ------------------------------------------
+   CLOSE (sleek, not "buttony")
+------------------------------------------ */
+.inventory-close{
+  width: 26px;
+  height: 26px;
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(205,215,240,0.10);
+  border-radius: 7px;
+
+  color: rgba(230,236,250,0.50);
+  font-size: 15px;
+  cursor:pointer;
+  line-height: 1;
+
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
+
+  transition:
+    transform 120ms ease,
+    background 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease;
+}
+
+.inventory-close:hover{
+  transform: translateY(-1px);
+  background: rgba(255,255,255,0.035);
+  border-color: rgba(205,215,240,0.18);
+  color: rgba(245,248,255,0.86);
+}
+
+.inventory-close:active{
+  transform: translateY(0px);
+}
+
+/* ------------------------------------------
+   GRID PLATE
+------------------------------------------ */
+.inventory-grid{
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   grid-template-rows: repeat(5, 1fr);
-  gap: 8px;
-  padding: 12px;
+  gap: var(--inv-gap);
 
-  background: rgba(10, 8, 18, 0.45);
-  border: 1px solid #2a2340;
-  border-radius: 4px;
+  padding: var(--inv-pad);
+  border-radius: var(--inv-radius-sm);
+
+  background:
+    radial-gradient(520px 240px at 30% 15%, rgba(255,255,255,0.03), transparent 58%),
+    linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+
+  border: 1px solid rgba(205,215,240,0.10);
 
   box-shadow:
-    inset 0 0 20px rgba(72, 59, 115, 0.4),
-    0 0 12px rgba(72, 59, 115, 0.3);
+    inset 0 1px 0 rgba(255,255,255,0.02),
+    inset 0 0 0 1px rgba(0,0,0,0.35),
+    inset 0 0 22px rgba(0,0,0,0.55);
 }
 
-/* --- INVENTORY SLOT (cyberpunk matte) --- */
-.inventory-slot {
-  width: 55px;
-  height: 55px;
+/* ------------------------------------------
+   SLOTS (tight, crisp, subtle motion)
+------------------------------------------ */
+.inventory-slot{
+  width: 56px;
+  height: 56px;
+
   position: relative;
 
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  display:flex;
+  align-items:center;
+  justify-content:center;
 
-  background: linear-gradient(
-    145deg,
-    #0d0b14,
-    #14111e
-  );
-  border: 1px solid #2e2944;
   border-radius: 8px;
+  border: 1px solid rgba(205,215,240,0.10);
 
-  transition: 150ms ease;
-  overflow: hidden;
+  background:
+    radial-gradient(120px 90px at 20% 15%, rgba(255,255,255,0.03), transparent 62%),
+    linear-gradient(180deg, rgba(18,18,22,0.82), rgba(10,10,14,0.82));
 
   box-shadow:
-    inset 0 0 6px rgba(140, 66, 255, 0.15),
-    inset 0 0 12px rgba(40, 20, 80, 0.2);
+    inset 0 1px 0 rgba(255,255,255,0.03),
+    inset 0 0 0 1px rgba(0,0,0,0.35);
+
+  overflow: hidden;
+
+  transition:
+    transform 110ms ease,
+    border-color 110ms ease,
+    background 110ms ease,
+    box-shadow 110ms ease;
 }
 
-/* optional subtle shimmer grid inside slot */
-.inventory-slot::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.03) 0px,
-    rgba(255, 255, 255, 0.03) 2px,
-    rgba(0, 0, 0, 0) 4px
-  );
-  opacity: 0.15;
-  pointer-events: none;
+/* sleek micro texture */
+.inventory-slot::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:
+    repeating-linear-gradient(
+      135deg,
+      rgba(255,255,255,0.018) 0px,
+      rgba(255,255,255,0.018) 2px,
+      rgba(0,0,0,0) 7px
+    );
+  opacity: 0.11;
+  pointer-events:none;
 }
 
-/* --- ITEM IMAGE --- */
-.inventory-slot img {
+.inventory-slot:hover{
+  transform: translateY(-1px);
+  border-color: rgba(205,215,240,0.18);
+
+  background:
+    radial-gradient(120px 90px at 20% 15%, rgba(255,255,255,0.04), transparent 62%),
+    linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.012));
+
+  box-shadow:
+    0 12px 26px rgba(0,0,0,0.38),
+    inset 0 0 0 1px rgba(255,255,255,0.02);
+}
+
+/* ------------------------------------------
+   ITEM IMAGE
+------------------------------------------ */
+.inventory-item-graphic{
   width: 40px;
   height: 40px;
   object-fit: contain;
   image-rendering: pixelated;
-  filter: drop-shadow(0 0 4px rgba(180, 160, 255, 0.4));
+  user-select: none;
+  pointer-events: none;
+
+  filter:
+    drop-shadow(0 2px 0 rgba(0,0,0,0.60))
+    drop-shadow(0 0 10px rgba(255,255,255,0.04));
 }
 
-/* --- STACK COUNT --- */
-.inventory-slot-stacksize {
-  position: absolute;
-  right: 3px;
-  bottom: 2px;
+/* ------------------------------------------
+   STACK COUNT
+------------------------------------------ */
+.inventory-slot-stacksize{
+  position:absolute;
+  right: 6px;
+  bottom: 5px;
 
-  font-size: 9px;
-  font-family: "Orbitron", sans-serif;
-  color: #b89fff;
-  text-shadow: 0 0 4px rgba(150, 120, 255, 0.7);
+  font-family: 'Cinzel', serif;
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+
+  color: rgba(240,244,252,0.82);
+  text-shadow: 0 1px 0 rgba(0,0,0,0.85);
 }
 
-/* --- HOVER EFFECT --- */
-.inventory-slot:hover {
-  border-color: #8f6aff;
-  background-color: #1a1524;
-  box-shadow:
-    0 0 14px rgba(140, 66, 255, 0.5),
-    inset 0 0 10px rgba(140, 66, 255, 0.25);
-  transform: translateY(-2px);
-}
+/* ------------------------------------------
+   TOOLTIP (neutral glass plate)
+   - loot color comes from inline style on .tooltip-name
+------------------------------------------ */
+.inventory-tooltip{
+  position: fixed;
+  z-index: 9999;
+  pointer-events:none;
 
-/* --- TOOLTIP --- */
-.inventory-tooltip {
-  background: rgba(14, 12, 22, 0.85);
-  backdrop-filter: blur(2px);
-
-  font-size: 11px;
+  width: 240px;
   padding: 10px 12px;
-  border-radius: 6px;
+  border-radius: 10px;
 
-  border: 1px solid #673d9c;
-  color: #dcd3ff;
+  background:
+    radial-gradient(360px 220px at 20% 10%, rgba(255,255,255,0.03), transparent 60%),
+    linear-gradient(180deg, rgba(16,17,20,0.96), rgba(10,11,13,0.96));
 
-  font-family: "Montserrat", sans-serif;
+  border: 1px solid rgba(205,215,240,0.14);
+  color: rgba(232,232,246,0.92);
 
   box-shadow:
-    0 0 18px rgba(116, 69, 186, 0.6),
-    inset 0 0 12px rgba(123, 84, 255, 0.4);
+    0 22px 46px rgba(0,0,0,0.62),
+    0 0 0 1px rgba(255,255,255,0.02) inset;
 
-  animation: tooltipGlow 2s ease-in-out infinite alternate;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+
+  transform: translateZ(0);
 }
 
-.tooltip-name {
-  font-family: "Orbitron", sans-serif;
-  color: #a57cff;
+.tooltip-name{
+  font-family: 'Cinzel', serif;
+  font-size: 10.5px;
+  letter-spacing: 2.6px;
+  text-transform: uppercase;
+  text-shadow: 0 1px 10px rgba(0,0,0,0.70);
+}
+
+.tooltip-desc{
+  margin-top: 6px;
+  font-family: 'IM Fell English', serif;
   font-size: 12px;
-  margin-bottom: 4px;
+  line-height: 1.25;
+  opacity: 0.95;
 }
 
-/* --- Tooltip pulse animation --- */
-@keyframes tooltipGlow {
-  from {
-    box-shadow:
-      0 0 10px rgba(116, 69, 186, 0.35),
-      inset 0 0 6px rgba(123, 84, 255, 0.25);
-  }
-  to {
-    box-shadow:
-      0 0 20px rgba(160, 100, 255, 0.7),
-      inset 0 0 14px rgba(143, 111, 255, 0.45);
+.tooltip-meta{
+  margin-top: 8px;
+  font-family: 'Cinzel', serif;
+  font-size: 10.5px;
+  opacity: 0.84;
+
+  border-top: 1px solid rgba(205,215,240,0.10);
+  padding-top: 7px;
+}
+
+/* ------------------------------------------
+   ACCESSIBILITY / PERF
+------------------------------------------ */
+@media (prefers-reduced-transparency: reduce){
+  .inventory-popout,
+  .inventory-tooltip{
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 }

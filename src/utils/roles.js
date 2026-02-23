@@ -17,13 +17,13 @@ export const ROLE_HIERARCHY = {
 
 export const ROLE_COLORS = {
   owner: {
-    primary: "#ff6600",    // purple
+    primary: "#8058EA", //"#ff6600",    // purple
     background: "#1A1A1E",
     text: "#8058EA",
     label: "Owner",
   },
   admin: {
-    primary: "#ff6600",    // purple
+    primary: "#8058EA",    // purple
     background: "#1A1A1E",
     text: "#8058EA",
     label: "Admin",

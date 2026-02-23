@@ -24,8 +24,10 @@ import { useWorldMapRenderer } from "./render/systems/map/useWorldMapRenderer";
 import { useWorldChunks } from "./world/useWorldChunks";
 import AdminPanel from "./AdminPanel.js";
 
-// ✅ NEW
 import { useWorldObjects } from "./world/useWorldObjects";
+
+// ✅ NEW right docked menu (Character top + Inventory bottom)
+import RightPanelMenu from "./RightPanelMenu";
 
 const API = process.env.REACT_APP_API_BASE_URL || "";
 
@@ -44,9 +46,10 @@ function useWindowSize() {
 export default function App() {
   const [account, setAccount] = useState(undefined);
   const [character, setCharacter] = useState(undefined);
-  const [mapOpen, setMapOpen] = useState(false);
 
-  // ✅ NEW: object defs map for renderer (defId -> def)
+  const [mapOpen, setMapOpen] = useState(false);
+  const [inventoryOpen, setInventoryOpen] = useState(false);
+
   const [objectDefs, setObjectDefs] = useState({});
 
   useButtonClickSound();
@@ -78,19 +81,12 @@ export default function App() {
     }
   }, [me]);
 
-  const world = useWorldChunks({
-    preloadRadiusChunks: 2,
-  });
+  const world = useWorldChunks({ preloadRadiusChunks: 2 });
 
-  const { renderMapFrame } = useWorldMapRenderer({
-    world,
-    me,
-  });
+  const { renderMapFrame } = useWorldMapRenderer({ world, me });
 
-  // ✅ NEW: keep world objects in client state
   const { objects: worldObjects } = useWorldObjects({ socket, me, radius: 2400 });
 
-  // ✅ NEW: fetch defs once (sprites + light config)
   useEffect(() => {
     if (!isReady) return;
     fetch(`${API}/api/defs/objects`, { credentials: "include" })
@@ -151,6 +147,63 @@ export default function App() {
     identify(characterId, account?.role);
   }, [isReady, character, identify, account?.role]);
 
+  const hasPickedCharacter = character && character !== null;
+  const canMountWorld =
+    hasPickedCharacter && isReady && Number.isFinite(worldSeed);
+
+  // -------------------------
+  // ✅ HOTKEYS (robust, single listener, uses refs)
+  const canMountWorldRef = useRef(false);
+  const inventoryOpenRef = useRef(false);
+  const mapOpenRef = useRef(false);
+
+  useEffect(() => {
+    canMountWorldRef.current = canMountWorld;
+  }, [canMountWorld]);
+
+  useEffect(() => {
+    inventoryOpenRef.current = inventoryOpen;
+  }, [inventoryOpen]);
+
+  useEffect(() => {
+    mapOpenRef.current = mapOpen;
+  }, [mapOpen]);
+
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      // ignore typing in inputs/textarea/contenteditable
+      const tag = (e.target?.tagName || "").toLowerCase();
+      const isTyping =
+        tag === "input" || tag === "textarea" || e.target?.isContentEditable;
+      if (isTyping) return;
+
+      // Toggle inventory panel on I
+      if (e.code === "KeyI") {
+        if (!canMountWorldRef.current) return;
+        e.preventDefault();
+
+        setInventoryOpen((v) => !v);
+        setMapOpen(false);
+        return;
+      }
+
+      // Esc closes open menus
+      if (e.code === "Escape") {
+        if (inventoryOpenRef.current || mapOpenRef.current) {
+          e.preventDefault();
+          setInventoryOpen(false);
+          setMapOpen(false);
+        }
+      }
+    };
+
+    // capture phase so it fires even if something stops propagation
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, []);
+
+  // -------------------------
+
   if (width === 0 || height === 0) return <Spinner />;
   if (width < 800 || height < 500) return <DisplayCheck />;
   if (account === undefined) return <Spinner />;
@@ -170,10 +223,6 @@ export default function App() {
     );
   }
 
-  const hasPickedCharacter = character && character !== null;
-  const canMountWorld =
-    hasPickedCharacter && isReady && Number.isFinite(worldSeed);
-
   const zoom = 2;
 
   return (
@@ -192,7 +241,6 @@ export default function App() {
           zoom={zoom}
           camTargetRef={camTargetRef}
           camSmoothRef={camSmoothRef}
-          // ✅ NEW
           worldObjects={worldObjects}
           objectDefs={objectDefs}
         />
@@ -224,11 +272,43 @@ export default function App() {
         />
       )}
 
+      {/* ✅ RIGHT DOCKED CHARACTER + INVENTORY PANEL */}
+      {canMountWorld && inventoryOpen && (
+        <div
+          className="rightpanel-overlay"
+        >
+          <RightPanelMenu
+            account={account}
+            character={character}
+            onClose={() => setInventoryOpen(false)}
+          />
+        </div>
+      )}
+
       <MapDrawer
         open={mapOpen}
         onClose={() => setMapOpen(false)}
         renderMapFrame={renderMapFrame}
       />
+
+      {/* ✅ DEBUG BADGE (remove later) */}
+      <div
+        style={{
+          position: "fixed",
+          left: 10,
+          bottom: 10,
+          zIndex: 999999,
+          padding: "4px 8px",
+          fontSize: 12,
+          background: "rgba(0,0,0,0.55)",
+          color: "white",
+          borderRadius: 6,
+          pointerEvents: "none",
+          fontFamily: "monospace",
+        }}
+      >
+        inv:{String(inventoryOpen)} world:{String(canMountWorld)}
+      </div>
     </div>
   );
 }
