@@ -1,7 +1,7 @@
 // RightPanelMenu.jsx
 import { useMemo, useRef, useLayoutEffect, useState } from "react";
 import "./styles/RightPanelMenu.css";
-import { CHARACTER_CLASSES, getClassById } from "./render/players/characterClasses";
+import { getClassById } from "./render/players/characterClasses";
 import { getRoleColor } from "./utils/roles";
 
 const DEFAULT_SLOTS = [
@@ -28,9 +28,8 @@ const INV_BAGS = [
   { key: "bag3", label: "III", locked: true  },
 ];
 
-const TARGET_COLS = 10;   // desired number of columns — cells grow to fill width
-const TARGET_ROWS = 8;    // fixed number of visible rows
-const MIN_COLS = 5;       // safety floor
+const TARGET_COLS = 10;
+const TARGET_ROWS = 8;
 const DEFAULT_CAPACITY = TARGET_COLS * TARGET_ROWS; // 80 cells exactly
 
 export default function RightPanelMenu({ account, character, onClose }) {
@@ -141,8 +140,11 @@ export default function RightPanelMenu({ account, character, onClose }) {
       </div>
 
       <div className="rightpanel__content">
-        {tab === "inventory" ? (
-          <div className="rightpanel__inventoryLayout">
+        {/* Always mounted so refs stay alive and ResizeObserver keeps working */}
+        <div
+          className="rightpanel__inventoryLayout"
+          style={{ display: tab === "inventory" ? undefined : "none" }}
+        >
             {/* TOP: portrait + equip */}
             <section className="rightpanel__top">
               <div className="paperdollFit">
@@ -243,7 +245,9 @@ export default function RightPanelMenu({ account, character, onClose }) {
               </div>
             </section>
           </div>
-        ) : (
+
+        {/* Placeholder for other tabs */}
+        {tab !== "inventory" && (
           <div className="rightpanel__placeholder">
             <div className="placeholderTitle">{TABS.find((t) => t.key === tab)?.label}</div>
             <div className="placeholderBody">
