@@ -22,12 +22,15 @@ export function useWorldObjects({
     setById((prev) => ({ ...prev, [id]: obj }));
   }, []);
 
+  // ✅ supports remove("id") or remove(["id1","id2"])
   const remove = useCallback((ids) => {
-    const arr = Array.isArray(ids) ? ids : [];
-    if (!arr.length) return;
+    const arr = Array.isArray(ids) ? ids : [ids];
+    const cleaned = arr.filter(Boolean).map(String);
+    if (!cleaned.length) return;
+
     setById((prev) => {
       const next = { ...prev };
-      for (const id of arr) delete next[String(id)];
+      for (const id of cleaned) delete next[id];
       return next;
     });
   }, []);
@@ -37,13 +40,22 @@ export function useWorldObjects({
     if (!socket) return;
 
     const onSpawn = (obj) => upsert(obj);
+
+    // if you still emit obj:despawn elsewhere (TTL/cleanup), keep it
     const onDespawn = ({ ids } = {}) => remove(ids);
+
+    // ✅ NEW: delete broadcast from server
+    // server emits: io.emit("obj:delete", { id })
+    const onDelete = ({ id } = {}) => remove(id);
 
     socket.on("obj:spawn", onSpawn);
     socket.on("obj:despawn", onDespawn);
+    socket.on("obj:delete", onDelete);
+
     return () => {
       socket.off("obj:spawn", onSpawn);
       socket.off("obj:despawn", onDespawn);
+      socket.off("obj:delete", onDelete);
     };
   }, [socket, upsert, remove]);
 

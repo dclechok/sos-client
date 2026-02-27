@@ -275,9 +275,10 @@ export default function App() {
           socket={socket}
           canvasRef={canvasRef}
           camSmoothRef={camSmoothRef}
-          camTargetRef={camTargetRef}
           zoom={zoom}
           me={me}
+          worldObjects={worldObjects}      // from useWorldObjects().objects
+          objectDefs={objectDefs}     // your defs map (defId -> def with sizePx)
         />
       )}
 
