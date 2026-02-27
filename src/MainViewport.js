@@ -1,4 +1,8 @@
 // src/MainViewport.jsx
+//
+// render() must stay stable (empty deps) so useViewportRenderer never restarts
+// its RAF loop. Any changing values are read through refs inside render().
+
 import "./styles/MainViewport.css";
 import { useViewportRenderer } from "./render/viewport/useViewportRenderer";
 import { useRef, useCallback, useMemo, useEffect } from "react";
@@ -15,8 +19,8 @@ import {
 import { useWeatherCycle } from "./render/systems/weather/useWeather";
 import { renderWeather } from "./render/systems/weather/weatherRenderer";
 
-// ✅ keep the path that exists in YOUR repo
-import { renderWorldObjects } from "./render/objects/objectRenderer";
+import { renderSortedSprites } from "./render/systems/sprites/sortedSpriteRenderer";
+import { getSpriteByClassId } from "./render/players/characterClasses";
 
 export default function MainViewport({
   world,
@@ -27,6 +31,15 @@ export default function MainViewport({
 
   worldObjects = [],
   objectDefs = {},
+
+  players = null,
+  myId = null,
+  mySpriteSrc = "/art/items/sprites/AdeptNecromancer.gif",
+  otherSpriteSrc = "/art/items/sprites/NovicePyromancer.gif",
+  playerSpriteW = 16,
+  playerSpriteH = 16,
+
+  predictedLocalPosRef = null,
 }) {
   const localCanvasRef = useRef(null);
   const refToUse = canvasRef || localCanvasRef;
@@ -39,6 +52,7 @@ export default function MainViewport({
     return () => canvas.removeEventListener("wheel", onWheel);
   }, [refToUse]);
 
+  // ─── Asset hooks ────────────────────────────────────────────────────────
   const atlas = useTerrainAtlas({
     atlasSrc: "/art/terrain/terrain.png",
     atlasCols: 3,
@@ -60,29 +74,115 @@ export default function MainViewport({
 
   const weather = useWeatherCycle({ regionId: "world" });
 
-  const render = useCallback(
-    (ctx, frame) => {
-      renderTerrain(ctx, frame, { world, atlas });
+  // ─── Mirror everything into refs ────────────────────────────────────────
+  const worldRef = useRef(world);
+  const atlasRef = useRef(atlas);
+  const foliageAssetsRef = useRef(foliageAssets);
+  const foliageRegistryRef = useRef(foliageRegistry);
+  const weatherRef = useRef(weather);
 
-      renderFoliage(ctx, frame, {
-        world,
-        foliage: {
-          assets: foliageAssets,
-          registry: foliageRegistry,
-          seed: 4242,
-        },
-      });
+  const playersRef = useRef(players);
+  const worldObjectsRef = useRef(worldObjects);
+  const objectDefsRef = useRef(objectDefs);
 
-      // ✅ draw objects here (no functional change)
-      renderWorldObjects(ctx, frame, {
-        objects: worldObjects,
-        objectDefs,
-      });
+  const myIdRef = useRef(myId);
+  const mySpriteSrcRef = useRef(mySpriteSrc);
+  const otherSpriteSrcRef = useRef(otherSpriteSrc);
 
-      renderWeather(ctx, frame, { weather });
-    },
-    [world, atlas, foliageAssets, foliageRegistry, weather, worldObjects, objectDefs]
-  );
+  // ✅ put these behind refs too so render() can stay empty-deps safely
+  const predictedLocalPosRefRef = useRef(predictedLocalPosRef);
+  const playerSpriteWRef = useRef(playerSpriteW);
+  const playerSpriteHRef = useRef(playerSpriteH);
+
+  useEffect(() => {
+    worldRef.current = world;
+  }, [world]);
+  useEffect(() => {
+    atlasRef.current = atlas;
+  }, [atlas]);
+  useEffect(() => {
+    foliageAssetsRef.current = foliageAssets;
+  }, [foliageAssets]);
+  useEffect(() => {
+    foliageRegistryRef.current = foliageRegistry;
+  }, [foliageRegistry]);
+  useEffect(() => {
+    weatherRef.current = weather;
+  }, [weather]);
+
+  useEffect(() => {
+    playersRef.current = players;
+  }, [players]);
+  useEffect(() => {
+    worldObjectsRef.current = worldObjects;
+  }, [worldObjects]);
+  useEffect(() => {
+    objectDefsRef.current = objectDefs;
+  }, [objectDefs]);
+
+  useEffect(() => {
+    myIdRef.current = myId;
+  }, [myId]);
+  useEffect(() => {
+    mySpriteSrcRef.current = mySpriteSrc;
+  }, [mySpriteSrc]);
+  useEffect(() => {
+    otherSpriteSrcRef.current = otherSpriteSrc;
+  }, [otherSpriteSrc]);
+
+  useEffect(() => {
+    predictedLocalPosRefRef.current = predictedLocalPosRef;
+  }, [predictedLocalPosRef]);
+  useEffect(() => {
+    playerSpriteWRef.current = playerSpriteW;
+  }, [playerSpriteW]);
+  useEffect(() => {
+    playerSpriteHRef.current = playerSpriteH;
+  }, [playerSpriteH]);
+
+  // Stable sprite resolver — reads myId/sprites from refs
+  const getPlayerSpriteSrc = useCallback((id, p) => {
+    const fallback =
+      id === myIdRef.current ? mySpriteSrcRef.current : otherSpriteSrcRef.current;
+    const cls = p?.class;
+    return cls ? getSpriteByClassId(cls, fallback) : fallback;
+  }, []);
+
+  // ✅ also store the function in a ref so render() doesn't depend on it
+  const getPlayerSpriteSrcRef = useRef(getPlayerSpriteSrc);
+  useEffect(() => {
+    getPlayerSpriteSrcRef.current = getPlayerSpriteSrc;
+  }, [getPlayerSpriteSrc]);
+
+  // ─── STABLE render callback — created once, reads all state from refs ─────
+  const render = useCallback((ctx, frame) => {
+    renderTerrain(ctx, frame, {
+      world: worldRef.current,
+      atlas: atlasRef.current,
+    });
+
+    renderFoliage(ctx, frame, {
+      world: worldRef.current,
+      foliage: {
+        assets: foliageAssetsRef.current,
+        registry: foliageRegistryRef.current,
+        seed: 4242,
+      },
+    });
+
+    renderSortedSprites(ctx, frame, {
+      objects: worldObjectsRef.current,
+      objectDefs: objectDefsRef.current,
+      playersById: playersRef.current,
+      myId: myIdRef.current,
+      predictedLocalPos: predictedLocalPosRefRef.current?.current ?? null,
+      getPlayerSpriteSrc: getPlayerSpriteSrcRef.current,
+      playerSpriteW: playerSpriteWRef.current,
+      playerSpriteH: playerSpriteHRef.current,
+    });
+
+    renderWeather(ctx, frame, { weather: weatherRef.current });
+  }, []);
 
   useViewportRenderer({
     canvasRef: refToUse,

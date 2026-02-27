@@ -52,7 +52,6 @@ export default function AdminPanel({
 
   // Preview (create/delete targeting)
   const [mouseClient, setMouseClient] = useState({ x: 0, y: 0 });
-  const [hoverWorld, setHoverWorld] = useState(null); // {x,y} in world units
 
   // ✅ Hover-exact object under cursor (for delete)
   const [hoveredObj, setHoveredObj] = useState(null); // full obj doc
@@ -227,7 +226,6 @@ export default function AdminPanel({
     canvas.style.cursor = active ? (deleteMode ? "cell" : "crosshair") : "";
 
     if (!active) {
-      setHoverWorld(null);
       setHoveredObj(null);
       setHoveredClient(null);
       setHoveredBoxPx({ w: 0, h: 0 });
@@ -236,9 +234,6 @@ export default function AdminPanel({
 
     const onMove = (e) => {
       setMouseClient({ x: e.clientX, y: e.clientY });
-
-      const pt = clientToWorld(e.clientX, e.clientY);
-      if (pt) setHoverWorld({ x: pt.x, y: pt.y });
 
       if (deleteMode) {
         const hit = pickObjectAtClient(e.clientX, e.clientY);
@@ -263,7 +258,7 @@ export default function AdminPanel({
       window.removeEventListener("mousemove", onMove);
       canvas.style.cursor = "";
     };
-  }, [teleportMode, createMode, deleteMode, canvasRef, clientToWorld, pickObjectAtClient]);
+  }, [teleportMode, createMode, deleteMode, canvasRef, pickObjectAtClient]);
 
   // ── Click-to-teleport ─────────────────────────────────────────────────
   useEffect(() => {
@@ -391,12 +386,10 @@ export default function AdminPanel({
             top: deleteHasTarget ? hoveredClient.y : mouseClient.y,
           }}
         >
-          {/* create “item outline” (follows mouse) */}
-          {createMode && <div className="admin-preview__box" title="Placement preview" />}
+          {createMode && (
+            <div className="admin-preview__box" title="Placement preview" />
+          )}
 
-          {/* delete highlight:
-              - if hovering an object: outline the object box (snapped to object)
-              - else: show a ring at cursor so you know delete mode is armed */}
           {deleteMode &&
             (deleteHasTarget ? (
               <div
@@ -408,14 +401,19 @@ export default function AdminPanel({
                 }}
               />
             ) : (
-              <div className="admin-preview__ring" title="Hover an object to target delete" />
+              <div
+                className="admin-preview__ring"
+                title="Hover an object to target delete"
+              />
             ))}
         </div>
       )}
 
       <div
         className={`admin-panel${
-          teleportMode || createMode || deleteMode ? " admin-panel--worldclick-mode" : ""
+          teleportMode || createMode || deleteMode
+            ? " admin-panel--worldclick-mode"
+            : ""
         }`}
         style={{ left: pos.x, top: pos.y }}
         onMouseDown={onMouseDown}
@@ -456,7 +454,9 @@ export default function AdminPanel({
               </button>
 
               <button
-                className={`admin-btn admin-btn--danger${deleteMode ? " admin-btn--active" : ""}`}
+                className={`admin-btn admin-btn--danger${
+                  deleteMode ? " admin-btn--active" : ""
+                }`}
                 onClick={() => {
                   setTeleportMode(false);
                   setCreateMode(false);
@@ -526,13 +526,17 @@ export default function AdminPanel({
                 {objectsLoading
                   ? "Loading…"
                   : selectedObject
-                  ? `Create: ${selectedObject.label ?? selectedObject.name ?? selectedObjectId}`
+                  ? `Create: ${
+                      selectedObject.label ?? selectedObject.name ?? selectedObjectId
+                    }`
                   : "Create Object"}
               </button>
 
               {objectMenuOpen && (
                 <div className="admin-menu">
-                  {objectsError && <div className="admin-menu__error">⚠ {objectsError}</div>}
+                  {objectsError && (
+                    <div className="admin-menu__error">⚠ {objectsError}</div>
+                  )}
 
                   {!objectsLoading && !objectsSorted.length && !objectsError && (
                     <div className="admin-menu__empty">No objects found</div>
@@ -582,7 +586,10 @@ export default function AdminPanel({
 
             {createMode && (
               <p className="admin-panel__hint">
-                Placing: <b>{selectedObject?.label ?? selectedObject?.name ?? selectedObjectId}</b>
+                Placing:{" "}
+                <b>
+                  {selectedObject?.label ?? selectedObject?.name ?? selectedObjectId}
+                </b>
                 <br />
                 Click the world to spawn it. <kbd>Esc</kbd> cancels.
               </p>

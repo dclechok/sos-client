@@ -1,8 +1,15 @@
 // src/render/players/PlayerRenderer.js
+//
+// Changes from original:
+// - Imports useLocalPlayerPrediction
+// - onMoveTo now calls setMoveTarget (prediction) BEFORE emitting to server
+// - stepPrediction is called each frame via RAF so camera target stays fresh
+// - Removed the "lag-hiding" smoothing on local player (prediction handles it now)
+
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { usePlayerInput } from "./usePlayerInput";
 import { useRemoteInterpolation } from "./useRemoteInterpolation";
-import { getSpriteByClassId } from "./characterClasses";
+import { useLocalPlayerPrediction } from "./useLocalPlayerPrediction";
 import { getRoleColor } from "../../utils/roles";
 import "../../styles/PlayerRenderer.css";
 
@@ -13,22 +20,22 @@ export default function PlayerRenderer({
   character,
   accountRole,
   sendRateHz = 20,
-  mySpriteSrc = "/art/items/sprites/AdeptNecromancer.gif",
-  otherSpriteSrc = "/art/items/sprites/NovicePyromancer.gif",
-  spriteW = 16,
-  spriteH = 16,
   zoom = 2,
   renderOthers = true,
   playerNames = {},
   canvasRef,
   camSmoothRef,
+  camTargetRef,
+  predictedLocalPosRef, // ✅ shared ref for canvas renderer to read predicted pos
+
+  spriteW = 16,
+  spriteH = 16,
 }) {
   const [hoverId, setHoverId] = useState(null);
   const [myFacing, setMyFacing] = useState("right");
   const [bubbles, setBubbles] = useState({});
 
   const me = myId && players ? players[myId] : null;
-
   const meRef = useRef(null);
   useEffect(() => {
     meRef.current = me;
@@ -38,6 +45,27 @@ export default function PlayerRenderer({
   const drawW = spriteW * z;
   const drawH = spriteH * z;
 
+  // ─── Client-side prediction ───────────────────────────────────────────────
+  const { setMoveTarget, stepPrediction, getPredictedPos } =
+    useLocalPlayerPrediction({ myId, players, camTargetRef, predictedLocalPosRef });
+
+  // Step prediction every frame so camTargetRef stays smooth between snapshots
+  useEffect(() => {
+    let raf = 0;
+    let lastMs = performance.now();
+
+    const tick = (nowMs) => {
+      const dt = Math.min((nowMs - lastMs) / 1000, 0.05);
+      lastMs = nowMs;
+      stepPrediction(dt);
+      raf = requestAnimationFrame(tick);
+    };
+
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [stepPrediction]);
+
+  // ─── Canvas metrics ───────────────────────────────────────────────────────
   const getCanvasMetrics = useCallback(() => {
     const canvas = canvasRef?.current;
     if (!canvas) {
@@ -50,14 +78,14 @@ export default function PlayerRenderer({
 
   const getRenderCam = useCallback(() => {
     const cam = camSmoothRef?.current;
-    const fallback = meRef.current || { x: 0, y: 0 };
+    const fallback = getPredictedPos() || meRef.current || { x: 0, y: 0 };
     const cx = Number.isFinite(cam?.x) ? Number(cam.x) : Number(fallback.x || 0);
     const cy = Number.isFinite(cam?.y) ? Number(cam.y) : Number(fallback.y || 0);
     if (z > 1) {
       return { x: Math.round(cx * z) / z, y: Math.round(cy * z) / z };
     }
     return { x: cx, y: cy };
-  }, [camSmoothRef, z]);
+  }, [camSmoothRef, getPredictedPos, z]);
 
   const snapWorld = useCallback(
     (v) => {
@@ -111,15 +139,12 @@ export default function PlayerRenderer({
     return key || "player";
   }, []);
 
-  // -----------------------------------
-  // CHAT BUBBLES
-  // -----------------------------------
+  // ─── Chat bubbles ─────────────────────────────────────────────────────────
   useEffect(() => {
     function ttlFor(text) {
       const len = String(text || "").length;
       return Math.max(3000, Math.min(18000, 2000 + len * 80));
     }
-
     function onBubble(e) {
       const d = e?.detail || {};
       const senderIdRaw = d.senderId;
@@ -128,20 +153,17 @@ export default function PlayerRenderer({
       const t = Number(d.t || Date.now());
       const role = d.role ?? null;
       if (!message) return;
-
       const key =
         senderIdRaw != null && String(senderIdRaw).trim()
           ? String(senderIdRaw)
           : user;
       if (!key) return;
-
       const ttl = ttlFor(message);
       setBubbles((prev) => ({
         ...prev,
         [key]: { text: message, t, expiresAt: t + ttl, role },
       }));
     }
-
     window.addEventListener("chat:bubble", onBubble);
     return () => window.removeEventListener("chat:bubble", onBubble);
   }, []);
@@ -180,17 +202,18 @@ export default function PlayerRenderer({
     [bubbles, getDisplayName]
   );
 
-  // -----------------------------------
-  // INPUT
-  // -----------------------------------
+  // ─── Input ────────────────────────────────────────────────────────────────
   const inputEnabled = Boolean(socket);
 
   const onMoveTo = useCallback(
     ({ x, y }) => {
-      if (!socket) return;
-      socket.emit("player:moveTo", { x: Number(x), y: Number(y) });
+      // ✅ Predict immediately (no wait for server round-trip)
+      setMoveTarget(x, y);
+
+      // Then tell server
+      if (socket) socket.emit("player:moveTo", { x: Number(x), y: Number(y) });
     },
-    [socket]
+    [socket, setMoveTarget]
   );
 
   usePlayerInput({
@@ -198,15 +221,14 @@ export default function PlayerRenderer({
     sendRateHz,
     screenToWorld,
     onMoveTo,
-    getMyPos: () => getRenderCam(),
+    getMyPos: () => getPredictedPos() || meRef.current || getRenderCam(),
     onFacingChange: (dir) => setMyFacing(dir),
     button: 2,
     deadzoneWorld: 0.5,
+    targetRef: canvasRef,
   });
 
-  // -----------------------------------
-  // REMOTE INTERPOLATION
-  // -----------------------------------
+  // ─── Remote interpolation ─────────────────────────────────────────────────
   const { remoteIds, getRenderState } = useRemoteInterpolation({
     players,
     myId,
@@ -218,21 +240,7 @@ export default function PlayerRenderer({
     return remoteIds;
   }, [renderOthers, remoteIds]);
 
-  // -----------------------------------
-  // Sprite resolution
-  // -----------------------------------
-  const getSpriteForPlayer = useCallback((p, fallbackSrc) => {
-    const cls = p?.class;
-    return cls ? getSpriteByClassId(cls, fallbackSrc) : fallbackSrc;
-  }, []);
-
-  const myResolvedSprite = useMemo(() => {
-    return getSpriteForPlayer(me, mySpriteSrc);
-  }, [getSpriteForPlayer, me, mySpriteSrc]);
-
-  // -----------------------------------
-  // Dynamic helpers
-  // -----------------------------------
+  // ─── Colors ───────────────────────────────────────────────────────────────
   const roleToColor = useCallback(
     (role) => {
       const rc = getRoleColor(normalizeRole(role));
@@ -241,15 +249,16 @@ export default function PlayerRenderer({
     [normalizeRole]
   );
 
-  // ✅ accountRole prop is the source of truth — never use me?.role (that's class/archetype)
   const myRole = me?.accountRole ?? accountRole ?? "player";
 
-  const displayX = me ? Math.round(me.x) : 0;
-  const displayY = me ? Math.round(me.y) : 0;
+  // Use predicted position for debug display
+  const pred = getPredictedPos();
+  const displayX = pred ? Math.round(pred.x) : me ? Math.round(me.x) : 0;
+  const displayY = pred ? Math.round(pred.y) : me ? Math.round(me.y) : 0;
 
+  // ─── Render ───────────────────────────────────────────────────────────────
   return (
     <div className="pr-root">
-      {/* OTHER PLAYERS */}
       {players &&
         myId &&
         visibleRemoteIds.map((id) => {
@@ -264,11 +273,11 @@ export default function PlayerRenderer({
 
           const r = { ...r0, x: snapWorld(r0.x), y: snapWorld(r0.y) };
           const { x, y } = worldToScreen(r);
+
           const hovered = hoverId === id;
           const tx = Math.round(x - drawW / 2);
           const ty = Math.round(y - drawH / 2);
-          const otherFacing = r?.facing === "left" ? "left" : "right";
-          const otherResolvedSprite = getSpriteForPlayer(p, otherSpriteSrc);
+
           const bub = getBubbleForPlayer(id, p);
           const name = getDisplayName(id, p);
 
@@ -290,32 +299,18 @@ export default function PlayerRenderer({
                   <div className="pr-bubbleTail" />
                 </div>
               )}
-
               {hovered && (
                 <div
                   className="pr-name"
-                  style={{
-                    // ✅ only use accountRole from snapshot, never p?.role (class)
-                    "--nameColor": roleToColor(p?.accountRole ?? "player"),
-                  }}
+                  style={{ "--nameColor": roleToColor(p?.accountRole ?? "player") }}
                 >
                   {name}
                 </div>
               )}
-
-              <div className={`pr-spriteWrap ${otherFacing === "left" ? "is-left" : ""}`}>
-                <img
-                  className="pr-sprite"
-                  src={otherResolvedSprite}
-                  alt="Other player"
-                  draggable={false}
-                />
-              </div>
             </div>
           );
         })}
 
-      {/* LOCAL PLAYER */}
       <div
         className={`pr-local ${hoverId === myId ? "is-hover" : ""}`}
         onMouseEnter={() => setHoverId(myId)}
@@ -333,24 +328,13 @@ export default function PlayerRenderer({
               </div>
             );
           })()}
-
         {me && hoverId === myId && (
           <div className="pr-name" style={{ "--nameColor": roleToColor(myRole) }}>
             {getDisplayName(myId, me)}
           </div>
         )}
-
-        <div className={`pr-spriteWrap ${myFacing === "left" ? "is-left" : ""}`}>
-          <img
-            className="pr-sprite"
-            src={myResolvedSprite}
-            alt="My player"
-            draggable={false}
-          />
-        </div>
       </div>
 
-      {/* DEBUG */}
       {me && (
         <div className="pr-debug">
           x: {displayX}

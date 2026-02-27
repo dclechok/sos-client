@@ -15,7 +15,7 @@ export const TUNABLES = {
   // Virtual wrap space (stars/dust/nebula positions wrap within this range)
   WORLD: 7000,
 
-  CAMERA_FOLLOW: 18,
+  CAMERA_FOLLOW: 40,
 
   // Cap DPR for perf
   DPR_CAP: 1.25,

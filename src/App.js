@@ -26,7 +26,6 @@ import AdminPanel from "./AdminPanel.js";
 
 import { useWorldObjects } from "./world/useWorldObjects";
 
-// ✅ NEW right docked menu (Character top + Inventory bottom)
 import RightPanelMenu from "./RightPanelMenu";
 
 const API = process.env.REACT_APP_API_BASE_URL || "";
@@ -63,22 +62,30 @@ export default function App() {
   const camTargetRef = useRef({ x: 0, y: 0 });
   const camSmoothRef = useRef({ x: 0, y: 0 });
 
+  // ✅ Shared ref written by useLocalPlayerPrediction (in PlayerRenderer)
+  // and read by MainViewport's render loop each frame.
+  // Do NOT use React state — this must be zero-overhead.
+  const predictedLocalPosRef = useRef(null);
+
+  // ✅ REMOVED: the old useEffect that wrote camTargetRef from `me` every snapshot.
+  // That was overriding the prediction hook's smooth position with a raw server
+  // position every 50ms, causing the camera to stutter.
+  //
+  // Instead: only initialize camSmoothRef on first valid position, then let
+  // useLocalPlayerPrediction own camTargetRef from that point on.
+  const camInitializedRef = useRef(false);
   useEffect(() => {
+    if (camInitializedRef.current) return; // only run once
     if (!me) return;
     const x = Number(me.x);
     const y = Number(me.y);
     if (!Number.isFinite(x) || !Number.isFinite(y)) return;
 
-    camTargetRef.current.x = x;
-    camTargetRef.current.y = y;
-
-    if (
-      !Number.isFinite(camSmoothRef.current.x) ||
-      !Number.isFinite(camSmoothRef.current.y)
-    ) {
-      camSmoothRef.current.x = x;
-      camSmoothRef.current.y = y;
-    }
+    // Snap both refs to starting position so there's no initial camera jump
+    camTargetRef.current = { x, y };
+    camSmoothRef.current = { x, y };
+    predictedLocalPosRef.current = { x, y };
+    camInitializedRef.current = true;
   }, [me]);
 
   const world = useWorldChunks({ preloadRadiusChunks: 2 });
@@ -104,8 +111,7 @@ export default function App() {
       .catch(() => {});
   }, [isReady]);
 
-  // -------------------------
-  // session boot logic
+  // session boot
   useEffect(() => {
     async function init() {
       const { account: storedAccount, character: storedChar } =
@@ -151,51 +157,35 @@ export default function App() {
   const canMountWorld =
     hasPickedCharacter && isReady && Number.isFinite(worldSeed);
 
-  // -------------------------
-  // ✅ HOTKEYS (robust, single listener, uses refs)
   const canMountWorldRef = useRef(false);
   const inventoryOpenRef = useRef(false);
   const mapOpenRef = useRef(false);
 
-  useEffect(() => {
-    canMountWorldRef.current = canMountWorld;
-  }, [canMountWorld]);
-
-  useEffect(() => {
-    inventoryOpenRef.current = inventoryOpen;
-  }, [inventoryOpen]);
-
-  useEffect(() => {
-    mapOpenRef.current = mapOpen;
-  }, [mapOpen]);
+  useEffect(() => { canMountWorldRef.current = canMountWorld; }, [canMountWorld]);
+  useEffect(() => { inventoryOpenRef.current = inventoryOpen; }, [inventoryOpen]);
+  useEffect(() => { mapOpenRef.current = mapOpen; }, [mapOpen]);
 
   useEffect(() => {
     const onKeyDown = (e) => {
-      // ignore typing in inputs/textarea/contenteditable
       const tag = (e.target?.tagName || "").toLowerCase();
       const isTyping =
         tag === "input" || tag === "textarea" || e.target?.isContentEditable;
       if (isTyping) return;
 
-      // Toggle inventory panel on I
       if (e.code === "KeyC") {
         if (!canMountWorldRef.current) return;
         e.preventDefault();
-
         setInventoryOpen((v) => !v);
         setMapOpen(false);
         return;
       }
-      // Toggle map on M
       if (e.code === "KeyM") {
         if (!canMountWorldRef.current) return;
         e.preventDefault();
-
         setMapOpen((v) => !v);
         setInventoryOpen(false);
         return;
       }
-      // Esc closes open menus
       if (e.code === "Escape") {
         if (inventoryOpenRef.current || mapOpenRef.current) {
           e.preventDefault();
@@ -205,12 +195,9 @@ export default function App() {
       }
     };
 
-    // capture phase so it fires even if something stops propagation
     window.addEventListener("keydown", onKeyDown, true);
     return () => window.removeEventListener("keydown", onKeyDown, true);
   }, []);
-
-  // -------------------------
 
   if (width === 0 || height === 0) return <Spinner />;
   if (width < 800 || height < 500) return <DisplayCheck />;
@@ -235,12 +222,12 @@ export default function App() {
 
   return (
     <div className="App" onContextMenu={(e) => e.preventDefault()}>
-        <NavBar
-          onMapClick={() => setMapOpen(true)}
-          onCharacterClick={() => setInventoryOpen(true)}
-          setAccount={setAccount}
-          setCharacter={setCharacter}
-        />
+      <NavBar
+        onMapClick={() => setMapOpen(true)}
+        onCharacterClick={() => setInventoryOpen(true)}
+        setAccount={setAccount}
+        setCharacter={setCharacter}
+      />
 
       {canMountWorld && (
         <MainViewport
@@ -252,6 +239,13 @@ export default function App() {
           camSmoothRef={camSmoothRef}
           worldObjects={worldObjects}
           objectDefs={objectDefs}
+          players={players}
+          myId={myId}
+          mySpriteSrc="/art/items/sprites/AdeptNecromancer.gif"
+          otherSpriteSrc="/art/items/sprites/NovicePyromancer.gif"
+          playerSpriteW={16}
+          playerSpriteH={16}
+          predictedLocalPosRef={predictedLocalPosRef}  // ✅ canvas reads predicted pos here
         />
       )}
 
@@ -265,6 +259,8 @@ export default function App() {
           canvasRef={canvasRef}
           zoom={zoom}
           camSmoothRef={camSmoothRef}
+          camTargetRef={camTargetRef}              // ✅ prediction writes camera here
+          predictedLocalPosRef={predictedLocalPosRef}  // ✅ prediction writes pos here
         />
       )}
 
@@ -277,16 +273,13 @@ export default function App() {
           camSmoothRef={camSmoothRef}
           zoom={zoom}
           me={me}
-          worldObjects={worldObjects}      // from useWorldObjects().objects
-          objectDefs={objectDefs}     // your defs map (defId -> def with sizePx)
+          worldObjects={worldObjects}
+          objectDefs={objectDefs}
         />
       )}
 
-      {/* ✅ RIGHT DOCKED CHARACTER + INVENTORY PANEL */}
       {canMountWorld && inventoryOpen && (
-        <div
-          className="rightpanel-overlay"
-        >
+        <div className="rightpanel-overlay">
           <RightPanelMenu
             account={account}
             character={character}
@@ -301,24 +294,6 @@ export default function App() {
         renderMapFrame={renderMapFrame}
       />
 
-      {/* ✅ DEBUG BADGE (remove later) */}
-      <div
-        style={{
-          position: "fixed",
-          left: 10,
-          bottom: 10,
-          zIndex: 999999,
-          padding: "4px 8px",
-          fontSize: 12,
-          background: "rgba(0,0,0,0.55)",
-          color: "white",
-          borderRadius: 6,
-          pointerEvents: "none",
-          fontFamily: "monospace",
-        }}
-      >
-        inv:{String(inventoryOpen)} world:{String(canMountWorld)}
-      </div>
     </div>
   );
 }
