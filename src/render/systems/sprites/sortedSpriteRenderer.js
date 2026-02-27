@@ -4,7 +4,9 @@
 // Changes:
 // - Accepts `predictedLocalPos` (optional) — use this for local player rendering
 //   instead of server snapshot position, so player sprite is glued to predicted pos.
-// - Objects: depth anchor is obj.y (with optional depthOffsetY)
+// - Objects: depth anchor defaults to the BOTTOM of the sprite automatically.
+//   This means you only need depthOffsetY for unusual cases (e.g. a tall tree
+//   whose trunk base is not at the very bottom of the sprite).
 // - Players: depth anchor is FEET = center.y + spriteH/2
 //   (spriteH is in world units — same scale as world coords)
 
@@ -145,15 +147,23 @@ function makeObjectDrawable(obj, def, t) {
   const anchorX = Number.isFinite(def?.anchorX) ? Number(def.anchorX) : 0.5;
   const anchorY = Number.isFinite(def?.anchorY) ? Number(def.anchorY) : 0.5;
 
-  // ✅ Depth = where the object contacts the ground.
-  // obj.y IS the anchor point already. If anchorY=1 (bottom), obj.y IS the feet.
-  // If anchorY=0.5 (center), feet = obj.y + baseSize * 0.5.
-  // Use depthOffsetY for manual tuning (e.g. tree base).
+  // Default depth = the BOTTOM of the sprite in world space.
+  // This is the right default for nearly every object: small things like
+  // campfires, rocks, and chests naturally sort correctly with no config.
+  //
+  // For tall objects where the visual "base" is above the sprite bottom
+  // (e.g. a tree whose trunk meets the ground partway up the sprite),
+  // use depthOffsetY (in world units) to shift the sort point upward.
+  // e.g. depthOffsetY: -40 moves the depth anchor 40 world units above
+  // the sprite bottom.
+  //
+  // Formula:
+  //   obj.y is the anchor point on the sprite (anchorY fraction from top).
+  //   Sprite bottom = obj.y + (baseSize * anchorY)  [world units below anchor]
+  //   depthYWorld   = sprite bottom + depthOffsetY
   const depthOffsetY = Number(def?.depthOffsetY || 0);
-  
-  // Calculate feet from anchor: if anchorY=1, feet=obj.y; if anchorY=0.5, feet=obj.y+half
-  const halfH = baseSize * (1 - anchorY); // world units below anchor point
-  const depthYWorld = Number(obj?.y || 0) + halfH + depthOffsetY;
+  const spriteBottomY = Number(obj?.y || 0) + baseSize * (1 - anchorY);
+  const depthYWorld = spriteBottomY + depthOffsetY;
 
   return {
     kind: "object",
@@ -173,21 +183,21 @@ function makeObjectDrawable(obj, def, t) {
 
 /**
  * Player drawable.
- * 
+ *
  * Server sends CENTER position (x, y).
  * We compute feetY = centerY + spriteH/2.
  * spriteH here is in WORLD units (same coordinate space as x,y).
- * 
+ *
  * For a 16px sprite at zoom=2: the sprite covers 8 world units tall.
  * So feetY = serverY + 8.
- * 
+ *
  * IMPORTANT: if predictedPos is provided (local player), use that instead
  * of the server snapshot so rendering stays glued to prediction.
  */
 function makePlayerDrawable(id, p, spriteSrc, spriteW, spriteH, { isLocal, predictedPos }) {
   if (!spriteSrc) return null;
 
-  // ✅ Use predicted position for local, server snapshot for remotes
+  // Use predicted position for local, server snapshot for remotes
   const wx = isLocal && predictedPos
     ? Number(predictedPos.x)
     : Number(p?.x || 0);
@@ -239,7 +249,7 @@ export function renderSortedSprites(
     playerIds = null,
     myId = null,
 
-    // ✅ NEW: predicted local player position { x, y }
+    // NEW: predicted local player position { x, y }
     // Pass getPredictedPos() result here each frame for glitch-free local rendering
     predictedLocalPos = null,
 
@@ -272,7 +282,7 @@ export function renderSortedSprites(
       const isLocal = myId != null && String(id) === String(myId);
       const d = makePlayerDrawable(id, p, src, playerSpriteW, playerSpriteH, {
         isLocal,
-        // ✅ only pass predicted pos to local player
+        // only pass predicted pos to local player
         predictedPos: isLocal ? predictedLocalPos : null,
       });
       if (d) drawables.push(d);
