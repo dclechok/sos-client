@@ -29,7 +29,7 @@ export function useObjectDefs() {
   const objectDefs = useMemo(() => {
     const map = {};
     for (const d of list) {
-      const id = String(d?.id ?? d?.key ?? d?.name ?? "");
+      const id = String(d?.id ?? d?.defId ?? "");
       if (!id) continue;
       map[id] = d;
     }

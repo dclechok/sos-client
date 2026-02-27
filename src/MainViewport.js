@@ -22,6 +22,11 @@ import { renderWeather } from "./render/systems/weather/weatherRenderer";
 import { renderSortedSprites } from "./render/systems/sprites/sortedSpriteRenderer";
 import { getSpriteByClassId } from "./render/players/characterClasses";
 
+import {
+  renderCollisionDebug,
+  hookCollisionDebugToggle,
+} from "./render/systems/debug/collisionDebugRenderer";
+
 export default function MainViewport({
   world,
   canvasRef,
@@ -52,6 +57,9 @@ export default function MainViewport({
     return () => canvas.removeEventListener("wheel", onWheel);
   }, [refToUse]);
 
+  // Wire up backtick toggle for collision debug overlay
+  useEffect(() => hookCollisionDebugToggle(), []);
+
   // ─── Asset hooks ────────────────────────────────────────────────────────
   const atlas = useTerrainAtlas({
     atlasSrc: "/art/terrain/terrain.png",
@@ -75,70 +83,41 @@ export default function MainViewport({
   const weather = useWeatherCycle({ regionId: "world" });
 
   // ─── Mirror everything into refs ────────────────────────────────────────
-  const worldRef = useRef(world);
-  const atlasRef = useRef(atlas);
-  const foliageAssetsRef = useRef(foliageAssets);
-  const foliageRegistryRef = useRef(foliageRegistry);
-  const weatherRef = useRef(weather);
+  const worldRef             = useRef(world);
+  const atlasRef             = useRef(atlas);
+  const foliageAssetsRef     = useRef(foliageAssets);
+  const foliageRegistryRef   = useRef(foliageRegistry);
+  const weatherRef           = useRef(weather);
 
-  const playersRef = useRef(players);
-  const worldObjectsRef = useRef(worldObjects);
-  const objectDefsRef = useRef(objectDefs);
+  const playersRef           = useRef(players);
+  const worldObjectsRef      = useRef(worldObjects);
+  const objectDefsRef        = useRef(objectDefs);
 
-  const myIdRef = useRef(myId);
-  const mySpriteSrcRef = useRef(mySpriteSrc);
-  const otherSpriteSrcRef = useRef(otherSpriteSrc);
+  const myIdRef              = useRef(myId);
+  const mySpriteSrcRef       = useRef(mySpriteSrc);
+  const otherSpriteSrcRef    = useRef(otherSpriteSrc);
 
-  // ✅ put these behind refs too so render() can stay empty-deps safely
   const predictedLocalPosRefRef = useRef(predictedLocalPosRef);
-  const playerSpriteWRef = useRef(playerSpriteW);
-  const playerSpriteHRef = useRef(playerSpriteH);
+  const playerSpriteWRef        = useRef(playerSpriteW);
+  const playerSpriteHRef        = useRef(playerSpriteH);
 
-  useEffect(() => {
-    worldRef.current = world;
-  }, [world]);
-  useEffect(() => {
-    atlasRef.current = atlas;
-  }, [atlas]);
-  useEffect(() => {
-    foliageAssetsRef.current = foliageAssets;
-  }, [foliageAssets]);
-  useEffect(() => {
-    foliageRegistryRef.current = foliageRegistry;
-  }, [foliageRegistry]);
-  useEffect(() => {
-    weatherRef.current = weather;
-  }, [weather]);
+  useEffect(() => { worldRef.current           = world;           }, [world]);
+  useEffect(() => { atlasRef.current           = atlas;           }, [atlas]);
+  useEffect(() => { foliageAssetsRef.current   = foliageAssets;   }, [foliageAssets]);
+  useEffect(() => { foliageRegistryRef.current = foliageRegistry; }, [foliageRegistry]);
+  useEffect(() => { weatherRef.current         = weather;         }, [weather]);
 
-  useEffect(() => {
-    playersRef.current = players;
-  }, [players]);
-  useEffect(() => {
-    worldObjectsRef.current = worldObjects;
-  }, [worldObjects]);
-  useEffect(() => {
-    objectDefsRef.current = objectDefs;
-  }, [objectDefs]);
+  useEffect(() => { playersRef.current      = players;      }, [players]);
+  useEffect(() => { worldObjectsRef.current = worldObjects; }, [worldObjects]);
+  useEffect(() => { objectDefsRef.current   = objectDefs;   }, [objectDefs]);
 
-  useEffect(() => {
-    myIdRef.current = myId;
-  }, [myId]);
-  useEffect(() => {
-    mySpriteSrcRef.current = mySpriteSrc;
-  }, [mySpriteSrc]);
-  useEffect(() => {
-    otherSpriteSrcRef.current = otherSpriteSrc;
-  }, [otherSpriteSrc]);
+  useEffect(() => { myIdRef.current           = myId;           }, [myId]);
+  useEffect(() => { mySpriteSrcRef.current    = mySpriteSrc;    }, [mySpriteSrc]);
+  useEffect(() => { otherSpriteSrcRef.current = otherSpriteSrc; }, [otherSpriteSrc]);
 
-  useEffect(() => {
-    predictedLocalPosRefRef.current = predictedLocalPosRef;
-  }, [predictedLocalPosRef]);
-  useEffect(() => {
-    playerSpriteWRef.current = playerSpriteW;
-  }, [playerSpriteW]);
-  useEffect(() => {
-    playerSpriteHRef.current = playerSpriteH;
-  }, [playerSpriteH]);
+  useEffect(() => { predictedLocalPosRefRef.current = predictedLocalPosRef; }, [predictedLocalPosRef]);
+  useEffect(() => { playerSpriteWRef.current        = playerSpriteW;        }, [playerSpriteW]);
+  useEffect(() => { playerSpriteHRef.current        = playerSpriteH;        }, [playerSpriteH]);
 
   // Stable sprite resolver — reads myId/sprites from refs
   const getPlayerSpriteSrc = useCallback((id, p) => {
@@ -148,11 +127,8 @@ export default function MainViewport({
     return cls ? getSpriteByClassId(cls, fallback) : fallback;
   }, []);
 
-  // ✅ also store the function in a ref so render() doesn't depend on it
   const getPlayerSpriteSrcRef = useRef(getPlayerSpriteSrc);
-  useEffect(() => {
-    getPlayerSpriteSrcRef.current = getPlayerSpriteSrc;
-  }, [getPlayerSpriteSrc]);
+  useEffect(() => { getPlayerSpriteSrcRef.current = getPlayerSpriteSrc; }, [getPlayerSpriteSrc]);
 
   // ─── STABLE render callback — created once, reads all state from refs ─────
   const render = useCallback((ctx, frame) => {
@@ -164,24 +140,32 @@ export default function MainViewport({
     renderFoliage(ctx, frame, {
       world: worldRef.current,
       foliage: {
-        assets: foliageAssetsRef.current,
+        assets:   foliageAssetsRef.current,
         registry: foliageRegistryRef.current,
-        seed: 4242,
+        seed:     4242,
       },
     });
 
     renderSortedSprites(ctx, frame, {
-      objects: worldObjectsRef.current,
-      objectDefs: objectDefsRef.current,
-      playersById: playersRef.current,
-      myId: myIdRef.current,
-      predictedLocalPos: predictedLocalPosRefRef.current?.current ?? null,
+      objects:            worldObjectsRef.current,
+      objectDefs:         objectDefsRef.current,
+      playersById:        playersRef.current,
+      myId:               myIdRef.current,
+      predictedLocalPos:  predictedLocalPosRefRef.current?.current ?? null,
       getPlayerSpriteSrc: getPlayerSpriteSrcRef.current,
-      playerSpriteW: playerSpriteWRef.current,
-      playerSpriteH: playerSpriteHRef.current,
+      playerSpriteW:      playerSpriteWRef.current,
+      playerSpriteH:      playerSpriteHRef.current,
     });
 
     renderWeather(ctx, frame, { weather: weatherRef.current });
+
+    // Debug overlay — press ` to toggle, or set window.__collisionDebug = true in devtools
+    renderCollisionDebug(ctx, frame, {
+      objects:      worldObjectsRef.current,
+      objectDefs:   objectDefsRef.current,
+      playerPos:    predictedLocalPosRefRef.current?.current ?? null,
+      playerRadius: 6,
+    });
   }, []);
 
   useViewportRenderer({
@@ -189,7 +173,7 @@ export default function MainViewport({
     camTargetRef,
     camSmoothRef,
     zoom,
-    pixelArt: true,
+    pixelArt:   true,
     clearColor: "#000",
     render,
   });
