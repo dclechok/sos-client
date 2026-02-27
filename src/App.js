@@ -178,7 +178,7 @@ export default function App() {
       if (isTyping) return;
 
       // Toggle inventory panel on I
-      if (e.code === "KeyI") {
+      if (e.code === "KeyC") {
         if (!canMountWorldRef.current) return;
         e.preventDefault();
 
@@ -186,7 +186,15 @@ export default function App() {
         setMapOpen(false);
         return;
       }
+      // Toggle map on M
+      if (e.code === "KeyM") {
+        if (!canMountWorldRef.current) return;
+        e.preventDefault();
 
+        setMapOpen((v) => !v);
+        setInventoryOpen(false);
+        return;
+      }
       // Esc closes open menus
       if (e.code === "Escape") {
         if (inventoryOpenRef.current || mapOpenRef.current) {
@@ -227,11 +235,12 @@ export default function App() {
 
   return (
     <div className="App" onContextMenu={(e) => e.preventDefault()}>
-      <NavBar
-        onMapClick={() => setMapOpen(true)}
-        setAccount={setAccount}
-        setCharacter={setCharacter}
-      />
+        <NavBar
+          onMapClick={() => setMapOpen(true)}
+          onCharacterClick={() => setInventoryOpen(true)}
+          setAccount={setAccount}
+          setCharacter={setCharacter}
+        />
 
       {canMountWorld && (
         <MainViewport
