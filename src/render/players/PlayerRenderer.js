@@ -1,10 +1,4 @@
 // src/render/players/PlayerRenderer.js
-//
-// Changes from original:
-// - Imports useLocalPlayerPrediction
-// - onMoveTo now calls setMoveTarget (prediction) BEFORE emitting to server
-// - stepPrediction is called each frame via RAF so camera target stays fresh
-// - Removed the "lag-hiding" smoothing on local player (prediction handles it now)
 
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { usePlayerInput } from "./usePlayerInput";
@@ -26,22 +20,20 @@ export default function PlayerRenderer({
   canvasRef,
   camSmoothRef,
   camTargetRef,
-  predictedLocalPosRef, // ✅ shared ref for canvas renderer to read predicted pos
+  predictedLocalPosRef,
 
   spriteW = 16,
   spriteH = 16,
 }) {
-  const [hoverId, setHoverId] = useState(null);
+  const [hoverId, setHoverId]   = useState(null);
   const [myFacing, setMyFacing] = useState("right");
-  const [bubbles, setBubbles] = useState({});
+  const [bubbles, setBubbles]   = useState({});
 
-  const me = myId && players ? players[myId] : null;
+  const me    = myId && players ? players[myId] : null;
   const meRef = useRef(null);
-  useEffect(() => {
-    meRef.current = me;
-  }, [me]);
+  useEffect(() => { meRef.current = me; }, [me]);
 
-  const z = Math.max(1, Math.floor(Number(zoom) || 1));
+  const z     = Math.max(1, Math.floor(Number(zoom) || 1));
   const drawW = spriteW * z;
   const drawH = spriteH * z;
 
@@ -53,14 +45,12 @@ export default function PlayerRenderer({
   useEffect(() => {
     let raf = 0;
     let lastMs = performance.now();
-
     const tick = (nowMs) => {
       const dt = Math.min((nowMs - lastMs) / 1000, 0.05);
       lastMs = nowMs;
       stepPrediction(dt);
       raf = requestAnimationFrame(tick);
     };
-
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [stepPrediction]);
@@ -71,13 +61,13 @@ export default function PlayerRenderer({
     if (!canvas) {
       return { cx: window.innerWidth / 2, cy: window.innerHeight / 2, scale: 1 };
     }
-    const r = canvas.getBoundingClientRect();
+    const r      = canvas.getBoundingClientRect();
     const scaleX = r.width ? canvas.width / r.width : 1;
     return { cx: r.left + r.width / 2, cy: r.top + r.height / 2, scale: scaleX };
   }, [canvasRef]);
 
   const getRenderCam = useCallback(() => {
-    const cam = camSmoothRef?.current;
+    const cam      = camSmoothRef?.current;
     const fallback = getPredictedPos() || meRef.current || { x: 0, y: 0 };
     const cx = Number.isFinite(cam?.x) ? Number(cam.x) : Number(fallback.x || 0);
     const cy = Number.isFinite(cam?.y) ? Number(cam.y) : Number(fallback.y || 0);
@@ -99,7 +89,7 @@ export default function PlayerRenderer({
   const worldToScreen = useCallback(
     (p) => {
       const { cx, cy, scale } = getCanvasMetrics();
-      const cam = getRenderCam();
+      const cam     = getRenderCam();
       const dxWorld = Number(p.x || 0) - cam.x;
       const dyWorld = Number(p.y || 0) - cam.y;
       return { x: cx + (dxWorld * z) / scale, y: cy + (dyWorld * z) / scale };
@@ -110,7 +100,7 @@ export default function PlayerRenderer({
   const screenToWorld = useCallback(
     (clientX, clientY) => {
       const { cx, cy, scale } = getCanvasMetrics();
-      const cam = getRenderCam();
+      const cam     = getRenderCam();
       const dxWorld = ((clientX - cx) * scale) / z;
       const dyWorld = ((clientY - cy) * scale) / z;
       return { x: cam.x + dxWorld, y: cam.y + dyWorld };
@@ -146,12 +136,12 @@ export default function PlayerRenderer({
       return Math.max(3000, Math.min(18000, 2000 + len * 80));
     }
     function onBubble(e) {
-      const d = e?.detail || {};
+      const d           = e?.detail || {};
       const senderIdRaw = d.senderId;
-      const user = String(d.user || "").trim();
-      const message = String(d.message || "").trim();
-      const t = Number(d.t || Date.now());
-      const role = d.role ?? null;
+      const user        = String(d.user    || "").trim();
+      const message     = String(d.message || "").trim();
+      const t           = Number(d.t || Date.now());
+      const role        = d.role ?? null;
       if (!message) return;
       const key =
         senderIdRaw != null && String(senderIdRaw).trim()
@@ -173,7 +163,7 @@ export default function PlayerRenderer({
       const now = Date.now();
       setBubbles((prev) => {
         let changed = false;
-        const next = { ...prev };
+        const next  = { ...prev };
         for (const k of Object.keys(next)) {
           if (!next[k] || now >= next[k].expiresAt) {
             delete next[k];
@@ -189,14 +179,14 @@ export default function PlayerRenderer({
   const getBubbleForPlayer = useCallback(
     (id, p) => {
       if (id == null) return null;
-      const byId = bubbles?.[String(id)];
+      const byId   = bubbles?.[String(id)];
       const byName = bubbles?.[getDisplayName(id, p)];
-      const b = byId || byName;
+      const b      = byId || byName;
       if (!b) return null;
-      const now = Date.now();
+      const now       = Date.now();
       const remaining = Math.max(0, b.expiresAt - now);
-      const fadeMs = 1100;
-      const alpha = remaining < fadeMs ? remaining / fadeMs : 1;
+      const fadeMs    = 1100;
+      const alpha     = remaining < fadeMs ? remaining / fadeMs : 1;
       return { ...b, alpha };
     },
     [bubbles, getDisplayName]
@@ -207,25 +197,22 @@ export default function PlayerRenderer({
 
   const onMoveTo = useCallback(
     ({ x, y }) => {
-      // ✅ Predict immediately (no wait for server round-trip)
       setMoveTarget(x, y);
-
-      // Then tell server
       if (socket) socket.emit("player:moveTo", { x: Number(x), y: Number(y) });
     },
     [socket, setMoveTarget]
   );
 
   usePlayerInput({
-    enabled: inputEnabled,
+    enabled:        inputEnabled,
     sendRateHz,
     screenToWorld,
     onMoveTo,
-    getMyPos: () => getPredictedPos() || meRef.current || getRenderCam(),
+    getMyPos:       () => getPredictedPos() || meRef.current || getRenderCam(),
     onFacingChange: (dir) => setMyFacing(dir),
-    button: 2,
-    deadzoneWorld: 0.5,
-    targetRef: canvasRef,
+    button:         2,
+    deadzoneWorld:  0.5,
+    targetRef:      canvasRef,
   });
 
   // ─── Remote interpolation ─────────────────────────────────────────────────
@@ -251,8 +238,7 @@ export default function PlayerRenderer({
 
   const myRole = me?.accountRole ?? accountRole ?? "player";
 
-  // Use predicted position for debug display
-  const pred = getPredictedPos();
+  const pred     = getPredictedPos();
   const displayX = pred ? Math.round(pred.x) : me ? Math.round(me.x) : 0;
   const displayY = pred ? Math.round(pred.y) : me ? Math.round(me.y) : 0;
 
@@ -266,20 +252,18 @@ export default function PlayerRenderer({
           if (!p) return null;
 
           const r0 = getRenderState(id) || {
-            x: Number(p.x || 0),
-            y: Number(p.y || 0),
+            x:      Number(p.x || 0),
+            y:      Number(p.y || 0),
             facing: p?.facing === "left" ? "left" : "right",
           };
 
-          const r = { ...r0, x: snapWorld(r0.x), y: snapWorld(r0.y) };
+          const r         = { ...r0, x: snapWorld(r0.x), y: snapWorld(r0.y) };
           const { x, y } = worldToScreen(r);
-
-          const hovered = hoverId === id;
-          const tx = Math.round(x - drawW / 2);
-          const ty = Math.round(y - drawH / 2);
-
-          const bub = getBubbleForPlayer(id, p);
-          const name = getDisplayName(id, p);
+          const hovered   = hoverId === id;
+          const tx        = Math.round(x - drawW / 2);
+          const ty        = Math.round(y - drawH / 2);
+          const bub       = getBubbleForPlayer(id, p);
+          const name      = getDisplayName(id, p);
 
           return (
             <div
@@ -288,8 +272,8 @@ export default function PlayerRenderer({
               onMouseEnter={() => setHoverId(id)}
               onMouseLeave={() => setHoverId((cur) => (cur === id ? null : cur))}
               style={{
-                width: drawW,
-                height: drawH,
+                width:     drawW,
+                height:    drawH,
                 transform: `translate3d(${tx}px, ${ty}px, 0)`,
               }}
             >

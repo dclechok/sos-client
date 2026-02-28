@@ -12,13 +12,82 @@ const API = process.env.REACT_APP_API_BASE_URL || "";
  *   server broadcasts: "obj:delete" { id } (your useWorldObjects removes it)
  *
  * ✅ Delete preview snaps to the hovered object's screen position and outlines its sprite box.
+ * ✅ Tight bounds: uses first frame pixel data to compute actual visible region, ignoring transparency.
+ * ✅ Promise-based cache: concurrent mousemove calls share the same load, no duplicate scans.
  *
  * Required props for hover-delete:
  *   worldObjects: array of world objects (from useWorldObjects().objects)
- *   objectDefs: map defId -> def (sizePx is used for correct box size)
+ *   objectDefs: map defId -> def (sizePx + frames used for tight bounds)
  */
 const DELETE_EVENT = "world:deleteObject";
 
+// ── Tight bounds cache (module-level, persists across renders) ────────────────
+// Stores Promises so concurrent calls before the image loads share the same result.
+const tightBoundsCache = {};
+
+function getTightBounds(defId, src) {
+  if (tightBoundsCache[defId]) return tightBoundsCache[defId];
+
+  // Store the Promise immediately — all concurrent callers await the same one
+  tightBoundsCache[defId] = (async () => {
+    try {
+      const img = new Image();
+      img.src = src;
+      await new Promise((res, rej) => {
+        img.onload = res;
+        img.onerror = rej;
+      });
+
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0);
+
+      const { data, width, height } = ctx.getImageData(0, 0, img.width, img.height);
+
+      let minX = width, maxX = 0, minY = height, maxY = 0;
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const alpha = data[(y * width + x) * 4 + 3];
+          if (alpha > 10) {
+            if (x < minX) minX = x;
+            if (x > maxX) maxX = x;
+            if (y < minY) minY = y;
+            if (y > maxY) maxY = y;
+          }
+        }
+      }
+
+      // Guard: no opaque pixels found (fully transparent image?)
+      if (minX > maxX || minY > maxY) {
+        return { offX: 0, offY: 0, w: img.width, h: img.height };
+      }
+
+      // Offsets are relative to image center (sprites are centered on world pos)
+      const cx = img.width / 2;
+      const cy = img.height / 2;
+
+      const bounds = {
+        offX: (minX + maxX) / 2 - cx,
+        offY: (minY + maxY) / 2 - cy,
+        w: maxX - minX,
+        h: maxY - minY,
+      };
+
+      return bounds;
+    } catch (e) {
+      console.warn("[AdminPanel] getTightBounds failed for", defId, e);
+      // Remove from cache so it can be retried later
+      delete tightBoundsCache[defId];
+      return null;
+    }
+  })();
+
+  return tightBoundsCache[defId];
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
 export default function AdminPanel({
   socket,
   canvasRef,
@@ -26,11 +95,14 @@ export default function AdminPanel({
   zoom,
   me,
 
-  // ✅ NEW (for hover-exact delete preview + id lookup)
+  // For hover-exact delete preview + id lookup
   worldObjects = [],
   objectDefs = {},
 }) {
   const [visible, setVisible] = useState(false);
+
+  // debug
+  const [collisionDebug, setCollisionDebug] = useState(false);
 
   // modes
   const [teleportMode, setTeleportMode] = useState(false);
@@ -53,16 +125,21 @@ export default function AdminPanel({
   // Preview (create/delete targeting)
   const [mouseClient, setMouseClient] = useState({ x: 0, y: 0 });
 
-  // ✅ Hover-exact object under cursor (for delete)
-  const [hoveredObj, setHoveredObj] = useState(null); // full obj doc
-  const [hoveredClient, setHoveredClient] = useState(null); // {x,y} in client coords
-  const [hoveredBoxPx, setHoveredBoxPx] = useState({ w: 0, h: 0 }); // DOM px
+  // Hover-exact object under cursor (for delete)
+  const [hoveredObj, setHoveredObj] = useState(null);
+  const [hoveredClient, setHoveredClient] = useState(null);
+  const [hoveredBoxPx, setHoveredBoxPx] = useState({ w: 0, h: 0 });
 
   const cancelWorldClickModes = useCallback(() => {
     setTeleportMode(false);
     setCreateMode(false);
     setDeleteMode(false);
   }, []);
+
+  // ── Sync collision debug checkbox -> global flag ──────────────────────
+  useEffect(() => {
+    window.__collisionDebug = collisionDebug;
+  }, [collisionDebug]);
 
   // ── Toggle with backtick ──────────────────────────────────────────────
   useEffect(() => {
@@ -87,7 +164,7 @@ export default function AdminPanel({
     return () => window.removeEventListener("keydown", onKey);
   }, [cancelWorldClickModes]);
 
-  // ── Fetch objects list (defs/templates) ────────────────────────────────
+  // ── Fetch objects list (defs/templates) ───────────────────────────────
   const fetchObjects = useCallback(async () => {
     setObjectsError("");
     setObjectsLoading(true);
@@ -142,7 +219,7 @@ export default function AdminPanel({
     return objects.find((o) => String(o.id ?? o.key ?? o.name) === id) || null;
   }, [objects, selectedObjectId]);
 
-  // ── Utilities: screen->world based on YOUR working math ───────────────
+  // ── Utilities: screen->world ──────────────────────────────────────────
   const clientToWorld = useCallback(
     (clientX, clientY) => {
       const canvas = canvasRef?.current;
@@ -162,9 +239,9 @@ export default function AdminPanel({
     [canvasRef, camSmoothRef, zoom]
   );
 
-  // ── Hover pick: find object under cursor (bounding box hit-test) ──────
+  // ── Hover pick: find object under cursor using tight bounds ───────────
   const pickObjectAtClient = useCallback(
-    (clientX, clientY) => {
+    async (clientX, clientY) => {
       const canvas = canvasRef?.current;
       if (!canvas) return null;
 
@@ -179,7 +256,6 @@ export default function AdminPanel({
       const camY = Number(camSmoothRef?.current?.y || 0);
       const z = Number(zoom || 1);
 
-      // if you have draw-order, iterate back-to-front
       for (let i = (worldObjects?.length || 0) - 1; i >= 0; i--) {
         const obj = worldObjects[i];
         if (!obj?._id) continue;
@@ -190,21 +266,50 @@ export default function AdminPanel({
         const wx = Number(obj.x || 0);
         const wy = Number(obj.y || 0);
 
-        const sx = cx + (wx - camX) * z; // canvas-space px
+        // Screen-space center of this object
+        const sx = cx + (wx - camX) * z;
         const sy = cy + (wy - camY) * z;
 
-        const baseSize = Number(def?.sizePx ?? obj?.sizePx ?? 16);
-        const dw = baseSize * z;
-        const dh = baseSize * z;
+        // Await tight bounds — Promise cache means this is instant after first load
+        let tight = null;
+        if (def?.frames?.[0]) {
+          tight = await getTightBounds(defId, def.frames[0]);
+        }
 
-        const left = sx - dw / 2;
-        const top = sy - dh / 2;
+        // Scale tight bounds from image pixels to screen pixels.
+        // tight.w/h are in image pixels. The image is rendered at sizePx*z screen px,
+        // so imgToScreen = (sizePx * z) / imgWidth
+        let dw, dh, boxOffX, boxOffY;
+        if (tight) {
+          const baseSize = Number(def?.sizePx ?? obj?.sizePx ?? 16);
+          // We need to know the source image size — getTightBounds loads it,
+          // but we don't store imgWidth/imgHeight. Instead, derive scale from sizePx:
+          // the renderer draws the image at baseSize*z regardless of actual image dimensions.
+          // So 1 image pixel = (baseSize * z) / imgNaturalWidth screen pixels.
+          // Since we don't have imgNaturalWidth here, we store it in bounds.
+          const imgToScreen = tight.imgScale ?? (baseSize * z) / (tight.imgW || baseSize);
+          dw = tight.w * imgToScreen;
+          dh = tight.h * imgToScreen;
+          boxOffX = tight.offX * imgToScreen;
+          boxOffY = tight.offY * imgToScreen;
+        } else {
+          const baseSize = Number(def?.sizePx ?? obj?.sizePx ?? 16);
+          dw = baseSize * z;
+          dh = baseSize * z;
+          boxOffX = 0;
+          boxOffY = 0;
+        }
+
+        const left = sx + boxOffX - dw / 2;
+        const top = sy + boxOffY - dh / 2;
 
         if (mx >= left && mx <= left + dw && my >= top && my <= top + dh) {
-          // return object + overlay coords in *client* space
           return {
             obj,
-            clientCenter: { x: rect.left + sx, y: rect.top + sy },
+            clientCenter: {
+              x: rect.left + sx + boxOffX,
+              y: rect.top + sy + boxOffY,
+            },
             boxPx: { w: dw, h: dh },
           };
         }
@@ -215,6 +320,18 @@ export default function AdminPanel({
     [canvasRef, camSmoothRef, zoom, worldObjects, objectDefs]
   );
 
+  // ── Pre-warm tight bounds for all visible objects when delete mode opens ─
+  useEffect(() => {
+    if (!deleteMode) return;
+    for (const obj of worldObjects) {
+      const defId = String(obj.defId || "");
+      const def = objectDefs?.[defId];
+      if (def?.frames?.[0]) {
+        getTightBounds(defId, def.frames[0]); // fire and forget — just warms cache
+      }
+    }
+  }, [deleteMode, worldObjects, objectDefs]);
+
   // ── Cursor + preview tracking (while targeting) ───────────────────────
   useEffect(() => {
     const canvas = canvasRef?.current;
@@ -222,7 +339,6 @@ export default function AdminPanel({
 
     const active = teleportMode || createMode || deleteMode;
 
-    // cursor changes (simple, reliable)
     canvas.style.cursor = active ? (deleteMode ? "cell" : "crosshair") : "";
 
     if (!active) {
@@ -232,11 +348,11 @@ export default function AdminPanel({
       return;
     }
 
-    const onMove = (e) => {
+    const onMove = async (e) => {
       setMouseClient({ x: e.clientX, y: e.clientY });
 
       if (deleteMode) {
-        const hit = pickObjectAtClient(e.clientX, e.clientY);
+        const hit = await pickObjectAtClient(e.clientX, e.clientY);
         if (hit?.obj) {
           setHoveredObj(hit.obj);
           setHoveredClient(hit.clientCenter);
@@ -281,7 +397,7 @@ export default function AdminPanel({
     };
   }, [teleportMode, canvasRef, clientToWorld, socket]);
 
-  // ── Click-to-place-object (armed on selection) ────────────────────────
+  // ── Click-to-place-object ─────────────────────────────────────────────
   useEffect(() => {
     if (!createMode) return;
     const canvas = canvasRef?.current;
@@ -304,7 +420,6 @@ export default function AdminPanel({
         state: {},
       });
 
-      // one placement then disarm
       setCreateMode(false);
     };
 
@@ -323,10 +438,8 @@ export default function AdminPanel({
 
     const handleClick = () => {
       const id = hoveredObj?._id ? String(hoveredObj._id) : "";
-      if (!id) return; // must be hovering a valid object
+      if (!id) return;
       socket?.emit(DELETE_EVENT, { id });
-
-      // one delete then disarm
       setDeleteMode(false);
     };
 
@@ -375,7 +488,7 @@ export default function AdminPanel({
 
   return (
     <>
-      {/* Preview overlay while targeting (DOM overlay, no canvas changes) */}
+      {/* Preview overlay while targeting */}
       {(teleportMode || createMode || deleteMode) && (
         <div
           className={`admin-preview ${
@@ -559,7 +672,7 @@ export default function AdminPanel({
                               setObjectMenuOpen(false);
                               setTeleportMode(false);
                               setDeleteMode(false);
-                              setCreateMode(true); // instantly armed
+                              setCreateMode(true);
                             }}
                           >
                             <span className="admin-menu__item-label">{label}</span>
@@ -594,6 +707,18 @@ export default function AdminPanel({
                 Click the world to spawn it. <kbd>Esc</kbd> cancels.
               </p>
             )}
+          </div>
+
+          <div className="admin-panel__section">
+            <div className="admin-panel__section-label">Debug</div>
+            <label className="admin-panel__checkbox-row">
+              <input
+                type="checkbox"
+                checked={collisionDebug}
+                onChange={(e) => setCollisionDebug(e.target.checked)}
+              />
+              Collision boxes
+            </label>
           </div>
         </div>
       </div>

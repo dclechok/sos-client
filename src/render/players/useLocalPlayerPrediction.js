@@ -5,8 +5,21 @@ import { useEffect, useRef, useCallback } from "react";
 const MAX_SPEED      = 45;
 const SLOW_RADIUS    = 30;
 const STOP_EPS       = 0.75;
-const SNAP_THRESHOLD = 8;    // was 40 — catch server corrections sooner
-const RECONCILE_K    = 0.6;  // was 0.25 — snap back faster when corrected
+
+// How far server can be from prediction before we treat it as a hard correction.
+// Must be larger than normal lag drift but smaller than a wall rejection.
+//
+// At MAX_SPEED=45 and 30Hz server, one tick = 1.5 units of movement.
+// At ~100ms latency that's ~3 ticks = ~4.5 units of natural drift.
+// A wall rejection snaps the server position to the blocked side — typically
+// 5-15 units away from where we predicted we'd be.
+// So 10 is safely above normal drift but catches real wall blocks.
+const SNAP_THRESHOLD = 10;
+
+// When server disagrees with us while moving, we detect it as a wall hit
+// if the server hasn't moved closer to our target in the last snapshot.
+// We cancel the move target so we stop fighting the wall.
+const WALL_CORRECTION_EPS = 3.5; // server must be at least this far from pred to count as blocked
 
 export function useLocalPlayerPrediction({
   myId,
@@ -14,7 +27,8 @@ export function useLocalPlayerPrediction({
   camTargetRef,
   predictedLocalPosRef,
 }) {
-  const predRef = useRef(null);
+  const predRef     = useRef(null);
+  const prevServerRef = useRef(null); // last server pos, to detect if server is stuck (wall)
 
   // ─── Reconcile with server snapshot ───────────────────────────────────────
   useEffect(() => {
@@ -26,37 +40,51 @@ export function useLocalPlayerPrediction({
     const sy = Number(serverP.y || 0);
 
     if (!predRef.current) {
-      predRef.current = { x: sx, y: sy, targetX: sx, targetY: sy, moving: false };
+      predRef.current   = { x: sx, y: sy, targetX: sx, targetY: sy, moving: false };
+      prevServerRef.current = { x: sx, y: sy };
       if (camTargetRef)         camTargetRef.current         = { x: sx, y: sy };
       if (predictedLocalPosRef) predictedLocalPosRef.current = { x: sx, y: sy };
       return;
     }
 
     const pred = predRef.current;
+    const prev = prevServerRef.current;
+
     const dx   = sx - pred.x;
     const dy   = sy - pred.y;
     const dist = Math.hypot(dx, dy);
 
     if (dist > SNAP_THRESHOLD) {
-      // Server hard-rejected our position (wall, teleport) → snap and stop
+      // Large gap — hard server correction (teleport, anti-cheat, large wall snap)
       pred.x       = sx;
       pred.y       = sy;
       pred.targetX = sx;
       pred.targetY = sy;
       pred.moving  = false;
-    } else if (dist > 0.1) {
-      // Soft blend toward server
-      pred.x += dx * RECONCILE_K;
-      pred.y += dy * RECONCILE_K;
+    } else if (pred.moving && dist > WALL_CORRECTION_EPS) {
+      // We're moving but server is meaningfully behind our prediction.
+      // Check if the server itself is stuck (wall blocked) vs just lagging.
+      // If server position hasn't changed much from last snapshot, it's a wall.
+      const serverMovedDist = prev
+        ? Math.hypot(sx - prev.x, sy - prev.y)
+        : Infinity;
 
-      // ✅ If server is meaningfully pushing us back, kill the move target
-      // so we stop fighting the wall instead of shaking against it
-      if (dist > 3) {
-        pred.targetX = pred.x;
-        pred.targetY = pred.y;
+      if (serverMovedDist < 0.5) {
+        // Server is stuck — wall is blocking us. Cancel move target and snap to server.
+        pred.x       = sx;
+        pred.y       = sy;
+        pred.targetX = sx;
+        pred.targetY = sy;
         pred.moving  = false;
       }
+      // else: server is moving (just lagging) — keep trusting prediction
+    } else if (!pred.moving && dist > 0.1) {
+      // Standing still — gently correct any drift
+      pred.x += dx * 0.2;
+      pred.y += dy * 0.2;
     }
+
+    prevServerRef.current = { x: sx, y: sy };
   }, [players, myId, camTargetRef, predictedLocalPosRef]);
 
   // ─── Set move target (called immediately on click) ────────────────────────
@@ -98,7 +126,6 @@ export function useLocalPlayerPrediction({
         }
       }
 
-      // ✅ Update both refs every frame so camera and canvas stay in sync
       if (camTargetRef)         camTargetRef.current         = { x: pred.x, y: pred.y };
       if (predictedLocalPosRef) predictedLocalPosRef.current = { x: pred.x, y: pred.y };
 

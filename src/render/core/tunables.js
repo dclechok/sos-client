@@ -18,7 +18,7 @@ export const TUNABLES = {
   CAMERA_FOLLOW: 40,
 
   // Cap DPR for perf
-  DPR_CAP: 1.25,
+  DPR_CAP: 2,
 };
 
 export const WEATHER_TUNABLES = {

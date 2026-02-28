@@ -1,6 +1,6 @@
 // App.js
 import "./styles/App.css";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 
 import DisplayCheck from "./DisplayCheck";
 import Spinner from "./Spinner";
@@ -43,10 +43,10 @@ function useWindowSize() {
 }
 
 export default function App() {
-  const [account, setAccount] = useState(undefined);
+  const [account, setAccount]   = useState(undefined);
   const [character, setCharacter] = useState(undefined);
 
-  const [mapOpen, setMapOpen] = useState(false);
+  const [mapOpen, setMapOpen]           = useState(false);
   const [inventoryOpen, setInventoryOpen] = useState(false);
 
   const [objectDefs, setObjectDefs] = useState({});
@@ -57,41 +57,56 @@ export default function App() {
   const { socket, isReady, worldSeed, myId, players, me, identify } =
     useGameSocket();
 
-  const canvasRef = useRef(null);
-
+  const canvasRef    = useRef(null);
   const camTargetRef = useRef({ x: 0, y: 0 });
   const camSmoothRef = useRef({ x: 0, y: 0 });
 
-  // ✅ Shared ref written by useLocalPlayerPrediction (in PlayerRenderer)
+  // Shared ref written by useLocalPlayerPrediction (in PlayerRenderer)
   // and read by MainViewport's render loop each frame.
   // Do NOT use React state — this must be zero-overhead.
   const predictedLocalPosRef = useRef(null);
 
-  // ✅ REMOVED: the old useEffect that wrote camTargetRef from `me` every snapshot.
-  // That was overriding the prediction hook's smooth position with a raw server
-  // position every 50ms, causing the camera to stutter.
+  // ✅ This ref holds PlayerRenderer's stepPrediction function.
+  // MainViewport calls it at the top of every render frame via
+  // onStepPredictionReady so prediction and drawing are always in sync.
+  const stepPredictionRef = useRef(null);
+
+  // Stable callback passed to PlayerRenderer as onStepPredictionReady.
+  // PlayerRenderer calls this once on mount with its stepPrediction fn.
+  const handleStepPredictionReady = useCallback((fn) => {
+    stepPredictionRef.current = fn;
+  }, []);
+
+  // Stable callback passed to MainViewport as onStepPredictionReady.
+  // MainViewport stores the setter and calls stepPredictionRef inside render.
+  // We pass the ref's setter directly — MainViewport will call it with
+  // PlayerRenderer's stepPrediction once wired up.
   //
-  // Instead: only initialize camSmoothRef on first valid position, then let
-  // useLocalPlayerPrediction own camTargetRef from that point on.
+  // The simplest approach: just give MainViewport direct access to
+  // stepPredictionRef so it can call .current(dt) itself each frame.
+  // We do this by passing a stable "register" callback.
+  const registerStepPrediction = useCallback((fn) => {
+    // fn is the stepPrediction from PlayerRenderer
+    stepPredictionRef.current = fn;
+  }, []);
+
+  // Only initialize camera on first valid position — then prediction owns it
   const camInitializedRef = useRef(false);
   useEffect(() => {
-    if (camInitializedRef.current) return; // only run once
+    if (camInitializedRef.current) return;
     if (!me) return;
     const x = Number(me.x);
     const y = Number(me.y);
     if (!Number.isFinite(x) || !Number.isFinite(y)) return;
 
-    // Snap both refs to starting position so there's no initial camera jump
-    camTargetRef.current = { x, y };
-    camSmoothRef.current = { x, y };
+    camTargetRef.current         = { x, y };
+    camSmoothRef.current         = { x, y };
     predictedLocalPosRef.current = { x, y };
-    camInitializedRef.current = true;
+    camInitializedRef.current    = true;
   }, [me]);
 
   const world = useWorldChunks({ preloadRadiusChunks: 2 });
-
   const { renderMapFrame } = useWorldMapRenderer({ world, me });
-
   const { objects: worldObjects } = useWorldObjects({ socket, me, radius: 2400 });
 
   useEffect(() => {
@@ -100,7 +115,7 @@ export default function App() {
       .then((r) => r.json())
       .then((j) => {
         const list = j?.objects || [];
-        const map = {};
+        const map  = {};
         for (const o of list) {
           const id = String(o.id ?? o.key ?? o.name ?? "");
           if (!id) continue;
@@ -111,11 +126,10 @@ export default function App() {
       .catch(() => {});
   }, [isReady]);
 
-  // session boot
+  // Session boot
   useEffect(() => {
     async function init() {
-      const { account: storedAccount, character: storedChar } =
-        loadStoredSession();
+      const { account: storedAccount, character: storedChar } = loadStoredSession();
 
       if (!storedAccount?.token) {
         setAccount(null);
@@ -144,12 +158,9 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!isReady) return;
-    if (!character) return;
-
+    if (!isReady || !character) return;
     const characterId = character._id || character.id;
     if (!characterId) return;
-
     identify(characterId, account?.role);
   }, [isReady, character, identify, account?.role]);
 
@@ -157,17 +168,17 @@ export default function App() {
   const canMountWorld =
     hasPickedCharacter && isReady && Number.isFinite(worldSeed);
 
-  const canMountWorldRef = useRef(false);
-  const inventoryOpenRef = useRef(false);
-  const mapOpenRef = useRef(false);
+  const canMountWorldRef  = useRef(false);
+  const inventoryOpenRef  = useRef(false);
+  const mapOpenRef        = useRef(false);
 
   useEffect(() => { canMountWorldRef.current = canMountWorld; }, [canMountWorld]);
   useEffect(() => { inventoryOpenRef.current = inventoryOpen; }, [inventoryOpen]);
-  useEffect(() => { mapOpenRef.current = mapOpen; }, [mapOpen]);
+  useEffect(() => { mapOpenRef.current       = mapOpen;       }, [mapOpen]);
 
   useEffect(() => {
     const onKeyDown = (e) => {
-      const tag = (e.target?.tagName || "").toLowerCase();
+      const tag      = (e.target?.tagName || "").toLowerCase();
       const isTyping =
         tag === "input" || tag === "textarea" || e.target?.isContentEditable;
       if (isTyping) return;
@@ -245,7 +256,10 @@ export default function App() {
           otherSpriteSrc="/art/items/sprites/NovicePyromancer.gif"
           playerSpriteW={16}
           playerSpriteH={16}
-          predictedLocalPosRef={predictedLocalPosRef}  // ✅ canvas reads predicted pos here
+          predictedLocalPosRef={predictedLocalPosRef}
+          // ✅ MainViewport will call this with its internal setter,
+          // which PlayerRenderer then fills via onStepPredictionReady
+          onStepPredictionReady={registerStepPrediction}
         />
       )}
 
@@ -259,8 +273,11 @@ export default function App() {
           canvasRef={canvasRef}
           zoom={zoom}
           camSmoothRef={camSmoothRef}
-          camTargetRef={camTargetRef}              // ✅ prediction writes camera here
-          predictedLocalPosRef={predictedLocalPosRef}  // ✅ prediction writes pos here
+          camTargetRef={camTargetRef}
+          predictedLocalPosRef={predictedLocalPosRef}
+          // ✅ PlayerRenderer calls this once on mount with stepPrediction.
+          // MainViewport's render loop then calls it each frame.
+          onStepPredictionReady={registerStepPrediction}
         />
       )}
 
@@ -293,7 +310,6 @@ export default function App() {
         onClose={() => setMapOpen(false)}
         renderMapFrame={renderMapFrame}
       />
-
     </div>
   );
 }
