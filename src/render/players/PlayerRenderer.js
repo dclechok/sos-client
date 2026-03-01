@@ -125,7 +125,7 @@ export default function PlayerRenderer({
   const onMoveToDelegate = useCallback((pos) => onMoveToRef.current?.(pos), []);
   const getMyPosDelegate = useCallback(() => getMyPosRef.current?.(), []);
 
-  const input = usePlayerInput({
+  usePlayerInput({
     enabled:        inputEnabled,
     sendRateHz,
     screenToWorld,

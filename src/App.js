@@ -1,6 +1,6 @@
 // App.js
 import "./styles/App.css";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 
 import DisplayCheck from "./DisplayCheck";
 import Spinner from "./Spinner";
@@ -43,10 +43,10 @@ function useWindowSize() {
 }
 
 export default function App() {
-  const [account, setAccount]   = useState(undefined);
+  const [account, setAccount]     = useState(undefined);
   const [character, setCharacter] = useState(undefined);
 
-  const [mapOpen, setMapOpen]           = useState(false);
+  const [mapOpen, setMapOpen]             = useState(false);
   const [inventoryOpen, setInventoryOpen] = useState(false);
 
   const [objectDefs, setObjectDefs] = useState({});
@@ -57,40 +57,12 @@ export default function App() {
   const { socket, isReady, worldSeed, myId, players, me, identify } =
     useGameSocket();
 
-  const canvasRef    = useRef(null);
-  const camTargetRef = useRef({ x: 0, y: 0 });
-  const camSmoothRef = useRef({ x: 0, y: 0 });
-
-  // Shared ref written by useLocalPlayerPrediction (in PlayerRenderer)
-  // and read by MainViewport's render loop each frame.
-  // Do NOT use React state — this must be zero-overhead.
+  const canvasRef           = useRef(null);
+  const camTargetRef        = useRef({ x: 0, y: 0 });
+  const camSmoothRef        = useRef({ x: 0, y: 0 });
   const predictedLocalPosRef = useRef(null);
 
-  // ✅ This ref holds PlayerRenderer's stepPrediction function.
-  // MainViewport calls it at the top of every render frame via
-  // onStepPredictionReady so prediction and drawing are always in sync.
-  const stepPredictionRef = useRef(null);
-
-  // Stable callback passed to PlayerRenderer as onStepPredictionReady.
-  // PlayerRenderer calls this once on mount with its stepPrediction fn.
-  const handleStepPredictionReady = useCallback((fn) => {
-    stepPredictionRef.current = fn;
-  }, []);
-
-  // Stable callback passed to MainViewport as onStepPredictionReady.
-  // MainViewport stores the setter and calls stepPredictionRef inside render.
-  // We pass the ref's setter directly — MainViewport will call it with
-  // PlayerRenderer's stepPrediction once wired up.
-  //
-  // The simplest approach: just give MainViewport direct access to
-  // stepPredictionRef so it can call .current(dt) itself each frame.
-  // We do this by passing a stable "register" callback.
-  const registerStepPrediction = useCallback((fn) => {
-    // fn is the stepPrediction from PlayerRenderer
-    stepPredictionRef.current = fn;
-  }, []);
-
-  // Only initialize camera on first valid position — then prediction owns it
+  // Only initialize camera on first valid position
   const camInitializedRef = useRef(false);
   useEffect(() => {
     if (camInitializedRef.current) return;
@@ -168,9 +140,9 @@ export default function App() {
   const canMountWorld =
     hasPickedCharacter && isReady && Number.isFinite(worldSeed);
 
-  const canMountWorldRef  = useRef(false);
-  const inventoryOpenRef  = useRef(false);
-  const mapOpenRef        = useRef(false);
+  const canMountWorldRef = useRef(false);
+  const inventoryOpenRef = useRef(false);
+  const mapOpenRef       = useRef(false);
 
   useEffect(() => { canMountWorldRef.current = canMountWorld; }, [canMountWorld]);
   useEffect(() => { inventoryOpenRef.current = inventoryOpen; }, [inventoryOpen]);
@@ -257,9 +229,6 @@ export default function App() {
           playerSpriteW={16}
           playerSpriteH={16}
           predictedLocalPosRef={predictedLocalPosRef}
-          // ✅ MainViewport will call this with its internal setter,
-          // which PlayerRenderer then fills via onStepPredictionReady
-          onStepPredictionReady={registerStepPrediction}
         />
       )}
 
@@ -275,9 +244,6 @@ export default function App() {
           camSmoothRef={camSmoothRef}
           camTargetRef={camTargetRef}
           predictedLocalPosRef={predictedLocalPosRef}
-          // ✅ PlayerRenderer calls this once on mount with stepPrediction.
-          // MainViewport's render loop then calls it each frame.
-          onStepPredictionReady={registerStepPrediction}
         />
       )}
 
