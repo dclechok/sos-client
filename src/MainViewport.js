@@ -1,12 +1,7 @@
 // src/MainViewport.jsx
 //
-// Key changes:
-// - Accepts onStepPredictionReady prop — PlayerRenderer calls this with its
-//   stepPrediction function once on mount.
-// - render() calls stepPredictionRef.current(frame.dt) at the very top, so
-//   prediction advances exactly once per rendered frame, fully synchronized.
-//   This replaces the old standalone RAF loop in PlayerRenderer.
-// - Everything else (stable render callback, ref mirroring) is unchanged.
+// render() must stay stable (empty deps) so useViewportRenderer never restarts
+// its RAF loop. Any changing values are read through refs inside render().
 
 import "./styles/MainViewport.css";
 import { useViewportRenderer } from "./render/viewport/useViewportRenderer";
@@ -29,6 +24,10 @@ import { getSpriteByClassId }  from "./render/players/characterClasses";
 
 import { renderCollisionDebug } from "./render/systems/debug/collisionDebugRenderer";
 
+// ── These must match the constants in server/sockets/playerState.js ──────────
+const PLAYER_RADIUS    = 5;  // server: PLAYER_RADIUS
+const FOOT_OFFSET_Y    = 6;  // server: FOOT_OFFSET_Y
+
 export default function MainViewport({
   world,
   canvasRef,
@@ -47,11 +46,6 @@ export default function MainViewport({
   playerSpriteH  = 16,
 
   predictedLocalPosRef = null,
-
-  // ✅ PlayerRenderer calls this with its stepPrediction fn once on mount.
-  // We store it in a ref and call it at the top of every render frame so
-  // prediction and drawing are always in sync on the same RAF tick.
-  onStepPredictionReady,
 }) {
   const localCanvasRef = useRef(null);
   const refToUse       = canvasRef || localCanvasRef;
@@ -63,22 +57,6 @@ export default function MainViewport({
     canvas.addEventListener("wheel", onWheel, { passive: false });
     return () => canvas.removeEventListener("wheel", onWheel);
   }, [refToUse]);
-
-  // ─── stepPrediction ref — wired up by PlayerRenderer via onStepPredictionReady
-  const stepPredictionRef = useRef(null);
-
-  // Expose a stable setter so App.jsx can pass it down as a plain callback
-  // without needing to re-create anything.
-  const handleStepPredictionReady = useCallback((fn) => {
-    stepPredictionRef.current = fn;
-  }, []);
-
-  // Forward to whatever was passed in from outside (App.jsx passes it to PlayerRenderer)
-  useEffect(() => {
-    if (typeof onStepPredictionReady === "function") {
-      onStepPredictionReady(handleStepPredictionReady);
-    }
-  }, [onStepPredictionReady, handleStepPredictionReady]);
 
   // ─── Asset hooks ────────────────────────────────────────────────────────
   const atlas = useTerrainAtlas({
@@ -139,7 +117,7 @@ export default function MainViewport({
   useEffect(() => { playerSpriteWRef.current        = playerSpriteW;        }, [playerSpriteW]);
   useEffect(() => { playerSpriteHRef.current        = playerSpriteH;        }, [playerSpriteH]);
 
-  // Stable sprite resolver
+  // Stable sprite resolver — reads myId/sprites from refs
   const getPlayerSpriteSrc = useCallback((id, p) => {
     const fallback =
       id === myIdRef.current ? mySpriteSrcRef.current : otherSpriteSrcRef.current;
@@ -150,13 +128,8 @@ export default function MainViewport({
   const getPlayerSpriteSrcRef = useRef(getPlayerSpriteSrc);
   useEffect(() => { getPlayerSpriteSrcRef.current = getPlayerSpriteSrc; }, [getPlayerSpriteSrc]);
 
-  // ─── STABLE render callback ───────────────────────────────────────────────
-  // ✅ Steps prediction FIRST so camTargetRef and predictedLocalPosRef are
-  // up-to-date before terrain, sprites, or camera math runs this frame.
+  // ─── STABLE render callback — created once, reads all state from refs ─────
   const render = useCallback((ctx, frame) => {
-    // Step prediction in sync with this frame's dt — single authoritative step
-    stepPredictionRef.current?.(frame.dt);
-
     renderTerrain(ctx, frame, {
       world: worldRef.current,
       atlas: atlasRef.current,
@@ -184,13 +157,16 @@ export default function MainViewport({
 
     renderWeather(ctx, frame, { weather: weatherRef.current });
 
+    // Debug overlay — press ` to toggle
+    // playerRadius and playerFootOffsetY mirror server/sockets/playerState.js constants
     renderCollisionDebug(ctx, frame, {
-      objects:      worldObjectsRef.current,
-      objectDefs:   objectDefsRef.current,
-      playerPos:    predictedLocalPosRefRef.current?.current ?? null,
-      playerRadius: 6,
+      objects:           worldObjectsRef.current,
+      objectDefs:        objectDefsRef.current,
+      playerPos:         predictedLocalPosRefRef.current?.current ?? null,
+      playerRadius:      PLAYER_RADIUS,
+      playerFootOffsetY: FOOT_OFFSET_Y,
     });
-  }, []); // stable — all reads go through refs
+  }, []);
 
   useViewportRenderer({
     canvasRef:  refToUse,

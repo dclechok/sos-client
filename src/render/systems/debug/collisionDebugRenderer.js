@@ -22,9 +22,6 @@ const FILL = {
 
 const LABEL_STYLE = "10px monospace";
 
-/**
- * Convert a world coordinate to screen space using the same math as your renderer.
- */
 function worldToScreen(wx, wy, frame) {
   const { camX, camY, zoom: z, w, h } = frame;
   return {
@@ -37,18 +34,20 @@ function worldToScreen(wx, wy, frame) {
  * Main debug render call.
  *
  * @param {CanvasRenderingContext2D} ctx
- * @param {Object} frame   - from useViewportRenderer: { camX, camY, zoom, w, h }
+ * @param {Object} frame        - from useViewportRenderer: { camX, camY, zoom, w, h }
  * @param {Object} opts
- * @param {Array}  opts.objects      - worldObjects array (each has x, y, defId)
- * @param {Object} opts.objectDefs   - keyed by defId
- * @param {Object} [opts.playerPos]  - { x, y } to draw player hitbox (optional)
- * @param {number} [opts.playerRadius=6]
+ * @param {Array}  opts.objects           - worldObjects array (each has x, y, defId)
+ * @param {Object} opts.objectDefs        - keyed by defId
+ * @param {Object} [opts.playerPos]       - { x, y } sprite center (optional)
+ * @param {number} [opts.playerRadius=5]  - matches server PLAYER_RADIUS
+ * @param {number} [opts.playerFootOffsetY=6] - matches server FOOT_OFFSET_Y
  */
 export function renderCollisionDebug(ctx, frame, {
   objects = [],
   objectDefs = {},
   playerPos = null,
-  playerRadius = 6,
+  playerRadius = 5,
+  playerFootOffsetY = 6,
 } = {}) {
   if (!window.__collisionDebug) return;
 
@@ -67,10 +66,9 @@ export function renderCollisionDebug(ctx, frame, {
     const oy = Number(obj.y);
     const col = def.collision;
 
-    if (!def.blocksMovement && !col) continue; // skip non-blocking, non-collision objs
+    if (!def.blocksMovement && !col) continue;
 
     if (!col) {
-      // Fallback AABB (same logic as server)
       const half = (def.sizePx ?? 16) * 0.5;
       drawRect(ctx, frame, ox, oy, half * 2, half * 2, 0, 0, "aabb", obj.defId);
       continue;
@@ -87,9 +85,11 @@ export function renderCollisionDebug(ctx, frame, {
     }
   }
 
-  // Draw player hitbox if position provided
+  // Draw player hitbox offset down to feet — matches server FOOT_OFFSET_Y
   if (playerPos) {
-    const { sx, sy } = worldToScreen(playerPos.x, playerPos.y, frame);
+    const footX = playerPos.x;
+    const footY = playerPos.y + playerFootOffsetY;
+    const { sx, sy } = worldToScreen(footX, footY, frame);
     const r = playerRadius * z;
 
     ctx.beginPath();
@@ -123,17 +123,14 @@ function drawCircle(ctx, frame, ox, oy, radius, offX, offY, colorKey, label) {
   ctx.strokeStyle = COLORS[colorKey];
   ctx.stroke();
 
-  // center dot
   ctx.beginPath();
   ctx.arc(sx, sy, 2, 0, Math.PI * 2);
   ctx.fillStyle = COLORS[colorKey];
   ctx.fill();
 
-  // label
   ctx.fillStyle = COLORS[colorKey];
   ctx.fillText(`${label} r=${radius}`, sx, sy - r - 8);
 
-  // draw offset line from object origin to collision center (helpful!)
   if (offX !== 0 || offY !== 0) {
     const { sx: osx, sy: osy } = worldToScreen(ox, oy, frame);
     ctx.beginPath();
@@ -144,7 +141,6 @@ function drawCircle(ctx, frame, ox, oy, radius, offX, offY, colorKey, label) {
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // origin dot
     ctx.beginPath();
     ctx.arc(osx, osy, 2, 0, Math.PI * 2);
     ctx.fillStyle = "rgba(255,255,255,0.6)";
@@ -169,10 +165,6 @@ function drawRect(ctx, frame, ox, oy, w, h, offX, offY, colorKey, label) {
   ctx.fillText(`${label} ${Math.round(w)}×${Math.round(h)}`, sx, sy);
 }
 
-/**
- * Call once at app startup to wire up the backtick toggle.
- * e.g. hookCollisionDebugToggle() in your App.jsx useEffect.
- */
 export function hookCollisionDebugToggle() {
   const handler = (e) => {
     if (e.key === "`") {
