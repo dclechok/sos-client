@@ -70,6 +70,44 @@
 }
 .admin-panel__close:hover{ color: rgba(255,160,160,0.95); }
 
+/* Tabs */
+.admin-tabs{
+  display:flex;
+  gap: 6px;
+  padding: 8px 10px 0 10px;
+}
+
+.admin-tab{
+  flex: 1;
+  padding: 6px 8px;
+
+  border-radius: 6px;
+  border: 1px solid rgba(210,220,255,0.14);
+  background: rgba(255,255,255,0.02);
+
+  color: rgba(240,244,255,0.78);
+  cursor: pointer;
+
+  font-family: "Cinzel", serif;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+
+  transition: border-color .12s ease, background .12s ease, color .12s ease;
+}
+
+.admin-tab:hover{
+  border-color: rgba(110,180,255,0.30);
+  background: rgba(110,180,255,0.05);
+  color: rgba(245,250,255,0.92);
+}
+
+.admin-tab.is-active{
+  border-color: rgba(140,110,210,0.55);
+  background: rgba(140,110,210,0.10);
+  color: rgba(255,255,255,0.92);
+}
+
 /* Body */
 .admin-panel__body{
   padding: 10px;
@@ -181,6 +219,23 @@
   color: rgba(240,244,255,0.86);
 }
 
+/* Checkbox row (Debug tab) */
+.admin-panel__checkbox-row{
+  display:flex;
+  align-items:center;
+  gap: 8px;
+  padding: 6px 6px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(210,220,255,0.10);
+  color: rgba(240,244,255,0.82);
+  cursor: pointer;
+}
+
+.admin-panel__checkbox-row input{
+  accent-color: rgba(140,110,210,0.85);
+}
+
 /* Menu */
 .admin-panel__menu{
   position: relative;
@@ -283,7 +338,7 @@
   box-shadow: 0 0 0 1px rgba(0,0,0,0.55);
 }
 
-/* ✅ delete “object outline” variant (used when hovering a real object) */
+/* delete “object outline” variant (used when hovering a real object) */
 .admin-preview__box--delete{
   border-color: rgba(255,120,120,0.85);
   background: rgba(255,120,120,0.10);

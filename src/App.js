@@ -22,7 +22,7 @@ import MapDrawer from "./MapDrawer";
 import { useWorldMapRenderer } from "./render/systems/map/useWorldMapRenderer";
 
 import { useWorldChunks } from "./world/useWorldChunks";
-import AdminPanel from "./AdminPanel.js";
+import AdminPanel from "./admin-panel/AdminPanel";
 
 import { useWorldObjects } from "./world/useWorldObjects";
 
