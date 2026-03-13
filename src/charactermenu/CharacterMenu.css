@@ -32,6 +32,7 @@ body {
   z-index: 999999;
   background: rgba(0, 0, 0, 0.16);
   overflow: visible;
+  pointer-events: none;
 }
 
 .rightpanel {
@@ -54,6 +55,8 @@ body {
 
   color: var(--rp-text);
   font-family: "Cinzel", serif;
+
+  pointer-events: auto;
 }
 
 .rightpanel__header {
