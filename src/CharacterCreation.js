@@ -9,6 +9,7 @@ import { createCharacter } from "./api/characterApi";
  * - Fantasy/gothic parchment UI
  * - Pick name + class
  * - Live sprite preview
+ * - Shows default starting stats for selected class
  * - Calls POST /api/characters/:accountId via createCharacter()
  *
  * Props:
@@ -22,14 +23,26 @@ export default function CharacterCreation({ account, onCreated, onCancel }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
-  // ensure we always have a valid class selected
   useEffect(() => {
-    if (!classId && CHARACTER_CLASSES[0]?.id) setClassId(CHARACTER_CLASSES[0].id);
+    if (!classId && CHARACTER_CLASSES[0]?.id) {
+      setClassId(CHARACTER_CLASSES[0].id);
+    }
   }, [classId]);
 
   const selectedClass = useMemo(() => {
     return CHARACTER_CLASSES.find((c) => c.id === classId) || CHARACTER_CLASSES[0];
   }, [classId]);
+
+  const selectedStats = useMemo(() => {
+    return selectedClass?.stats ?? {
+      strength: 5,
+      dexterity: 5,
+      vitality: 5,
+      perception: 5,
+      intelligence: 5,
+      luck: 5,
+    };
+  }, [selectedClass]);
 
   const sanitizedName = useMemo(() => {
     return String(charName || "")
@@ -58,7 +71,6 @@ export default function CharacterCreation({ account, onCreated, onCancel }) {
         classId,
       });
 
-      // hand back to parent
       onCreated?.(created);
     } catch (e) {
       setErr(String(e?.message || "Failed to create character"));
@@ -67,11 +79,9 @@ export default function CharacterCreation({ account, onCreated, onCancel }) {
     }
   }, [account, canSubmit, classId, onCreated, sanitizedName]);
 
-  // Enter to create, Esc to cancel
   useEffect(() => {
     function onKey(e) {
       if (e.key === "Enter") {
-        // avoid submitting when in class list and user is scrolling
         e.preventDefault();
         submit();
       }
@@ -79,6 +89,7 @@ export default function CharacterCreation({ account, onCreated, onCancel }) {
         onCancel?.();
       }
     }
+
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [submit, onCancel]);
@@ -89,7 +100,8 @@ export default function CharacterCreation({ account, onCreated, onCancel }) {
         <div className="cc-header">
           <div className="cc-title">Create Your Vessel</div>
           <div className="cc-sub">
-            Choose a name, then bind a class. Your sprite is determined by class.
+            Choose a name, then bind a class. Your sprite and starting
+            attributes are determined by class.
           </div>
         </div>
 
@@ -123,6 +135,36 @@ export default function CharacterCreation({ account, onCreated, onCancel }) {
             {selectedClass?.description && (
               <div className="cc-preview-desc">{selectedClass.description}</div>
             )}
+
+            <div className="cc-stats-panel">
+              <div className="cc-stats-title">Starting Attributes</div>
+              <div className="cc-stats-grid">
+                <div className="cc-stat-row">
+                  <span className="cc-stat-label">Strength</span>
+                  <span className="cc-stat-value">{selectedStats.strength}</span>
+                </div>
+                <div className="cc-stat-row">
+                  <span className="cc-stat-label">Dexterity</span>
+                  <span className="cc-stat-value">{selectedStats.dexterity}</span>
+                </div>
+                <div className="cc-stat-row">
+                  <span className="cc-stat-label">Vitality</span>
+                  <span className="cc-stat-value">{selectedStats.vitality}</span>
+                </div>
+                <div className="cc-stat-row">
+                  <span className="cc-stat-label">Perception</span>
+                  <span className="cc-stat-value">{selectedStats.perception}</span>
+                </div>
+                <div className="cc-stat-row">
+                  <span className="cc-stat-label">Intelligence</span>
+                  <span className="cc-stat-value">{selectedStats.intelligence}</span>
+                </div>
+                <div className="cc-stat-row">
+                  <span className="cc-stat-label">Luck</span>
+                  <span className="cc-stat-value">{selectedStats.luck}</span>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Right: form */}
@@ -146,6 +188,7 @@ export default function CharacterCreation({ account, onCreated, onCancel }) {
             <div className="cc-class-grid">
               {CHARACTER_CLASSES.map((c) => {
                 const active = c.id === classId;
+
                 return (
                   <button
                     key={c.id}
@@ -157,6 +200,7 @@ export default function CharacterCreation({ account, onCreated, onCancel }) {
                       <div className="cc-class-name">{c.label}</div>
                       <div className="cc-class-role">{c.role}</div>
                     </div>
+
                     <div className="cc-class-desc">{c.description}</div>
                   </button>
                 );

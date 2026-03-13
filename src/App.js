@@ -26,7 +26,7 @@ import AdminPanel from "./admin-panel/AdminPanel";
 
 import { useWorldObjects } from "./world/useWorldObjects";
 
-import RightPanelMenu from "./RightPanelMenu";
+import CharacterMenu from "./charactermenu/CharacterMenu";
 
 const API = process.env.REACT_APP_API_BASE_URL || "";
 
@@ -263,7 +263,7 @@ export default function App() {
 
       {canMountWorld && inventoryOpen && (
         <div className="rightpanel-overlay">
-          <RightPanelMenu
+          <CharacterMenu
             account={account}
             character={character}
             onClose={() => setInventoryOpen(false)}
