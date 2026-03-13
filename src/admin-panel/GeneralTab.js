@@ -1,16 +1,30 @@
 import { useCallback, useEffect, useState } from "react";
 import { useClientToWorld } from "./useClientToWorld";
 
-export default function GeneralTab({ socket, canvasRef, camSmoothRef, zoom, closeNonce }) {
+export default function GeneralTab({
+  socket,
+  canvasRef,
+  camSmoothRef,
+  zoom,
+  closeNonce,
+}) {
   const [armed, setArmed] = useState(false);
   const [mouseClient, setMouseClient] = useState({ x: 0, y: 0 });
+  const [collisionDebug, setCollisionDebug] = useState(
+    !!window.__collisionDebug
+  );
 
   const clientToWorld = useClientToWorld({ canvasRef, camSmoothRef, zoom });
 
   const cancel = useCallback(() => setArmed(false), []);
-  useEffect(() => { cancel(); }, [closeNonce, cancel]);
+  useEffect(() => {
+    cancel();
+  }, [closeNonce, cancel]);
 
-  // mouse preview
+  useEffect(() => {
+    window.__collisionDebug = collisionDebug;
+  }, [collisionDebug]);
+
   useEffect(() => {
     const canvas = canvasRef?.current;
     if (!canvas) return;
@@ -20,13 +34,13 @@ export default function GeneralTab({ socket, canvasRef, camSmoothRef, zoom, clos
 
     const onMove = (e) => setMouseClient({ x: e.clientX, y: e.clientY });
     window.addEventListener("mousemove", onMove);
+
     return () => {
       window.removeEventListener("mousemove", onMove);
       canvas.style.cursor = "";
     };
   }, [armed, canvasRef]);
 
-  // click-to-teleport
   useEffect(() => {
     if (!armed) return;
     const canvas = canvasRef?.current;
@@ -35,37 +49,65 @@ export default function GeneralTab({ socket, canvasRef, camSmoothRef, zoom, clos
     const onClick = (e) => {
       const pt = clientToWorld(e.clientX, e.clientY);
       if (!pt) return;
-      socket?.emit("teleport", { x: Math.round(pt.x), y: Math.round(pt.y) });
+      socket?.emit("teleport", {
+        x: Math.round(pt.x),
+        y: Math.round(pt.y),
+      });
       setArmed(false);
     };
 
     const t = setTimeout(() => canvas.addEventListener("click", onClick), 50);
-    return () => { clearTimeout(t); canvas.removeEventListener("click", onClick); };
+    return () => {
+      clearTimeout(t);
+      canvas.removeEventListener("click", onClick);
+    };
   }, [armed, canvasRef, clientToWorld, socket]);
 
   return (
     <>
       {armed && (
-        <div className="admin-preview admin-preview--teleport" style={{ left: mouseClient.x, top: mouseClient.y }} />
+        <div
+          className="admin-preview admin-preview--teleport"
+          style={{ left: mouseClient.x, top: mouseClient.y }}
+        />
       )}
 
       <div className="admin-panel__section">
         <div className="admin-panel__section-label">Movement</div>
 
-        <div className="admin-panel__row">
+        <div className="admin-panel__row admin-panel__row--tight">
           <button
             className={`admin-btn${armed ? " admin-btn--active" : ""}`}
             onClick={() => setArmed((v) => !v)}
+            type="button"
           >
-            {armed ? "Target…" : "Teleport"}
+            {armed ? "Targeting" : "Teleport"}
           </button>
         </div>
 
         {armed && (
           <p className="admin-panel__hint">
-            Click the world to teleport. <kbd>Esc</kbd> cancels.
+            Click world to teleport. <kbd>Esc</kbd> cancels.
           </p>
         )}
+      </div>
+
+      <div className="admin-panel__section">
+        <div className="admin-panel__section-label">Debug</div>
+
+        <div className="admin-panel__row admin-panel__row--tight">
+          <button
+            className={`admin-btn${collisionDebug ? " admin-btn--active" : ""}`}
+            type="button"
+            onClick={() => setCollisionDebug((v) => !v)}
+          >
+            {collisionDebug ? "Collision: ON" : "Collision: OFF"}
+          </button>
+        </div>
+
+        <p className="admin-panel__hint">
+          Shows object collision shapes and player collision.
+        </p>
       </div>
     </>
   );

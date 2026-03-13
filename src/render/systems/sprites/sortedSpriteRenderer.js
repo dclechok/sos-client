@@ -1,20 +1,21 @@
 // src/render/systems/sprites/sortedSpriteRenderer.js
 // Unified sprite renderer: world objects + players in ONE depth-sorted pass.
 //
-// Changes:
-// - Accepts `predictedLocalPos` (optional) — use this for local player rendering
-//   instead of server snapshot position, so player sprite is glued to predicted pos.
-// - Objects: depth anchor defaults to the BOTTOM of the sprite automatically.
-//   This means you only need depthOffsetY for unusual cases (e.g. a tall tree
-//   whose trunk base is not at the very bottom of the sprite).
-// - Players: depth anchor is FEET = center.y + spriteH/2
-//   (spriteH is in world units — same scale as world coords)
+// Includes:
+// - local predicted player rendering
+// - object / player depth sorting
+// - optional object lighting
+// - optional occluder fading when the LOCAL player goes behind tall objects
+//
+// Object def usage:
+//   occludesPlayer: true
 
 const IMG_CACHE = new Map();
 const SMOOTH_POS = new Map();
 
 const SMOOTH_FOLLOW_REMOTE = 30;
 const SMOOTH_FOLLOW_OBJECTS = 28;
+const DEFAULT_OCCLUDE_ALPHA = 0.35;
 
 function getImgRecord(src) {
   if (!src) return null;
@@ -147,20 +148,6 @@ function makeObjectDrawable(obj, def, t) {
   const anchorX = Number.isFinite(def?.anchorX) ? Number(def.anchorX) : 0.5;
   const anchorY = Number.isFinite(def?.anchorY) ? Number(def.anchorY) : 0.5;
 
-  // Default depth = the BOTTOM of the sprite in world space.
-  // This is the right default for nearly every object: small things like
-  // campfires, rocks, and chests naturally sort correctly with no config.
-  //
-  // For tall objects where the visual "base" is above the sprite bottom
-  // (e.g. a tree whose trunk meets the ground partway up the sprite),
-  // use depthOffsetY (in world units) to shift the sort point upward.
-  // e.g. depthOffsetY: -40 moves the depth anchor 40 world units above
-  // the sprite bottom.
-  //
-  // Formula:
-  //   obj.y is the anchor point on the sprite (anchorY fraction from top).
-  //   Sprite bottom = obj.y + (baseSize * anchorY)  [world units below anchor]
-  //   depthYWorld   = sprite bottom + depthOffsetY
   const depthOffsetY = Number(def?.depthOffsetY || 0);
   const spriteBottomY = Number(obj?.y || 0) + baseSize * (1 - anchorY);
   const depthYWorld = spriteBottomY + depthOffsetY;
@@ -181,23 +168,9 @@ function makeObjectDrawable(obj, def, t) {
   };
 }
 
-/**
- * Player drawable.
- *
- * Server sends CENTER position (x, y).
- * We compute feetY = centerY + spriteH/2.
- * spriteH here is in WORLD units (same coordinate space as x,y).
- *
- * For a 16px sprite at zoom=2: the sprite covers 8 world units tall.
- * So feetY = serverY + 8.
- *
- * IMPORTANT: if predictedPos is provided (local player), use that instead
- * of the server snapshot so rendering stays glued to prediction.
- */
 function makePlayerDrawable(id, p, spriteSrc, spriteW, spriteH, { isLocal, predictedPos }) {
   if (!spriteSrc) return null;
 
-  // Use predicted position for local, server snapshot for remotes
   const wx = isLocal && predictedPos
     ? Number(predictedPos.x)
     : Number(p?.x || 0);
@@ -206,8 +179,6 @@ function makePlayerDrawable(id, p, spriteSrc, spriteW, spriteH, { isLocal, predi
     ? Number(predictedPos.y)
     : Number(p?.y || 0);
 
-  // spriteH is the sprite height in WORLD UNITS.
-  // Half the sprite is below center → that's where feet are.
   const halfH = Number(spriteH || 16) * 0.5;
   const feetY = wyCenter + halfH;
 
@@ -217,13 +188,13 @@ function makePlayerDrawable(id, p, spriteSrc, spriteW, spriteH, { isLocal, predi
     kind: "player",
     id: String(id),
     wx,
-    wy: feetY,          // feet position in world space (draw anchor)
-    depthYWorld: feetY, // sort by feet
+    wy: feetY,
+    depthYWorld: feetY,
     spriteSrc,
     baseW: Number(spriteW || 16),
     baseH: Number(spriteH || 16),
     anchorX: 0.5,
-    anchorY: 1.0,       // draw sprite bottom-anchored at feet
+    anchorY: 1.0,
     facing,
     isLocal: Boolean(isLocal),
     p,
@@ -238,6 +209,101 @@ function drawImageFlippedX(ctx, img, sx, sy, dw, dh, anchorX, anchorY) {
   ctx.drawImage(img, dx, dy, dw, dh);
 }
 
+function getLocalPlayerBody(playersById, myId, predictedLocalPos, playerSpriteW, playerSpriteH) {
+  if (myId == null) return null;
+
+  const p = playersById?.[myId];
+  if (!p && !predictedLocalPos) return null;
+
+  const cx = predictedLocalPos
+    ? Number(predictedLocalPos.x)
+    : Number(p?.x || 0);
+
+  const centerY = predictedLocalPos
+    ? Number(predictedLocalPos.y)
+    : Number(p?.y || 0);
+
+  const feetY = centerY + Number(playerSpriteH || 16) * 0.5;
+
+  const bodyW = Math.max(6, Number(playerSpriteW || 16) * 0.6);
+  const bodyH = Number(playerSpriteH || 16);
+
+  return {
+    left: cx - bodyW * 0.5,
+    right: cx + bodyW * 0.5,
+    top: feetY - bodyH,
+    bottom: feetY,
+    centerX: cx,
+    feetY,
+  };
+}
+
+function getObjectWorldRect(d) {
+  const baseW = Number(d?.baseW || 16);
+  const baseH = Number(d?.baseH || 16);
+  const anchorX = Number(d?.anchorX ?? 0.5);
+  const anchorY = Number(d?.anchorY ?? 0.5);
+
+  const left = Number(d.wx || 0) - baseW * anchorX;
+  const top = Number(d.wy || 0) - baseH * anchorY;
+
+  return {
+    left,
+    top,
+    right: left + baseW,
+    bottom: top + baseH,
+  };
+}
+
+function getOcclusionZone(d) {
+  const rect = getObjectWorldRect(d);
+  const baseW = Number(d?.baseW || 16);
+  const baseH = Number(d?.baseH || 16);
+
+  // Much smaller zone than the whole sprite.
+  // This keeps the tree from fading while you're merely near it.
+  const halfWidth = Math.max(10, Math.min(18, baseW * 0.18));
+  const topInset = Math.round(baseH * 0.12);
+  const bottomInset = 2;
+
+  const bottom = Math.min(rect.bottom, d.depthYWorld - bottomInset);
+  const top = Math.min(bottom, rect.top + topInset);
+
+  return {
+    left: Number(d.wx || 0) - halfWidth,
+    right: Number(d.wx || 0) + halfWidth,
+    top,
+    bottom,
+  };
+}
+
+function rectsOverlap(a, b) {
+  return (
+    a.left < b.right &&
+    a.right > b.left &&
+    a.top < b.bottom &&
+    a.bottom > b.top
+  );
+}
+
+function shouldObjectFadeForPlayer(d, playerBody) {
+  if (!d || d.kind !== "object" || !playerBody) return false;
+
+  const def = d.def || {};
+  if (!def.occludesPlayer) return false;
+
+  const zone = getOcclusionZone(d);
+
+  // Must actually be behind the object's depth line
+  if (playerBody.feetY >= d.depthYWorld) return false;
+
+  return rectsOverlap(playerBody, zone);
+}
+
+function getObjectAlpha(d, playerBody) {
+  return shouldObjectFadeForPlayer(d, playerBody) ? DEFAULT_OCCLUDE_ALPHA : 1;
+}
+
 export function renderSortedSprites(
   ctx,
   frame,
@@ -249,8 +315,6 @@ export function renderSortedSprites(
     playerIds = null,
     myId = null,
 
-    // NEW: predicted local player position { x, y }
-    // Pass getPredictedPos() result here each frame for glitch-free local rendering
     predictedLocalPos = null,
 
     getPlayerSpriteSrc = null,
@@ -263,7 +327,6 @@ export function renderSortedSprites(
 
   const drawables = [];
 
-  // Objects
   for (const obj of objects || []) {
     if (!obj) continue;
     const defId = String(obj.defId || "");
@@ -272,7 +335,6 @@ export function renderSortedSprites(
     if (d) drawables.push(d);
   }
 
-  // Players
   if (playersById && typeof getPlayerSpriteSrc === "function") {
     const ids = Array.isArray(playerIds) ? playerIds : Object.keys(playersById || {});
     for (const id of ids) {
@@ -282,7 +344,6 @@ export function renderSortedSprites(
       const isLocal = myId != null && String(id) === String(myId);
       const d = makePlayerDrawable(id, p, src, playerSpriteW, playerSpriteH, {
         isLocal,
-        // only pass predicted pos to local player
         predictedPos: isLocal ? predictedLocalPos : null,
       });
       if (d) drawables.push(d);
@@ -291,7 +352,14 @@ export function renderSortedSprites(
 
   if (!drawables.length) return;
 
-  // Stable sort: depthY then x then id
+  const localPlayerBody = getLocalPlayerBody(
+    playersById,
+    myId,
+    predictedLocalPos,
+    playerSpriteW,
+    playerSpriteH
+  );
+
   drawables.sort((a, b) => {
     const dy = a.depthYWorld - b.depthYWorld;
     if (dy) return dy;
@@ -318,14 +386,12 @@ export function renderSortedSprites(
     const img = rec.img;
     if (!isDrawable(img)) continue;
 
-    // Smooth only non-local entities
     let sp = { x: d.wx, y: d.wy };
     if (d.kind === "object") {
       sp = smoothWorldPos(d.id, d.wx, d.wy, dt, SMOOTH_FOLLOW_OBJECTS);
     } else if (!d.isLocal) {
       sp = smoothWorldPos(d.id, d.wx, d.wy, dt, SMOOTH_FOLLOW_REMOTE);
     }
-    // Local player: d.wx/d.wy already IS the predicted pos — no smoothing needed
 
     const { sx, sy, z } = worldToScreen(frame, sp.x, sp.y);
 
@@ -335,7 +401,6 @@ export function renderSortedSprites(
     const dx = Math.round(sx - dw * d.anchorX);
     const dy = Math.round(sy - dh * d.anchorY);
 
-    // Object lights
     if (d.kind === "object") {
       const light = d.def?.light;
       if (light?.radius) {
@@ -348,24 +413,30 @@ export function renderSortedSprites(
 
     if (d.kind === "object") {
       const interactive = isInteractive(d.def, d.obj);
+      const objectAlpha = getObjectAlpha(d, localPlayerBody);
+
+      ctx.globalAlpha = objectAlpha;
+
       if (interactive) {
         ctx.shadowColor = "rgba(165,130,255,0.30)";
         ctx.shadowBlur = 10 * z;
       }
+
       ctx.drawImage(img, dx, dy, dw, dh);
+
       if (interactive) {
+        const baseAlpha = ctx.globalAlpha;
         ctx.shadowBlur = 0;
-        ctx.globalAlpha = 0.32;
+        ctx.globalAlpha = baseAlpha * 0.32;
         const o = Math.max(1, Math.round(1 * z));
         ctx.drawImage(img, dx - o, dy, dw, dh);
         ctx.drawImage(img, dx + o, dy, dw, dh);
         ctx.drawImage(img, dx, dy - o, dw, dh);
         ctx.drawImage(img, dx, dy + o, dw, dh);
-        ctx.globalAlpha = 1;
+        ctx.globalAlpha = baseAlpha;
         ctx.drawImage(img, dx, dy, dw, dh);
       }
     } else {
-      // player
       if (d.facing === "left") {
         drawImageFlippedX(ctx, img, sx, sy, dw, dh, d.anchorX, d.anchorY);
       } else {

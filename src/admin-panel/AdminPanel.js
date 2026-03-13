@@ -1,28 +1,24 @@
-// src/admin-panel/AdminPanel.js
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import useDraggablePanel from "./useDraggablePanel";
-import "../styles/AdminPanel.css"; // <-- change to "../styles/AdminPanel.css" if that's where it lives
+import "../styles/AdminPanel.css";
 import GeneralTab from "./GeneralTab";
 import CreatorTab from "./CreatorTab";
 
 export default function AdminPanel(props) {
   const [visible, setVisible] = useState(false);
-  const [activeTab, setActiveTab] = useState("general");
-
-  // broadcast “close/cancel tools” to tabs
+  const [activeTab, setActiveTab] = useState("creator");
   const [closeNonce, setCloseNonce] = useState(0);
 
-  // ✅ draggable panel position (persists)
   const { pos, onMouseDown } = useDraggablePanel({
-    initial: { x: 80, y: 80 },
+    initial: { x: 48, y: 48 },
     handleSelector: ".admin-panel__header",
-    storageKey: "admin_panel_pos_v1",
+    storageKey: "admin_panel_pos_v2",
   });
 
   const tabs = useMemo(
     () => [
+      { id: "creator", label: "Editor" },
       { id: "general", label: "General" },
-      { id: "creator", label: "Creator" },
     ],
     []
   );
@@ -32,37 +28,32 @@ export default function AdminPanel(props) {
     setCloseNonce((n) => n + 1);
   }, []);
 
-  // keep latest closeAll in a ref so key handler never goes stale
   const closeAllRef = useRef(closeAll);
   useEffect(() => {
     closeAllRef.current = closeAll;
   }, [closeAll]);
 
-  // ✅ Backtick + Esc in shell
   useEffect(() => {
     const onKeyDown = (e) => {
       const tag = (e.target?.tagName || "").toLowerCase();
       const isTyping =
         tag === "input" || tag === "textarea" || e.target?.isContentEditable;
 
-      // Don’t toggle while typing
       if (isTyping) return;
 
       if (e.key === "`") {
         e.preventDefault();
         setVisible((v) => {
           const next = !v;
-          if (!next) setCloseNonce((n) => n + 1); // closing cancels tools
+          if (!next) setCloseNonce((n) => n + 1);
           return next;
         });
         return;
       }
 
-      if (e.key === "Escape") {
-        if (visible) {
-          e.preventDefault();
-          closeAllRef.current();
-        }
+      if (e.key === "Escape" && visible) {
+        e.preventDefault();
+        closeAllRef.current();
       }
     };
 
@@ -74,25 +65,25 @@ export default function AdminPanel(props) {
 
   return (
     <div
-      className="admin-panel"
+      className="admin-panel admin-panel--compact"
       style={{ left: pos.x, top: pos.y }}
       onMouseDown={onMouseDown}
     >
       <div className="admin-panel__header" title="Drag to move">
-        <span className="admin-panel__title">Admin</span>
+        <span className="admin-panel__title">World Editor</span>
         <button className="admin-panel__close" onClick={closeAll} type="button">
           ✕
         </button>
       </div>
 
-      <div className="admin-tabs">
+      <div className="admin-tabs admin-tabs--compact">
         {tabs.map((t) => (
           <button
             key={t.id}
             className={`admin-tab${activeTab === t.id ? " is-active" : ""}`}
             onClick={() => {
               setActiveTab(t.id);
-              setCloseNonce((n) => n + 1); // switching tabs cancels any active targeting tool
+              setCloseNonce((n) => n + 1);
             }}
             type="button"
           >
@@ -101,7 +92,7 @@ export default function AdminPanel(props) {
         ))}
       </div>
 
-      <div className="admin-panel__body">
+      <div className="admin-panel__body admin-panel__body--compact">
         {activeTab === "general" && (
           <GeneralTab {...props} closeNonce={closeNonce} />
         )}
