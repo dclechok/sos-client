@@ -9,6 +9,45 @@ import {
   getSkinToneById,
 } from "./utils/palletes";
 
+const HAIR_COLORS = [
+  "#161616",
+  "#241c18",
+  "#2b1d16",
+  "#3a2a20",
+  "#4a3326",
+  "#5a4331",
+  "#6a503a",
+  "#8a6847",
+  "#a37a52",
+  "#b88b5e",
+  "#d4d4d4",
+  "#c9b37e",
+];
+
+function SwatchPicker({ options, value, onChange, className = "" }) {
+  return (
+    <div className={`cc-swatch-strip ${className}`}>
+      {options.map((opt) => {
+        const color = typeof opt === "string" ? opt : opt.value;
+        const key = typeof opt === "string" ? opt : opt.id;
+        const active = color === value;
+
+        return (
+          <button
+            key={key}
+            type="button"
+            className={`cc-swatch-dot ${active ? "is-active" : ""}`}
+            style={{ "--swatch": color }}
+            onClick={() => onChange(color)}
+            title={key}
+            aria-label={key}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
 export default function CharacterCreation({ account, onCreated, onCancel }) {
   const [charName, setCharName] = useState("");
   const [classId, setClassId] = useState(CHARACTER_CLASSES[0]?.id || "");
@@ -18,9 +57,7 @@ export default function CharacterCreation({ account, onCreated, onCancel }) {
   const [skinToneId, setSkinToneId] = useState(
     SKIN_TONES[2]?.id || "light_neutral_1"
   );
-  const [eyeColor, setEyeColor] = useState(
-    EYE_COLORS[0]?.value || "#3b271b"
-  );
+  const [eyeColor, setEyeColor] = useState(EYE_COLORS[0]?.value || "#3b271b");
 
   const [hairStyle, setHairStyle] = useState("none");
   const [hairColor, setHairColor] = useState("#2b1d16");
@@ -34,18 +71,22 @@ export default function CharacterCreation({ account, onCreated, onCancel }) {
   }, [classId]);
 
   const selectedClass = useMemo(() => {
-    return CHARACTER_CLASSES.find((c) => c.id === classId) || CHARACTER_CLASSES[0];
+    return (
+      CHARACTER_CLASSES.find((c) => c.id === classId) || CHARACTER_CLASSES[0]
+    );
   }, [classId]);
 
   const selectedStats = useMemo(() => {
-    return selectedClass?.stats ?? {
-      strength: 5,
-      dexterity: 5,
-      vitality: 5,
-      perception: 5,
-      intelligence: 5,
-      luck: 5,
-    };
+    return (
+      selectedClass?.stats ?? {
+        strength: 5,
+        dexterity: 5,
+        vitality: 5,
+        perception: 5,
+        intelligence: 5,
+        luck: 5,
+      }
+    );
   }, [selectedClass]);
 
   const selectedSkinTone = useMemo(() => {
@@ -129,12 +170,12 @@ export default function CharacterCreation({ account, onCreated, onCancel }) {
         <div className="cc-header">
           <div className="cc-title">Create Your Vessel</div>
           <div className="cc-sub">
-            Shape a body, choose a path, and bind your first form.
+            Shape your form. Choose your path. Enter the world.
           </div>
         </div>
 
         <div className="cc-body">
-          <div className="cc-preview">
+          <aside className="cc-preview">
             <div className="cc-portrait">
               <CharacterSpritePreview
                 skinTone={selectedSkinTone}
@@ -180,7 +221,9 @@ export default function CharacterCreation({ account, onCreated, onCancel }) {
                 </div>
                 <div className="cc-stat-row">
                   <span className="cc-stat-label">Intelligence</span>
-                  <span className="cc-stat-value">{selectedStats.intelligence}</span>
+                  <span className="cc-stat-value">
+                    {selectedStats.intelligence}
+                  </span>
                 </div>
                 <div className="cc-stat-row">
                   <span className="cc-stat-label">Luck</span>
@@ -188,9 +231,9 @@ export default function CharacterCreation({ account, onCreated, onCancel }) {
                 </div>
               </div>
             </div>
-          </div>
+          </aside>
 
-          <div className="cc-form">
+          <section className="cc-form">
             <label className="cc-label">Name</label>
             <input
               className="cc-input"
@@ -201,50 +244,44 @@ export default function CharacterCreation({ account, onCreated, onCancel }) {
               autoFocus
             />
             <div className="cc-hint">
-              3–16 chars. Letters, numbers, spaces, apostrophe, hyphen.
+              3–16 characters. Letters, numbers, spaces, apostrophe, hyphen.
             </div>
 
             <div className="cc-divider" />
 
             <label className="cc-label">Skin Tone</label>
-            <div className="cc-swatch-grid">
-              {SKIN_TONES.map((tone) => (
-                <button
-                  key={tone.id}
-                  type="button"
-                  className={"cc-swatch-btn " + (tone.id === skinToneId ? "is-active" : "")}
-                  onClick={() => setSkinToneId(tone.id)}
-                  title={tone.name}
-                >
-                  <span className="cc-swatch" style={{ background: tone.base }} />
-                  <span className="cc-swatch-name">{tone.name}</span>
-                </button>
-              ))}
+            <div className="cc-swatch-strip">
+              {SKIN_TONES.map((tone) => {
+                const active = tone.id === skinToneId;
+
+                return (
+                  <button
+                    key={tone.id}
+                    type="button"
+                    className={`cc-swatch-dot ${active ? "is-active" : ""}`}
+                    style={{ "--swatch": tone.base }}
+                    onClick={() => setSkinToneId(tone.id)}
+                    title={tone.name}
+                    aria-label={tone.name}
+                  />
+                );
+              })}
             </div>
 
             <div className="cc-divider" />
 
             <label className="cc-label">Eye Color</label>
-            <div className="cc-swatch-grid">
-              {EYE_COLORS.map((c) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  className={"cc-swatch-btn " + (c.value === eyeColor ? "is-active" : "")}
-                  onClick={() => setEyeColor(c.value)}
-                  title={c.name}
-                >
-                  <span className="cc-swatch" style={{ background: c.value }} />
-                  <span className="cc-swatch-name">{c.name}</span>
-                </button>
-              ))}
-            </div>
+            <SwatchPicker
+              options={EYE_COLORS}
+              value={eyeColor}
+              onChange={setEyeColor}
+            />
 
             <div className="cc-divider" />
 
             <label className="cc-label">Hair</label>
             <select
-              className="cc-input"
+              className="cc-input cc-select"
               value={hairStyle}
               onChange={(e) => setHairStyle(e.target.value)}
             >
@@ -252,16 +289,15 @@ export default function CharacterCreation({ account, onCreated, onCancel }) {
             </select>
 
             <label className="cc-label cc-label-spaced">Hair Color</label>
-            <input
-              className="cc-color-input"
-              type="color"
+            <SwatchPicker
+              options={HAIR_COLORS}
               value={hairColor}
-              onChange={(e) => setHairColor(e.target.value)}
+              onChange={setHairColor}
             />
 
             <label className="cc-label cc-label-spaced">Beard</label>
             <select
-              className="cc-input"
+              className="cc-input cc-select"
               value={beardStyle}
               onChange={(e) => setBeardStyle(e.target.value)}
             >
@@ -269,11 +305,10 @@ export default function CharacterCreation({ account, onCreated, onCancel }) {
             </select>
 
             <label className="cc-label cc-label-spaced">Beard Color</label>
-            <input
-              className="cc-color-input"
-              type="color"
+            <SwatchPicker
+              options={HAIR_COLORS}
               value={beardColor}
-              onChange={(e) => setBeardColor(e.target.value)}
+              onChange={setBeardColor}
             />
 
             <div className="cc-divider" />
@@ -287,7 +322,7 @@ export default function CharacterCreation({ account, onCreated, onCancel }) {
                   <button
                     key={c.id}
                     type="button"
-                    className={"cc-class " + (active ? "is-active" : "")}
+                    className={`cc-class ${active ? "is-active" : ""}`}
                     onClick={() => setClassId(c.id)}
                   >
                     <div className="cc-class-top">
@@ -301,7 +336,7 @@ export default function CharacterCreation({ account, onCreated, onCancel }) {
             </div>
 
             {err && <div className="cc-error">{err}</div>}
-          </div>
+          </section>
         </div>
 
         <div className="cc-footer">

@@ -12,23 +12,33 @@ export default function CharacterSpritePreview({
   const canvasRef = useRef(null);
 
   useEffect(() => {
-    let dead = false;
+    let disposed = false;
 
     async function draw() {
       const canvas = canvasRef.current;
       if (!canvas) return;
 
-      const ctx = canvas.getContext("2d");
+      const dpr = Math.max(1, Math.floor(window.devicePixelRatio || 1));
+      const drawSize = FRAME_SIZE * scale;
+
+      canvas.width = drawSize * dpr;
+      canvas.height = drawSize * dpr;
+      canvas.style.width = `${drawSize}px`;
+      canvas.style.height = `${drawSize}px`;
+
+      const ctx = canvas.getContext("2d", { alpha: true });
+      if (!ctx) return;
+
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.imageSmoothingEnabled = false;
 
-      const framePx = FRAME_SIZE * scale;
-      canvas.width = framePx;
-      canvas.height = framePx;
-
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // Scale the whole canvas to DPR, then draw in CSS-pixel space
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.imageSmoothingEnabled = false;
 
       const sheet = await composeSpriteSheet({ skinTone, eyeColor });
-      if (dead) return;
+      if (disposed) return;
 
       ctx.drawImage(
         sheet,
@@ -38,14 +48,15 @@ export default function CharacterSpritePreview({
         FRAME_SIZE,
         0,
         0,
-        framePx,
-        framePx
+        drawSize,
+        drawSize
       );
     }
 
     draw();
+
     return () => {
-      dead = true;
+      disposed = true;
     };
   }, [skinTone, eyeColor, scale]);
 
