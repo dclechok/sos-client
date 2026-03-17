@@ -1,103 +1,154 @@
 /* ============================================================
-   CHARACTER SELECTION — Dark Gothic Fantasy
+   CHARACTER SELECTION — Matched to Character Creation
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cinzel:wght@400;600&family=IM+Fell+English:ital@0;1&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&display=swap");
+
+:root {
+  --cc-bg-0: #05070a;
+  --cc-bg-1: #0b0f14;
+  --cc-bg-2: #11161d;
+  --cc-bg-3: #171d25;
+  --cc-panel: rgba(13, 17, 22, 0.96);
+  --cc-panel-2: rgba(18, 23, 30, 0.94);
+  --cc-border: rgba(126, 139, 155, 0.16);
+  --cc-border-strong: rgba(168, 180, 196, 0.24);
+  --cc-text: #dde3ea;
+  --cc-text-soft: #aab3bf;
+  --cc-text-dim: #7f8996;
+  --cc-accent: #8f7550;
+  --cc-accent-soft: rgba(143, 117, 80, 0.18);
+  --cc-danger: #c97a7a;
+  --cc-shadow: rgba(0, 0, 0, 0.58);
+}
+
+* {
+  box-sizing: border-box;
+}
 
 .char-screen {
   min-height: 100vh;
+  padding: 28px 18px 42px;
+  color: var(--cc-text);
+  font-family: Inter, system-ui, sans-serif;
   background:
-    radial-gradient(1200px 700px at 20% 0%, rgba(195,140,65,0.04), transparent 60%),
-    linear-gradient(180deg, rgba(14,12,10,1), rgba(6,5,4,1));
-  color: rgba(245,242,255,0.95);
-  padding: 22px 16px 40px;
-  font-family: 'IM Fell English', serif;
+    radial-gradient(circle at 50% 18%, rgba(78, 88, 104, 0.1), transparent 32%),
+    linear-gradient(180deg, rgba(4, 6, 8, 0.96), rgba(3, 4, 6, 1));
 }
 
 /* ── Title ─────────────────────────────────────────────────── */
+
 .char-title {
-  font-family: 'Cinzel Decorative', serif;
-  font-weight: 700;
-  font-size: 24px;
-  letter-spacing: 2.5px;
+  margin: 8px 0 6px;
   text-align: center;
-  margin: 10px 0 6px;
-  color: rgba(228,222,212,0.97);
+  font-family: "Cinzel", serif;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #edf1f5;
   text-shadow:
-    0 0 40px rgba(195,140,65,0.1),
-    0 2px 10px rgba(0,0,0,0.95);
+    0 2px 10px rgba(0, 0, 0, 0.72),
+    0 0 24px rgba(143, 117, 80, 0.08);
 }
 
 .char-title::after {
-  content: "— ✦ —";
+  content: "";
   display: block;
-  font-family: 'IM Fell English', serif;
-  font-size: 13px;
-  letter-spacing: 5px;
-  color: rgba(195,140,65,0.58);
-  margin-top: 7px;
+  width: min(220px, 42vw);
+  height: 1px;
+  margin: 12px auto 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(137, 151, 170, 0.14),
+    rgba(143, 117, 80, 0.22),
+    rgba(137, 151, 170, 0.14),
+    transparent
+  );
 }
 
 /* ── Error ─────────────────────────────────────────────────── */
+
 .char-error {
-  max-width: 560px;
-  margin: 10px auto 12px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(255,120,120,0.35);
-  background: rgba(120,30,30,0.25);
-  color: rgba(255,220,220,0.95);
-  font-family: 'Cinzel', serif;
-  font-size: 11px;
-  letter-spacing: 0.4px;
+  width: min(820px, 100%);
+  margin: 14px auto 0;
+  padding: 11px 13px;
+  border-radius: 10px;
+  border: 1px solid rgba(201, 122, 122, 0.32);
+  background: rgba(90, 28, 28, 0.22);
+  color: #ebc0c0;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 12px;
+  line-height: 1.45;
 }
 
-/* ── Container ─────────────────────────────────────────────── */
+/* ── Main container ────────────────────────────────────────── */
+
 .char-cont {
   display: flex;
   justify-content: center;
-  margin-top: 18px;
+  margin-top: 20px;
 }
 
 .chars {
-  width: min(560px, 100%);
+  width: min(860px, 100%);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid var(--cc-border-strong);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(18, 23, 29, 0.98), rgba(9, 12, 16, 0.99));
+  box-shadow:
+    0 24px 70px var(--cc-shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
 /* ── Slot ──────────────────────────────────────────────────── */
+
 .char-slot {
-  border-radius: 14px;
-  border: 1px solid rgba(180,165,215,0.35);
-  background: rgba(255,255,255,0.06);
-  padding: 14px 16px;
-  min-height: 80px;
+  min-height: 84px;
   display: flex;
-  flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid var(--cc-border);
+  background:
+    linear-gradient(180deg, rgba(19, 24, 31, 0.9), rgba(11, 14, 18, 0.98));
   box-shadow:
-    0 2px 16px rgba(0,0,0,0.35),
-    inset 0 1px 0 rgba(255,255,255,0.06);
+    inset 0 1px 0 rgba(255, 255, 255, 0.02),
+    0 8px 22px rgba(0, 0, 0, 0.22);
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease,
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
 }
 
 .char-slot:hover {
-  border-color: rgba(170,140,220,0.6);
-  background: rgba(90,60,140,0.14);
-  box-shadow: 0 4px 24px rgba(0,0,0,0.45);
+  border-color: rgba(192, 161, 123, 0.3);
+  background:
+    linear-gradient(180deg, rgba(24, 29, 36, 0.94), rgba(13, 17, 22, 0.99));
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 12px 28px rgba(0, 0, 0, 0.28);
 }
 
 /* ── Empty slot ────────────────────────────────────────────── */
+
 .empty-slot {
+  min-height: 68px;
   justify-content: center;
-  cursor: default;
   border-style: dashed;
-  border-color: rgba(170,150,210,0.28);
-  background: rgba(255,255,255,0.025);
-  min-height: 62px;
+  border-color: rgba(126, 139, 155, 0.2);
+  background:
+    linear-gradient(180deg, rgba(14, 18, 24, 0.82), rgba(9, 12, 16, 0.92));
+  cursor: default;
 }
 
 .empty-slot.can-create {
@@ -106,48 +157,58 @@
 
 .empty-slot.can-create:hover {
   border-style: solid;
-  border-color: rgba(170,140,220,0.55);
-  background: rgba(90,60,140,0.12);
+  border-color: rgba(192, 161, 123, 0.4);
+  background:
+    linear-gradient(180deg, rgba(24, 24, 21, 0.94), rgba(14, 13, 11, 0.98));
+  box-shadow:
+    0 0 0 1px rgba(192, 161, 123, 0.08),
+    0 12px 28px rgba(0, 0, 0, 0.28);
 }
 
 .slot-mid {
-  font-size: 16px;
-  color: rgba(180,150,255,0.45);
-  margin-right: 6px;
+  font-family: "Cinzel", serif;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: #edf1f5;
 }
 
 .slot-bot {
-  font-family: 'Cinzel', serif;
+  margin-top: 3px;
+  font-family: "Cinzel", serif;
   font-size: 10px;
-  letter-spacing: 1.6px;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: rgba(200,145,74,0.7);
+  color: #c0a17b;
 }
 
 /* ── Filled slot content ───────────────────────────────────── */
+
 .slot-top {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 4px;
-  flex: 1;
 }
 
 .slot-name {
-  font-family: 'Cinzel', serif;
-  font-size: 14px;
+  font-family: "Cinzel", serif;
+  font-size: 15px;
   font-weight: 600;
-  letter-spacing: 0.6px;
-  color: rgba(245,240,255,1);
+  letter-spacing: 0.04em;
+  color: #edf1f5;
 }
 
 .slot-meta {
-  font-family: 'IM Fell English', serif;
-  font-style: italic;
+  font-family: Inter, system-ui, sans-serif;
   font-size: 13px;
-  color: rgba(200,190,170,0.92);
+  color: var(--cc-text-soft);
+  line-height: 1.4;
 }
 
 /* ── Action buttons ────────────────────────────────────────── */
+
 .slot-actions {
   display: flex;
   gap: 8px;
@@ -155,65 +216,92 @@
 }
 
 .slot-btn {
-  font-family: 'Cinzel', serif;
-  font-size: 10px;
-  letter-spacing: 1.4px;
-  text-transform: uppercase;
+  min-height: 40px;
+  padding: 0 14px;
   border-radius: 10px;
-  border: 1px solid rgba(255,255,255,0.22);
-  background: rgba(255,255,255,0.06);
-  color: rgba(245,242,255,0.95);
-  padding: 7px 12px;
+  border: 1px solid var(--cc-border);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--cc-text-soft);
+  font-family: "Cinzel", serif;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
   cursor: pointer;
-  transition: all 0.18s ease;
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
 }
 
-.slot-btn:hover {
-  border-color: rgba(200,145,74,0.6);
-  background: rgba(200,145,74,0.12);
-  color: rgba(235,180,100,1);
-  box-shadow: 0 0 14px rgba(200,145,74,0.14);
+.slot-btn:hover:not(:disabled) {
+  border-color: rgba(160, 173, 188, 0.3);
+  background: rgba(255, 255, 255, 0.04);
+  color: #edf1f5;
+  transform: translateY(-1px);
+}
+
+.slot-btn.primary {
+  border: 1px solid rgba(192, 161, 123, 0.48);
+  background: linear-gradient(
+    180deg,
+    rgba(143, 117, 80, 0.22),
+    rgba(102, 82, 55, 0.16)
+  );
+  color: #e6ccb0;
+}
+
+.slot-btn.primary:hover:not(:disabled) {
+  border-color: rgba(226, 196, 157, 0.78);
+  background: linear-gradient(
+    180deg,
+    rgba(163, 132, 92, 0.28),
+    rgba(117, 94, 62, 0.22)
+  );
+  color: #f0dbc3;
 }
 
 .slot-btn.danger {
-  border-color: rgba(255,100,100,0.3);
-  background: rgba(80,15,15,0.22);
-  color: rgba(245,160,160,0.9);
+  border-color: rgba(201, 122, 122, 0.34);
+  background: rgba(90, 28, 28, 0.22);
+  color: #ebc0c0;
 }
 
-.slot-btn.danger:hover {
-  border-color: rgba(220,70,70,0.6);
-  background: rgba(120,20,20,0.32);
-  color: rgba(255,185,185,1);
-  box-shadow: 0 0 14px rgba(200,50,50,0.15);
+.slot-btn.danger:hover:not(:disabled) {
+  border-color: rgba(201, 122, 122, 0.56);
+  background: rgba(110, 34, 34, 0.28);
+  color: #f2d0d0;
 }
 
 .slot-btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+  transform: none;
   box-shadow: none;
 }
 
 /* ── Loading ───────────────────────────────────────────────── */
+
 .char-loading {
+  margin-top: 64px;
   text-align: center;
-  margin-top: 60px;
-  font-family: 'Cinzel', serif;
+  font-family: "Cinzel", serif;
   font-size: 11px;
-  letter-spacing: 2.5px;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: rgba(210,200,230,0.6);
+  color: var(--cc-text-dim);
   animation: pulse 2s ease-in-out infinite;
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 0.4; }
-  50%       { opacity: 1;   }
+  0%, 100% { opacity: 0.38; }
+  50% { opacity: 1; }
 }
 
-/* ── Logout at bottom of stack ─────────────────────────────── */
+/* ── Logout ────────────────────────────────────────────────── */
+
 .char-logout-wrap {
-  margin-top: 24px;
+  margin-top: 18px;
   display: flex;
   justify-content: center;
 }
@@ -222,28 +310,62 @@
   position: static;
   transform: none;
   width: 100%;
-  height: auto;
-  padding: 11px 18px;
-  border-radius: 12px;
-  font-size: 10px;
-  letter-spacing: 1.8px;
-
-  border: 1px solid rgba(160,130,220,0.22);
-  background: rgba(255,255,255,0.03);
-  color: rgba(200,190,225,0.7);
+  min-height: 42px;
+  padding: 0 18px;
+  border-radius: 10px;
+  border: 1px solid var(--cc-border);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--cc-text-soft);
   box-shadow: none;
   text-shadow: none;
+  font-family: "Cinzel", serif;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s ease;
 }
 
 .char-logout-wrap .logout-btn:hover {
-  transform: none;
-  border-color: rgba(170,130,255,0.4);
-  background: rgba(120,80,200,0.1);
-  color: rgba(220,210,245,0.95);
+  transform: translateY(-1px);
+  border-color: rgba(160, 173, 188, 0.3);
+  background: rgba(255, 255, 255, 0.04);
+  color: #edf1f5;
   box-shadow: none;
   text-shadow: none;
 }
 
 .char-logout-wrap .logout-btn:active {
-  transform: none;
+  transform: translateY(0);
+}
+
+/* ── Responsive ────────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  .char-screen {
+    padding: 20px 12px 30px;
+  }
+
+  .chars {
+    padding: 14px;
+    gap: 10px;
+  }
+
+  .char-slot {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .slot-actions {
+    width: 100%;
+  }
+
+  .slot-btn {
+    flex: 1;
+    justify-content: center;
+  }
 }
