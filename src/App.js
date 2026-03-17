@@ -1,4 +1,3 @@
-// App.js
 import "./styles/App.css";
 import { useState, useEffect, useRef } from "react";
 
@@ -32,21 +31,24 @@ const API = process.env.REACT_APP_API_BASE_URL || "";
 
 function useWindowSize() {
   const [size, setSize] = useState({ width: 0, height: 0 });
+
   useEffect(() => {
     const handler = () =>
       setSize({ width: window.innerWidth, height: window.innerHeight });
+
     handler();
     window.addEventListener("resize", handler);
     return () => window.removeEventListener("resize", handler);
   }, []);
+
   return size;
 }
 
 export default function App() {
-  const [account, setAccount]     = useState(undefined);
+  const [account, setAccount] = useState(undefined);
   const [character, setCharacter] = useState(undefined);
 
-  const [mapOpen, setMapOpen]             = useState(false);
+  const [mapOpen, setMapOpen] = useState(false);
   const [inventoryOpen, setInventoryOpen] = useState(false);
 
   const [objectDefs, setObjectDefs] = useState({});
@@ -57,51 +59,62 @@ export default function App() {
   const { socket, isReady, worldSeed, myId, players, me, identify } =
     useGameSocket();
 
-  const canvasRef           = useRef(null);
-  const camTargetRef        = useRef({ x: 0, y: 0 });
-  const camSmoothRef        = useRef({ x: 0, y: 0 });
+  const canvasRef = useRef(null);
+  const camTargetRef = useRef({ x: 0, y: 0 });
+  const camSmoothRef = useRef({ x: 0, y: 0 });
   const predictedLocalPosRef = useRef(null);
 
-  // Only initialize camera on first valid position
   const camInitializedRef = useRef(false);
+
   useEffect(() => {
     if (camInitializedRef.current) return;
     if (!me) return;
+
     const x = Number(me.x);
     const y = Number(me.y);
+
     if (!Number.isFinite(x) || !Number.isFinite(y)) return;
 
-    camTargetRef.current         = { x, y };
-    camSmoothRef.current         = { x, y };
+    camTargetRef.current = { x, y };
+    camSmoothRef.current = { x, y };
     predictedLocalPosRef.current = { x, y };
-    camInitializedRef.current    = true;
+    camInitializedRef.current = true;
   }, [me]);
 
   const world = useWorldChunks({ preloadRadiusChunks: 2 });
   const { renderMapFrame } = useWorldMapRenderer({ world, me });
-  const { objects: worldObjects } = useWorldObjects({ socket, me, radius: 2400 });
+  const { objects: worldObjects } = useWorldObjects({
+    socket,
+    me,
+    radius: 2400,
+  });
 
   useEffect(() => {
     if (!isReady) return;
+
     fetch(`${API}/api/defs/objects`, { credentials: "include" })
       .then((r) => r.json())
       .then((j) => {
         const list = j?.objects || [];
-        const map  = {};
+        const map = {};
+
         for (const o of list) {
           const id = String(o.id ?? o.key ?? o.name ?? "");
           if (!id) continue;
           map[id] = o;
         }
+
         setObjectDefs(map);
       })
       .catch(() => {});
   }, [isReady]);
 
-  // Session boot
   useEffect(() => {
     async function init() {
-      const { account: storedAccount, character: storedChar } = loadStoredSession();
+      const {
+        account: storedAccount,
+        character: storedChar,
+      } = loadStoredSession();
 
       if (!storedAccount?.token) {
         setAccount(null);
@@ -110,6 +123,7 @@ export default function App() {
       }
 
       const valid = await verifyToken(storedAccount.token);
+
       if (!valid) {
         localStorage.removeItem("pd_token");
         localStorage.removeItem("pd_account");
@@ -124,35 +138,47 @@ export default function App() {
         ...valid,
         role: valid?.role ?? storedAccount?.role,
       });
+
       setCharacter(storedChar || null);
     }
+
     init();
   }, []);
 
   useEffect(() => {
     if (!isReady || !character) return;
+
     const characterId = character._id || character.id;
     if (!characterId) return;
+
     identify(characterId, account?.role);
   }, [isReady, character, identify, account?.role]);
 
-  const hasPickedCharacter = character && character !== null;
-  const canMountWorld =
-    hasPickedCharacter && isReady && Number.isFinite(worldSeed);
+  const hasPickedCharacter = Boolean(character && character !== null);
+  const canMountWorld = hasPickedCharacter && isReady && Number.isFinite(worldSeed);
 
   const canMountWorldRef = useRef(false);
   const inventoryOpenRef = useRef(false);
-  const mapOpenRef       = useRef(false);
+  const mapOpenRef = useRef(false);
 
-  useEffect(() => { canMountWorldRef.current = canMountWorld; }, [canMountWorld]);
-  useEffect(() => { inventoryOpenRef.current = inventoryOpen; }, [inventoryOpen]);
-  useEffect(() => { mapOpenRef.current       = mapOpen;       }, [mapOpen]);
+  useEffect(() => {
+    canMountWorldRef.current = canMountWorld;
+  }, [canMountWorld]);
+
+  useEffect(() => {
+    inventoryOpenRef.current = inventoryOpen;
+  }, [inventoryOpen]);
+
+  useEffect(() => {
+    mapOpenRef.current = mapOpen;
+  }, [mapOpen]);
 
   useEffect(() => {
     const onKeyDown = (e) => {
-      const tag      = (e.target?.tagName || "").toLowerCase();
+      const tag = (e.target?.tagName || "").toLowerCase();
       const isTyping =
         tag === "input" || tag === "textarea" || e.target?.isContentEditable;
+
       if (isTyping) return;
 
       if (e.code === "KeyC") {
@@ -162,6 +188,7 @@ export default function App() {
         setMapOpen(false);
         return;
       }
+
       if (e.code === "KeyM") {
         if (!canMountWorldRef.current) return;
         e.preventDefault();
@@ -169,6 +196,7 @@ export default function App() {
         setInventoryOpen(false);
         return;
       }
+
       if (e.code === "Escape") {
         if (inventoryOpenRef.current || mapOpenRef.current) {
           e.preventDefault();
@@ -226,8 +254,8 @@ export default function App() {
           myId={myId}
           mySpriteSrc="/art/items/sprites/AdeptNecromancer.gif"
           otherSpriteSrc="/art/items/sprites/NovicePyromancer.gif"
-          playerSpriteW={16}
-          playerSpriteH={16}
+          playerSpriteW={32}
+          playerSpriteH={32}
           predictedLocalPosRef={predictedLocalPosRef}
         />
       )}
@@ -244,6 +272,8 @@ export default function App() {
           camSmoothRef={camSmoothRef}
           camTargetRef={camTargetRef}
           predictedLocalPosRef={predictedLocalPosRef}
+          spriteW={32}
+          spriteH={32}
         />
       )}
 

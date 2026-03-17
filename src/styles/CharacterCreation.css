@@ -1,11 +1,5 @@
-/* ============================================================
-   CHARACTER CREATION — Obsidian Gothic
-   Shadow & iron, gold accents, ghost-purple undertones
-   ============================================================ */
-
 @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cinzel:wght@400;600&family=IM+Fell+English:ital@0;1&display=swap');
 
-/* ── Overlay ─────────────────────────────────────────────────── */
 .cc-overlay {
   position: fixed;
   inset: 0;
@@ -13,11 +7,9 @@
   display: grid;
   place-items: center;
   padding: 18px;
-
   background:
     radial-gradient(ellipse 1000px 600px at 50% 30%, rgba(80,60,110,0.12), transparent 65%),
     rgba(2, 1, 4, 0.9);
-
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
   animation: cc-fade-in 0.22s ease;
@@ -25,40 +17,34 @@
 
 @keyframes cc-fade-in {
   from { opacity: 0; }
-  to   { opacity: 1; }
+  to { opacity: 1; }
 }
 
-/* ── Card ────────────────────────────────────────────────────── */
 .cc-card {
-  width: min(1000px, 96vw);
-  max-height: min(780px, 94vh);
+  width: min(1080px, 96vw);
+  max-height: min(820px, 94vh);
   overflow: hidden;
   display: flex;
   flex-direction: column;
-
   border-radius: 18px;
   border: 1px solid rgba(120,110,140,0.25);
-
   background: linear-gradient(
     170deg,
     rgba(18,16,22,0.98) 0%,
     rgba(9,8,11,0.99) 100%
   );
-
   box-shadow:
     0 32px 80px rgba(0,0,0,0.85),
     0 0 0 1px rgba(255,255,255,0.02),
     inset 0 1px 0 rgba(255,255,255,0.04);
-
   animation: cc-slide-up 0.26s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @keyframes cc-slide-up {
   from { transform: translateY(16px); opacity: 0; }
-  to   { transform: translateY(0);    opacity: 1; }
+  to { transform: translateY(0); opacity: 1; }
 }
 
-/* ── Header ──────────────────────────────────────────────────── */
 .cc-header {
   padding: 20px 22px 16px;
   border-bottom: 1px solid rgba(120,110,140,0.15);
@@ -97,24 +83,31 @@
   color: rgba(180,175,195,0.6);
 }
 
-/* ── Body ────────────────────────────────────────────────────── */
 .cc-body {
   display: grid;
-  grid-template-columns: 300px 1fr;
+  grid-template-columns: 320px 1fr;
   gap: 0;
   overflow-y: auto;
   flex: 1;
 }
 
-.cc-body::-webkit-scrollbar { width: 4px; }
-.cc-body::-webkit-scrollbar-track { background: rgba(255,255,255,0.01); }
-.cc-body::-webkit-scrollbar-thumb { background: rgba(120,110,140,0.3); border-radius: 4px; }
-
-@media (max-width: 820px) {
-  .cc-body { grid-template-columns: 1fr; }
+.cc-body::-webkit-scrollbar {
+  width: 4px;
+}
+.cc-body::-webkit-scrollbar-track {
+  background: rgba(255,255,255,0.01);
+}
+.cc-body::-webkit-scrollbar-thumb {
+  background: rgba(120,110,140,0.3);
+  border-radius: 4px;
 }
 
-/* ── Preview panel ───────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .cc-body {
+    grid-template-columns: 1fr;
+  }
+}
+
 .cc-preview {
   padding: 18px;
   border-right: 1px solid rgba(120,110,140,0.1);
@@ -131,16 +124,14 @@
 .cc-portrait {
   display: grid;
   place-items: center;
-  height: 200px;
+  height: 220px;
   border-radius: 14px;
   border: 1px solid rgba(120,110,140,0.2);
   position: relative;
   overflow: hidden;
-
   background:
     radial-gradient(ellipse 200px 160px at 50% 40%, rgba(80,60,110,0.15), transparent 70%),
     rgba(5,4,7,0.8);
-
   box-shadow: inset 0 0 40px rgba(0,0,0,0.6);
 }
 
@@ -158,7 +149,7 @@
 
 @keyframes ember-breathe {
   0%, 100% { opacity: 0.5; }
-  50% { opacity: 1.0; }
+  50% { opacity: 1; }
 }
 
 .cc-portrait::after {
@@ -171,7 +162,7 @@
   pointer-events: none;
 }
 
-.cc-portrait img {
+.cc-sprite-canvas {
   width: 128px;
   height: 128px;
   image-rendering: pixelated;
@@ -179,14 +170,6 @@
   position: relative;
   z-index: 1;
   filter: drop-shadow(0 4px 16px rgba(80,60,110,0.3));
-}
-
-.cc-portrait-fallback {
-  font-family: 'Cinzel', serif;
-  font-size: 11px;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  color: rgba(160,155,175,0.35);
 }
 
 .cc-preview-meta {
@@ -229,13 +212,11 @@
   color: rgba(190,185,205,0.65);
 }
 
-/* ── Selected class stats panel ─────────────────────────────── */
 .cc-stats-panel {
   margin-top: 2px;
   padding: 12px 12px 10px;
   border-radius: 12px;
   border: 1px solid rgba(120,110,140,0.16);
-
   background:
     radial-gradient(ellipse 180px 80px at 100% 0%, rgba(195,140,65,0.04), transparent 70%),
     linear-gradient(
@@ -243,7 +224,6 @@
       rgba(15,13,19,0.72),
       rgba(8,7,10,0.82)
     );
-
   box-shadow:
     inset 0 0 24px rgba(0,0,0,0.35),
     0 6px 20px rgba(0,0,0,0.18);
@@ -294,7 +274,6 @@
   text-shadow: 0 0 12px rgba(195,140,65,0.16);
 }
 
-/* ── Form panel ──────────────────────────────────────────────── */
 .cc-form {
   padding: 18px 20px;
   display: flex;
@@ -302,9 +281,16 @@
   overflow-y: auto;
 }
 
-.cc-form::-webkit-scrollbar { width: 4px; }
-.cc-form::-webkit-scrollbar-track { background: rgba(255,255,255,0.01); }
-.cc-form::-webkit-scrollbar-thumb { background: rgba(120,110,140,0.3); border-radius: 4px; }
+.cc-form::-webkit-scrollbar {
+  width: 4px;
+}
+.cc-form::-webkit-scrollbar-track {
+  background: rgba(255,255,255,0.01);
+}
+.cc-form::-webkit-scrollbar-thumb {
+  background: rgba(120,110,140,0.3);
+  border-radius: 4px;
+}
 
 .cc-label {
   display: block;
@@ -314,6 +300,10 @@
   text-transform: uppercase;
   margin-bottom: 8px;
   color: rgba(175,168,192,0.7);
+}
+
+.cc-label-spaced {
+  margin-top: 12px;
 }
 
 .cc-input {
@@ -342,6 +332,17 @@
     0 0 20px rgba(195,140,65,0.06);
 }
 
+.cc-color-input {
+  width: 100%;
+  height: 44px;
+  padding: 6px;
+  border-radius: 10px;
+  border: 1px solid rgba(120,110,140,0.25);
+  background: rgba(6,5,8,0.7);
+  box-sizing: border-box;
+  cursor: pointer;
+}
+
 .cc-hint {
   margin-top: 6px;
   font-family: 'IM Fell English', serif;
@@ -363,7 +364,51 @@
   margin: 16px 0;
 }
 
-/* ── Class grid ──────────────────────────────────────────────── */
+.cc-swatch-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.cc-swatch-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(120,110,140,0.2);
+  background: rgba(255,255,255,0.03);
+  color: rgba(235,230,245,0.9);
+  cursor: pointer;
+  transition: all 0.18s ease;
+  text-align: left;
+}
+
+.cc-swatch-btn:hover {
+  border-color: rgba(195,140,65,0.32);
+  background: rgba(195,140,65,0.07);
+}
+
+.cc-swatch-btn.is-active {
+  border-color: rgba(195,140,65,0.55);
+  box-shadow: 0 0 0 2px rgba(195,140,65,0.08);
+  background: rgba(195,140,65,0.1);
+}
+
+.cc-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.18);
+  flex-shrink: 0;
+}
+
+.cc-swatch-name {
+  font-family: 'Cinzel', serif;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+}
+
 .cc-class-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -371,7 +416,13 @@
 }
 
 @media (max-width: 560px) {
-  .cc-class-grid { grid-template-columns: 1fr; }
+  .cc-class-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cc-swatch-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .cc-class {
@@ -379,7 +430,6 @@
   padding: 11px 12px;
   border-radius: 12px;
   cursor: pointer;
-
   border: 1px solid rgba(110,100,130,0.18);
   background: linear-gradient(
     150deg,
@@ -466,7 +516,6 @@
   color: rgba(190,185,210,0.75);
 }
 
-/* ── Error ───────────────────────────────────────────────────── */
 .cc-error {
   margin-top: 14px;
   padding: 10px 14px;
@@ -479,7 +528,6 @@
   letter-spacing: 0.5px;
 }
 
-/* ── Footer ──────────────────────────────────────────────────── */
 .cc-footer {
   display: flex;
   justify-content: flex-end;
@@ -490,7 +538,6 @@
   flex-shrink: 0;
 }
 
-/* ── Buttons ─────────────────────────────────────────────────── */
 .cc-btn {
   font-family: 'Cinzel', serif;
   font-size: 10px;
@@ -527,7 +574,6 @@
     rgba(135,90,35,0.15)
   );
   color: rgba(230,175,90,1);
-
   box-shadow:
     0 0 20px rgba(195,140,65,0.1),
     inset 0 1px 0 rgba(255,210,120,0.06);
@@ -546,8 +592,7 @@
   color: rgba(248,200,110,1);
 }
 
-/* ── Responsive refinements ─────────────────────────────────── */
-@media (max-width: 820px) {
+@media (max-width: 900px) {
   .cc-preview {
     border-right: none;
     border-bottom: 1px solid rgba(120,110,140,0.1);

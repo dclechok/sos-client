@@ -1,14 +1,4 @@
-// src/render/systems/sprites/sortedSpriteRenderer.js
-// Unified sprite renderer: world objects + players in ONE depth-sorted pass.
-//
-// Includes:
-// - local predicted player rendering
-// - object / player depth sorting
-// - optional object lighting
-// - optional occluder fading when the LOCAL player goes behind tall objects
-//
-// Object def usage:
-//   occludesPlayer: true
+import { getPlayerSheetRecord } from "../../players/playerSheetRuntime";
 
 const IMG_CACHE = new Map();
 const SMOOTH_POS = new Map();
@@ -17,13 +7,26 @@ const SMOOTH_FOLLOW_REMOTE = 30;
 const SMOOTH_FOLLOW_OBJECTS = 28;
 const DEFAULT_OCCLUDE_ALPHA = 0.35;
 
+const FRAME_SIZE = 32;
+const WALK_EPS = 0.02;
+
 function getImgRecord(src) {
   if (!src) return null;
   if (IMG_CACHE.has(src)) return IMG_CACHE.get(src);
+
   const img = new Image();
   const rec = { img, ok: false, err: false, warned: false };
-  img.onload = () => { rec.ok = true; rec.err = false; };
-  img.onerror = () => { rec.ok = false; rec.err = true; };
+
+  img.onload = () => {
+    rec.ok = true;
+    rec.err = false;
+  };
+
+  img.onerror = () => {
+    rec.ok = false;
+    rec.err = true;
+  };
+
   img.src = src;
   IMG_CACHE.set(src, rec);
   return rec;
@@ -96,12 +99,14 @@ function worldToScreen(frame, wx, wy) {
 function smoothWorldPos(id, wx, wy, dt, follow) {
   const key = String(id || "");
   if (!key) return { x: wx, y: wy };
+
   const prev = SMOOTH_POS.get(key);
   if (!prev) {
     const v = { x: wx, y: wy };
     SMOOTH_POS.set(key, v);
     return v;
   }
+
   const k = 1 - Math.exp(-Math.max(1, follow) * Math.max(0, dt || 0.016));
   prev.x += (wx - prev.x) * k;
   prev.y += (wy - prev.y) * k;
@@ -110,6 +115,7 @@ function smoothWorldPos(id, wx, wy, dt, follow) {
 
 function drawLight(ctx, t, z, sx, sy, light, key) {
   if (!light?.radius) return;
+
   const baseR = Number(light.radius) * z;
   const baseCol = String(light.color || "#ff7a3d");
   const seed = stableRand01(key);
@@ -124,12 +130,14 @@ function drawLight(ctx, t, z, sx, sy, light, key) {
   const a1 = clamp01(0.14 * intensityMul);
   const a2 = clamp01(0.06 * intensityMul);
   const outerCol = "#ff3b2f";
+
   const grad = ctx.createRadialGradient(sx, sy, 0, sx, sy, r);
   grad.addColorStop(0.0, hexToRGBA(baseCol, a0));
   grad.addColorStop(0.18, hexToRGBA(baseCol, a1));
   grad.addColorStop(0.45, hexToRGBA(baseCol, a2));
   grad.addColorStop(0.72, hexToRGBA(outerCol, 0.028 * intensityMul));
   grad.addColorStop(1.0, hexToRGBA(outerCol, 0.0));
+
   ctx.save();
   ctx.globalCompositeOperation = "lighter";
   ctx.fillStyle = grad;
@@ -168,18 +176,11 @@ function makeObjectDrawable(obj, def, t) {
   };
 }
 
-function makePlayerDrawable(id, p, spriteSrc, spriteW, spriteH, { isLocal, predictedPos }) {
-  if (!spriteSrc) return null;
+function makePlayerDrawable(id, p, spriteW, spriteH, { isLocal, predictedPos }) {
+  const wx = isLocal && predictedPos ? Number(predictedPos.x) : Number(p?.x || 0);
+  const wyCenter = isLocal && predictedPos ? Number(predictedPos.y) : Number(p?.y || 0);
 
-  const wx = isLocal && predictedPos
-    ? Number(predictedPos.x)
-    : Number(p?.x || 0);
-
-  const wyCenter = isLocal && predictedPos
-    ? Number(predictedPos.y)
-    : Number(p?.y || 0);
-
-  const halfH = Number(spriteH || 16) * 0.5;
+  const halfH = Number(spriteH || FRAME_SIZE) * 0.5;
   const feetY = wyCenter + halfH;
 
   const facing = p?.facing === "left" ? "left" : "right";
@@ -190,9 +191,8 @@ function makePlayerDrawable(id, p, spriteSrc, spriteW, spriteH, { isLocal, predi
     wx,
     wy: feetY,
     depthYWorld: feetY,
-    spriteSrc,
-    baseW: Number(spriteW || 16),
-    baseH: Number(spriteH || 16),
+    baseW: Number(spriteW || FRAME_SIZE),
+    baseH: Number(spriteH || FRAME_SIZE),
     anchorX: 0.5,
     anchorY: 1.0,
     facing,
@@ -201,12 +201,25 @@ function makePlayerDrawable(id, p, spriteSrc, spriteW, spriteH, { isLocal, predi
   };
 }
 
-function drawImageFlippedX(ctx, img, sx, sy, dw, dh, anchorX, anchorY) {
+function drawSpriteFrameFlippedX(
+  ctx,
+  img,
+  srcX,
+  srcY,
+  srcW,
+  srcH,
+  sx,
+  sy,
+  dw,
+  dh,
+  anchorX,
+  anchorY
+) {
   ctx.translate(Math.round(sx), Math.round(sy));
   ctx.scale(-1, 1);
   const dx = Math.round(-dw * anchorX);
   const dy = Math.round(-dh * anchorY);
-  ctx.drawImage(img, dx, dy, dw, dh);
+  ctx.drawImage(img, srcX, srcY, srcW, srcH, dx, dy, dw, dh);
 }
 
 function getLocalPlayerBody(playersById, myId, predictedLocalPos, playerSpriteW, playerSpriteH) {
@@ -215,18 +228,12 @@ function getLocalPlayerBody(playersById, myId, predictedLocalPos, playerSpriteW,
   const p = playersById?.[myId];
   if (!p && !predictedLocalPos) return null;
 
-  const cx = predictedLocalPos
-    ? Number(predictedLocalPos.x)
-    : Number(p?.x || 0);
+  const cx = predictedLocalPos ? Number(predictedLocalPos.x) : Number(p?.x || 0);
+  const centerY = predictedLocalPos ? Number(predictedLocalPos.y) : Number(p?.y || 0);
+  const feetY = centerY + Number(playerSpriteH || FRAME_SIZE) * 0.5;
 
-  const centerY = predictedLocalPos
-    ? Number(predictedLocalPos.y)
-    : Number(p?.y || 0);
-
-  const feetY = centerY + Number(playerSpriteH || 16) * 0.5;
-
-  const bodyW = Math.max(6, Number(playerSpriteW || 16) * 0.6);
-  const bodyH = Number(playerSpriteH || 16);
+  const bodyW = Math.max(8, Number(playerSpriteW || FRAME_SIZE) * 0.6);
+  const bodyH = Number(playerSpriteH || FRAME_SIZE);
 
   return {
     left: cx - bodyW * 0.5,
@@ -260,8 +267,6 @@ function getOcclusionZone(d) {
   const baseW = Number(d?.baseW || 16);
   const baseH = Number(d?.baseH || 16);
 
-  // Much smaller zone than the whole sprite.
-  // This keeps the tree from fading while you're merely near it.
   const halfWidth = Math.max(10, Math.min(18, baseW * 0.18));
   const topInset = Math.round(baseH * 0.12);
   const bottomInset = 2;
@@ -294,7 +299,6 @@ function shouldObjectFadeForPlayer(d, playerBody) {
 
   const zone = getOcclusionZone(d);
 
-  // Must actually be behind the object's depth line
   if (playerBody.feetY >= d.depthYWorld) return false;
 
   return rectsOverlap(playerBody, zone);
@@ -304,22 +308,73 @@ function getObjectAlpha(d, playerBody) {
   return shouldObjectFadeForPlayer(d, playerBody) ? DEFAULT_OCCLUDE_ALPHA : 1;
 }
 
+function getPlayerMoveKind(p) {
+  const vx = Number(p?.vx || 0);
+  const vy = Number(p?.vy || 0);
+  const avx = Math.abs(vx);
+  const avy = Math.abs(vy);
+  const moving = avx > WALK_EPS || avy > WALK_EPS;
+
+  if (!moving) {
+    const facing = p?.facing === "left" ? "left" : p?.facing === "right" ? "right" : "down";
+    if (facing === "left" || facing === "right") return "idleRight";
+    if (facing === "up") return "idleUp";
+    return "idleDown";
+  }
+
+  if (avy > avx) {
+    return vy < 0 ? "walkUp" : "walkDown";
+  }
+
+  return "walkRight";
+}
+
+function getPlayerFrameForTime(p, t) {
+  const moveKind = getPlayerMoveKind(p);
+
+  if (moveKind === "idleDown") return { row: 0, col: 0, flipX: false };
+  if (moveKind === "idleUp") return { row: 0, col: 1, flipX: false };
+  if (moveKind === "idleRight") {
+    return {
+      row: 3,
+      col: 0,
+      flipX: p?.facing === "left",
+    };
+  }
+
+  const walkFps = 6;
+  const phase = Math.floor(t * walkFps) % 4;
+
+  if (moveKind === "walkDown") {
+    const cycle = [0, 1, 2, 1];
+    return { row: 1, col: cycle[phase], flipX: false };
+  }
+
+  if (moveKind === "walkUp") {
+    const cycle = [0, 1, 2, 1];
+    return { row: 2, col: cycle[phase], flipX: false };
+  }
+
+  const cycle = [1, 0, 2, 0];
+  return {
+    row: 3,
+    col: cycle[phase],
+    flipX: p?.facing === "left",
+  };
+}
+
 export function renderSortedSprites(
   ctx,
   frame,
   {
     objects = [],
     objectDefs = {},
-
     playersById = null,
     playerIds = null,
     myId = null,
-
     predictedLocalPos = null,
-
-    getPlayerSpriteSrc = null,
-    playerSpriteW = 16,
-    playerSpriteH = 16,
+    playerSpriteW = FRAME_SIZE,
+    playerSpriteH = FRAME_SIZE,
   } = {}
 ) {
   const t = getTimeSeconds(frame);
@@ -335,17 +390,18 @@ export function renderSortedSprites(
     if (d) drawables.push(d);
   }
 
-  if (playersById && typeof getPlayerSpriteSrc === "function") {
+  if (playersById) {
     const ids = Array.isArray(playerIds) ? playerIds : Object.keys(playersById || {});
     for (const id of ids) {
       const p = playersById?.[id];
       if (!p) continue;
-      const src = String(getPlayerSpriteSrc(id, p) || "");
+
       const isLocal = myId != null && String(id) === String(myId);
-      const d = makePlayerDrawable(id, p, src, playerSpriteW, playerSpriteH, {
+      const d = makePlayerDrawable(id, p, playerSpriteW, playerSpriteH, {
         isLocal,
         predictedPos: isLocal ? predictedLocalPos : null,
       });
+
       if (d) drawables.push(d);
     }
   }
@@ -372,21 +428,8 @@ export function renderSortedSprites(
   ctx.imageSmoothingEnabled = false;
 
   for (const d of drawables) {
-    const rec = getImgRecord(d.spriteSrc);
-    if (!rec) continue;
-
-    if (rec.err) {
-      if (!rec.warned) {
-        rec.warned = true;
-        console.warn("[renderSortedSprites] BROKEN spriteSrc:", d.spriteSrc);
-      }
-      continue;
-    }
-
-    const img = rec.img;
-    if (!isDrawable(img)) continue;
-
     let sp = { x: d.wx, y: d.wy };
+
     if (d.kind === "object") {
       sp = smoothWorldPos(d.id, d.wx, d.wy, dt, SMOOTH_FOLLOW_OBJECTS);
     } else if (!d.isLocal) {
@@ -394,27 +437,36 @@ export function renderSortedSprites(
     }
 
     const { sx, sy, z } = worldToScreen(frame, sp.x, sp.y);
-
     const dw = d.baseW * z;
     const dh = d.baseH * z;
-
     const dx = Math.round(sx - dw * d.anchorX);
     const dy = Math.round(sy - dh * d.anchorY);
 
     if (d.kind === "object") {
+      const rec = getImgRecord(d.spriteSrc);
+      if (!rec) continue;
+
+      if (rec.err) {
+        if (!rec.warned) {
+          rec.warned = true;
+          console.warn("[renderSortedSprites] BROKEN spriteSrc:", d.spriteSrc);
+        }
+        continue;
+      }
+
+      const img = rec.img;
+      if (!isDrawable(img)) continue;
+
       const light = d.def?.light;
       if (light?.radius) {
         const key = d.obj?._id || `${String(d.obj?.defId || "")}:${d.wx},${d.wy}`;
         drawLight(ctx, t, z, sx, sy, light, key);
       }
-    }
 
-    ctx.save();
+      ctx.save();
 
-    if (d.kind === "object") {
       const interactive = isInteractive(d.def, d.obj);
       const objectAlpha = getObjectAlpha(d, localPlayerBody);
-
       ctx.globalAlpha = objectAlpha;
 
       if (interactive) {
@@ -436,12 +488,53 @@ export function renderSortedSprites(
         ctx.globalAlpha = baseAlpha;
         ctx.drawImage(img, dx, dy, dw, dh);
       }
+
+      ctx.restore();
+      continue;
+    }
+
+    const appearance = d.p?.appearance || null;
+    const sheetRec = getPlayerSheetRecord(appearance);
+
+    if (!sheetRec || sheetRec.status !== "ready" || !sheetRec.canvas) {
+      continue;
+    }
+
+    const sheet = sheetRec.canvas;
+    const { row, col, flipX } = getPlayerFrameForTime(d.p, t);
+
+    const srcX = col * FRAME_SIZE;
+    const srcY = row * FRAME_SIZE;
+
+    ctx.save();
+
+    if (flipX) {
+      drawSpriteFrameFlippedX(
+        ctx,
+        sheet,
+        srcX,
+        srcY,
+        FRAME_SIZE,
+        FRAME_SIZE,
+        sx,
+        sy,
+        dw,
+        dh,
+        d.anchorX,
+        d.anchorY
+      );
     } else {
-      if (d.facing === "left") {
-        drawImageFlippedX(ctx, img, sx, sy, dw, dh, d.anchorX, d.anchorY);
-      } else {
-        ctx.drawImage(img, dx, dy, dw, dh);
-      }
+      ctx.drawImage(
+        sheet,
+        srcX,
+        srcY,
+        FRAME_SIZE,
+        FRAME_SIZE,
+        dx,
+        dy,
+        dw,
+        dh
+      );
     }
 
     ctx.restore();

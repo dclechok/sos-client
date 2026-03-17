@@ -1,27 +1,31 @@
-// src/CharacterCreation.jsx
 import { useEffect, useMemo, useState, useCallback } from "react";
 import "./styles/CharacterCreation.css";
 import { CHARACTER_CLASSES } from "./render/players/characterClasses";
 import { createCharacter } from "./api/characterApi";
+import CharacterSpritePreview from "./render/players/CharacterSpritePreview";
+import {
+  SKIN_TONES,
+  EYE_COLORS,
+  getSkinToneById,
+} from "./utils/palletes";
 
-/**
- * CharacterCreation
- * - Fantasy/gothic parchment UI
- * - Pick name + class
- * - Live sprite preview
- * - Shows default starting stats for selected class
- * - Calls POST /api/characters/:accountId via createCharacter()
- *
- * Props:
- *   account (required): { id, token, ... }
- *   onCreated(character): called with newly created character doc
- *   onCancel(): optional close/cancel
- */
 export default function CharacterCreation({ account, onCreated, onCancel }) {
   const [charName, setCharName] = useState("");
   const [classId, setClassId] = useState(CHARACTER_CLASSES[0]?.id || "");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+
+  const [skinToneId, setSkinToneId] = useState(
+    SKIN_TONES[2]?.id || "light_neutral_1"
+  );
+  const [eyeColor, setEyeColor] = useState(
+    EYE_COLORS[0]?.value || "#3b271b"
+  );
+
+  const [hairStyle, setHairStyle] = useState("none");
+  const [hairColor, setHairColor] = useState("#2b1d16");
+  const [beardStyle, setBeardStyle] = useState("none");
+  const [beardColor, setBeardColor] = useState("#2b1d16");
 
   useEffect(() => {
     if (!classId && CHARACTER_CLASSES[0]?.id) {
@@ -43,6 +47,10 @@ export default function CharacterCreation({ account, onCreated, onCancel }) {
       luck: 5,
     };
   }, [selectedClass]);
+
+  const selectedSkinTone = useMemo(() => {
+    return getSkinToneById(skinToneId);
+  }, [skinToneId]);
 
   const sanitizedName = useMemo(() => {
     return String(charName || "")
@@ -66,9 +74,18 @@ export default function CharacterCreation({ account, onCreated, onCancel }) {
 
     try {
       setBusy(true);
+
       const created = await createCharacter(account, account.token, {
         charName: sanitizedName,
         classId,
+        appearance: {
+          skinToneId,
+          eyeColor,
+          hairStyle,
+          hairColor,
+          beardStyle,
+          beardColor,
+        },
       });
 
       onCreated?.(created);
@@ -77,7 +94,19 @@ export default function CharacterCreation({ account, onCreated, onCancel }) {
     } finally {
       setBusy(false);
     }
-  }, [account, canSubmit, classId, onCreated, sanitizedName]);
+  }, [
+    account,
+    beardColor,
+    beardStyle,
+    canSubmit,
+    classId,
+    eyeColor,
+    hairColor,
+    hairStyle,
+    onCreated,
+    sanitizedName,
+    skinToneId,
+  ]);
 
   useEffect(() => {
     function onKey(e) {
@@ -100,24 +129,18 @@ export default function CharacterCreation({ account, onCreated, onCancel }) {
         <div className="cc-header">
           <div className="cc-title">Create Your Vessel</div>
           <div className="cc-sub">
-            Choose a name, then bind a class. Your sprite and starting
-            attributes are determined by class.
+            Shape a body, choose a path, and bind your first form.
           </div>
         </div>
 
         <div className="cc-body">
-          {/* Left: preview */}
           <div className="cc-preview">
             <div className="cc-portrait">
-              {selectedClass?.sprite ? (
-                <img
-                  src={selectedClass.sprite}
-                  alt={selectedClass.label}
-                  draggable={false}
-                />
-              ) : (
-                <div className="cc-portrait-fallback">No sprite</div>
-              )}
+              <CharacterSpritePreview
+                skinTone={selectedSkinTone}
+                eyeColor={eyeColor}
+                scale={4}
+              />
             </div>
 
             <div className="cc-preview-meta">
@@ -167,7 +190,6 @@ export default function CharacterCreation({ account, onCreated, onCancel }) {
             </div>
           </div>
 
-          {/* Right: form */}
           <div className="cc-form">
             <label className="cc-label">Name</label>
             <input
@@ -181,6 +203,78 @@ export default function CharacterCreation({ account, onCreated, onCancel }) {
             <div className="cc-hint">
               3–16 chars. Letters, numbers, spaces, apostrophe, hyphen.
             </div>
+
+            <div className="cc-divider" />
+
+            <label className="cc-label">Skin Tone</label>
+            <div className="cc-swatch-grid">
+              {SKIN_TONES.map((tone) => (
+                <button
+                  key={tone.id}
+                  type="button"
+                  className={"cc-swatch-btn " + (tone.id === skinToneId ? "is-active" : "")}
+                  onClick={() => setSkinToneId(tone.id)}
+                  title={tone.name}
+                >
+                  <span className="cc-swatch" style={{ background: tone.base }} />
+                  <span className="cc-swatch-name">{tone.name}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="cc-divider" />
+
+            <label className="cc-label">Eye Color</label>
+            <div className="cc-swatch-grid">
+              {EYE_COLORS.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  className={"cc-swatch-btn " + (c.value === eyeColor ? "is-active" : "")}
+                  onClick={() => setEyeColor(c.value)}
+                  title={c.name}
+                >
+                  <span className="cc-swatch" style={{ background: c.value }} />
+                  <span className="cc-swatch-name">{c.name}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="cc-divider" />
+
+            <label className="cc-label">Hair</label>
+            <select
+              className="cc-input"
+              value={hairStyle}
+              onChange={(e) => setHairStyle(e.target.value)}
+            >
+              <option value="none">None</option>
+            </select>
+
+            <label className="cc-label cc-label-spaced">Hair Color</label>
+            <input
+              className="cc-color-input"
+              type="color"
+              value={hairColor}
+              onChange={(e) => setHairColor(e.target.value)}
+            />
+
+            <label className="cc-label cc-label-spaced">Beard</label>
+            <select
+              className="cc-input"
+              value={beardStyle}
+              onChange={(e) => setBeardStyle(e.target.value)}
+            >
+              <option value="none">None</option>
+            </select>
+
+            <label className="cc-label cc-label-spaced">Beard Color</label>
+            <input
+              className="cc-color-input"
+              type="color"
+              value={beardColor}
+              onChange={(e) => setBeardColor(e.target.value)}
+            />
 
             <div className="cc-divider" />
 
@@ -200,7 +294,6 @@ export default function CharacterCreation({ account, onCreated, onCancel }) {
                       <div className="cc-class-name">{c.label}</div>
                       <div className="cc-class-role">{c.role}</div>
                     </div>
-
                     <div className="cc-class-desc">{c.description}</div>
                   </button>
                 );
