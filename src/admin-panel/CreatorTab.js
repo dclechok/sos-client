@@ -204,30 +204,6 @@ export default function CreatorTab({
     [socket, spacing, worldObjects]
   );
 
-  const tryEraseAt = useCallback(
-    (x, y) => {
-      const r2 = Number(radius || 0) ** 2;
-      const hits = [];
-
-      for (const o of worldObjects) {
-        if (!o?._id) continue;
-        const ox = Number(o?.x);
-        const oy = Number(o?.y);
-        if (!Number.isFinite(ox) || !Number.isFinite(oy)) continue;
-
-        const d2 = dist2({ x, y }, { x: ox, y: oy });
-        if (d2 <= r2) hits.push({ id: String(o._id), d2 });
-      }
-
-      hits.sort((a, b) => a.d2 - b.d2);
-
-      for (let i = 0; i < Math.min(2, hits.length); i++) {
-        socket?.emit(DELETE_EVENT, { id: hits[i].id });
-      }
-    },
-    [radius, socket, worldObjects]
-  );
-
   useEffect(() => {
     const canvas = canvasRef?.current;
     if (!canvas) return;
