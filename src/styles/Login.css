@@ -1,8 +1,29 @@
 /* ================================
    FONT IMPORTS
    ================================ */
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Cinzel+Decorative:wght@400;700;900&family=IM+Fell+English:ital@0;1&display=swap');
 
-@import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cinzel:wght@400;600&family=IM+Fell+English:ital@0;1&display=swap');
+:root {
+  --cc-bg-0: #05070a;
+  --cc-bg-1: #0b0f14;
+  --cc-bg-2: #11161d;
+  --cc-bg-3: #171d25;
+  --cc-panel: rgba(13, 17, 22, 0.96);
+  --cc-panel-2: rgba(18, 23, 30, 0.94);
+  --cc-border: rgba(126, 139, 155, 0.16);
+  --cc-border-strong: rgba(168, 180, 196, 0.24);
+  --cc-text: #dde3ea;
+  --cc-text-soft: #aab3bf;
+  --cc-text-dim: #7f8996;
+  --cc-accent: #8f7550;
+  --cc-accent-soft: rgba(143, 117, 80, 0.18);
+  --cc-danger: #c97a7a;
+  --cc-shadow: rgba(0, 0, 0, 0.58);
+}
+
+* {
+  box-sizing: border-box;
+}
 
 /* ================================
    PAGE + WALLPAPER
@@ -24,12 +45,12 @@
   background-position: center;
   background-size: cover;
   background-repeat: no-repeat;
-  filter: brightness(0.22) saturate(0.6);
+  filter: brightness(0.45) saturate(0.75);
   transform: translateZ(0);
 }
 
 /* ================================
-   VIGNETTE
+   VIGNETTE / OVERLAY
    ================================ */
 
 .login-page::after {
@@ -39,20 +60,17 @@
   pointer-events: none;
   z-index: 0;
   background:
-    radial-gradient(
-      ellipse at center,
-      rgba(0,0,0,0) 30%,
-      rgba(0,0,0,0.45) 60%,
-      rgba(0,0,0,0.82) 85%,
-      rgba(0,0,0,0.97) 100%
-    );
+    radial-gradient(circle at 50% 18%, rgba(78, 88, 104, 0.08), transparent 32%),
+    linear-gradient(180deg, rgba(4, 6, 8, 0.72), rgba(3, 4, 6, 0.90));
   box-shadow:
-    inset 0 120px 160px rgba(0,0,0,0.75),
-    inset 0 -120px 160px rgba(0,0,0,0.75);
+    inset 0 120px 160px rgba(0,0,0,0.72),
+    inset 0 -120px 160px rgba(0,0,0,0.72);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
 }
 
 /* ================================
-   LOGIN BOX — smoky charcoal
+   LOGIN BOX
    ================================ */
 
 .login-box {
@@ -62,49 +80,43 @@
   width: min(400px, 88vw);
   padding: 36px 32px 28px;
 
-  font-family: 'IM Fell English', serif;
   text-align: center;
-  color: rgba(210, 205, 198, 0.92);
+  color: var(--cc-text);
+  font-family: 'IM Fell English', serif;
 
-  /* pure warm-neutral dark, no blue in these values */
   background: linear-gradient(
-    170deg,
-    rgba(22, 20, 18, 0.97) 0%,
-    rgba(11, 10, 9, 0.98) 100%
+    180deg,
+    rgba(18, 23, 29, 0.98),
+    rgba(9, 12, 16, 0.99)
   );
 
   border-radius: 18px;
-  border: 1px solid rgba(90, 82, 72, 0.32);
+  border: 1px solid var(--cc-border-strong);
 
   box-shadow:
-    0 32px 80px rgba(0, 0, 0, 0.88),
-    0 0 0 1px rgba(255, 245, 220, 0.02),
-    inset 0 1px 0 rgba(255, 240, 200, 0.03);
+    0 24px 70px var(--cc-shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
 
   overflow: hidden;
 }
 
-/* ember glow at top */
 .login-box::before {
   content: "";
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: radial-gradient(
-    ellipse 280px 180px at 50% 0%,
-    rgba(195, 140, 65, 0.06),
-    transparent 65%
-  );
+  background:
+    linear-gradient(to bottom, rgba(255,255,255,0.015), transparent 18%),
+    radial-gradient(circle at 50% 0%, rgba(143, 117, 80, 0.08), transparent 36%);
 }
 
-/* corner rune */
 .login-box::after {
   content: "◈";
   position: absolute;
   bottom: 14px;
   right: 16px;
   font-size: 11px;
-  color: rgba(110, 100, 88, 0.22);
+  color: rgba(168, 180, 196, 0.16);
   pointer-events: none;
 }
 
@@ -119,9 +131,9 @@
   font-size: 26px;
   letter-spacing: 2.5px;
   margin: 0 0 6px 0;
-  color: rgba(228, 222, 212, 0.97);
+  color: #edf1f5;
   text-shadow:
-    0 0 40px rgba(195, 140, 65, 0.1),
+    0 0 40px rgba(143, 117, 80, 0.08),
     0 2px 10px rgba(0, 0, 0, 0.95);
   position: relative;
   z-index: 1;
@@ -135,7 +147,7 @@
   font-size: 13px;
   letter-spacing: 5px;
   font-weight: 400;
-  color: rgba(195, 140, 65, 0.58);
+  color: rgba(192, 161, 123, 0.58);
   margin-top: 8px;
   margin-bottom: 20px;
 }
@@ -150,7 +162,8 @@
   font-family: 'Cinzel', serif;
   font-size: 10px;
   letter-spacing: 1.8px;
-  color: rgba(155, 145, 132, 0.75);
+  color: var(--cc-text-soft);
+  text-transform: none;
 }
 
 .login-box .inputs {
@@ -158,10 +171,6 @@
   flex-direction: column;
   align-items: center;
   gap: 0;
-  font-family: 'Cinzel', serif;
-  font-size: 10px;
-  letter-spacing: 1.8px;
-  color: rgba(155, 145, 132, 0.75);
 }
 
 /* ================================
@@ -174,36 +183,34 @@
   margin-bottom: 18px;
   padding: 11px 14px;
 
-  /* warm dark, no blue */
-  background: rgba(8, 7, 6, 0.8);
-  border: 1px solid rgba(88, 80, 68, 0.32);
+  background: linear-gradient(180deg, rgba(13,17,22,0.95), rgba(10,13,17,0.98));
+  border: 1px solid var(--cc-border);
   border-radius: 10px;
 
-  color: rgba(225, 218, 205, 0.95);
+  color: var(--cc-text);
   font-family: 'IM Fell English', serif;
   font-size: 15px;
 
-  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.45);
 
   transition:
     border-color 0.2s ease,
     box-shadow 0.2s ease,
     transform 0.12s ease;
 
-  box-sizing: border-box;
   outline: none;
 }
 
 .login-box input::placeholder {
-  color: rgba(120, 110, 95, 0.35);
+  color: #6f7a88;
   font-style: italic;
 }
 
 .login-box input:focus {
-  border-color: rgba(195, 140, 65, 0.48);
+  border-color: rgba(192, 161, 123, 0.52);
   box-shadow:
-    0 0 0 3px rgba(195, 140, 65, 0.07),
-    inset 0 2px 6px rgba(0, 0, 0, 0.5);
+    0 0 0 3px rgba(143, 117, 80, 0.14),
+    inset 0 2px 6px rgba(0, 0, 0, 0.45);
   transform: translateY(-1px);
 }
 
@@ -212,8 +219,8 @@
    ================================ */
 
 .login-box button {
-  border: 1px solid rgba(195, 140, 65, 0.48);
-  border-radius: 12px;
+  border: 1px solid rgba(192, 161, 123, 0.48);
+  border-radius: 10px;
 
   padding: 11px 36px;
   margin-top: 4px;
@@ -225,33 +232,39 @@
   font-family: 'Cinzel', serif;
   font-weight: 600;
   font-size: 11px;
-  letter-spacing: 2px;
+  letter-spacing: 1.4px;
+  text-transform: none;
 
-  color: rgba(225, 168, 82, 1);
+  color: #e6ccb0;
 
   background: linear-gradient(
-    160deg,
-    rgba(195, 140, 65, 0.16),
-    rgba(130, 88, 32, 0.13)
+    180deg,
+    rgba(143, 117, 80, 0.22),
+    rgba(102, 82, 55, 0.16)
   );
 
   box-shadow:
-    0 0 18px rgba(195, 140, 65, 0.09),
-    inset 0 1px 0 rgba(255, 205, 110, 0.05);
+    0 0 0 1px rgba(192, 161, 123, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
 
   transition:
     transform 0.12s ease,
     box-shadow 0.2s ease,
-    border-color 0.2s ease;
+    border-color 0.2s ease,
+    background 0.2s ease;
 }
 
 .login-box button:hover {
   transform: translateY(-1px);
-  border-color: rgba(210, 158, 75, 0.72);
+  border-color: rgba(226, 196, 157, 0.78);
+  background: linear-gradient(
+    180deg,
+    rgba(163, 132, 92, 0.28),
+    rgba(117, 94, 62, 0.22)
+  );
   box-shadow:
-    0 0 26px rgba(195, 140, 65, 0.16),
-    inset 0 1px 0 rgba(255, 205, 110, 0.08);
-  color: rgba(245, 195, 105, 1);
+    0 0 18px rgba(143, 117, 80, 0.10),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .login-box button:active {
@@ -265,19 +278,26 @@
 .login-box img {
   width: 38px;
   margin-top: 8px;
-  filter: brightness(0.6) saturate(0.3) sepia(0.2);
+  filter: brightness(0.62) saturate(0.4) sepia(0.08);
   transition: transform 0.15s ease, filter 0.2s ease;
 }
 
 .login-box img:hover {
   transform: scale(1.08);
-  filter: brightness(0.82) saturate(0.4) sepia(0.2) drop-shadow(0 0 7px rgba(195, 140, 65, 0.16));
+  filter:
+    brightness(0.82)
+    saturate(0.5)
+    sepia(0.12)
+    drop-shadow(0 0 7px rgba(143, 117, 80, 0.16));
 }
 
-/* "Join our Discord!" text */
+/* ================================
+   SECONDARY TEXT
+   ================================ */
+
 .login-box > br ~ * {
   font-family: 'IM Fell English', serif;
   font-style: italic;
   font-size: 12px;
-  color: rgba(138, 128, 115, 0.62);
+  color: var(--cc-text-dim);
 }
