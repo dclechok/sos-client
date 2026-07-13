@@ -1,13 +1,47 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
-import "./styles/CharacterCreation.css";
-import { CHARACTER_CLASSES } from "./render/players/characterClasses";
-import { createCharacter } from "./api/characterApi";
-import CharacterSpritePreview from "./render/players/characterSpritePreview";
 import {
-  SKIN_TONES,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
+import "./styles/CharacterCreation.css";
+
+import { createCharacter } from "./api/characterApi";
+import { CHARACTER_CLASSES } from "./render/players/characterClasses";
+import CharacterSpritePreview from "./render/players/characterSpritePreview";
+
+import {
   EYE_COLORS,
+  SKIN_TONES,
   getSkinToneById,
 } from "./utils/palletes";
+
+/*
+ * Change this to the number of hairstyles contained in
+ * Sprite-0001-hair.png.
+ *
+ * Each hairstyle must occupy one horizontal 32x32 block:
+ *
+ * Style 1 | Style 2 | Style 3 | Style 4
+ */
+const HAIR_STYLE_COUNT = 8;
+
+const HAIR_STYLES = [
+  {
+    id: "none",
+    label: "None",
+    hairIndex: null,
+  },
+  ...Array.from(
+    { length: HAIR_STYLE_COUNT },
+    (_, index) => ({
+      id: `hair-${index}`,
+      label: `Style ${index + 1}`,
+      hairIndex: index,
+    })
+  ),
+];
 
 const HAIR_COLORS = [
   "#161616",
@@ -20,27 +54,74 @@ const HAIR_COLORS = [
   "#8a6847",
   "#a37a52",
   "#b88b5e",
-  "#d4d4d4",
   "#c9b37e",
+  "#d4d4d4",
 ];
 
-function SwatchPicker({ options, value, onChange, className = "" }) {
+const DEFAULT_STATS = {
+  strength: 5,
+  dexterity: 5,
+  vitality: 5,
+  perception: 5,
+  intelligence: 5,
+  luck: 5,
+};
+
+const STAT_LABELS = {
+  strength: "Strength",
+  dexterity: "Dexterity",
+  vitality: "Vitality",
+  perception: "Perception",
+  intelligence: "Intelligence",
+  luck: "Luck",
+};
+
+function SwatchPicker({
+  options,
+  value,
+  onChange,
+  label,
+  className = "",
+}) {
   return (
-    <div className={`cc-swatch-strip ${className}`}>
-      {options.map((opt) => {
-        const color = typeof opt === "string" ? opt : opt.value;
-        const key = typeof opt === "string" ? opt : opt.id;
+    <div
+      className={`cc-swatch-strip ${className}`.trim()}
+      role="group"
+      aria-label={label}
+    >
+      {options.map((option) => {
+        const isString = typeof option === "string";
+
+        const color = isString
+          ? option
+          : option.value;
+
+        const id = isString
+          ? option
+          : option.id;
+
+        const optionLabel = isString
+          ? option
+          : option.name ||
+            option.label ||
+            option.id;
+
         const active = color === value;
 
         return (
           <button
-            key={key}
+            key={id}
             type="button"
-            className={`cc-swatch-dot ${active ? "is-active" : ""}`}
-            style={{ "--swatch": color }}
+            className={`cc-swatch-dot ${
+              active ? "is-active" : ""
+            }`}
+            style={{
+              "--swatch": color,
+            }}
             onClick={() => onChange(color)}
-            title={key}
-            aria-label={key}
+            title={optionLabel}
+            aria-label={optionLabel}
+            aria-pressed={active}
           />
         );
       })}
@@ -48,54 +129,97 @@ function SwatchPicker({ options, value, onChange, className = "" }) {
   );
 }
 
-export default function CharacterCreation({ account, onCreated, onCancel }) {
-  const [charName, setCharName] = useState("");
-  const [classId, setClassId] = useState(CHARACTER_CLASSES[0]?.id || "");
+function getHairStyleById(styleId) {
+  return (
+    HAIR_STYLES.find(
+      (style) => style.id === styleId
+    ) || HAIR_STYLES[0]
+  );
+}
+
+export default function CharacterCreation({
+  account,
+  onCreated,
+  onCancel,
+}) {
+  const [charName, setCharName] =
+    useState("");
+
+  const [classId, setClassId] = useState(
+    CHARACTER_CLASSES[0]?.id || ""
+  );
+
+  const [skinToneId, setSkinToneId] =
+    useState(
+      SKIN_TONES[2]?.id ||
+        SKIN_TONES[0]?.id ||
+        ""
+    );
+
+  const [eyeColor, setEyeColor] =
+    useState(
+      EYE_COLORS[0]?.value || "#3b271b"
+    );
+
+  const [hairStyle, setHairStyle] =
+    useState("none");
+
+  const [hairColor, setHairColor] =
+    useState("#2b1d16");
+
+  const [beardStyle, setBeardStyle] =
+    useState("none");
+
+  const [beardColor, setBeardColor] =
+    useState("#2b1d16");
+
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
-  const [skinToneId, setSkinToneId] = useState(
-    SKIN_TONES[2]?.id || "light_neutral_1"
-  );
-  const [eyeColor, setEyeColor] = useState(EYE_COLORS[0]?.value || "#3b271b");
-
-  const [hairStyle, setHairStyle] = useState("none");
-  const [hairColor, setHairColor] = useState("#2b1d16");
-  const [beardStyle, setBeardStyle] = useState("none");
-  const [beardColor, setBeardColor] = useState("#2b1d16");
-
   useEffect(() => {
-    if (!classId && CHARACTER_CLASSES[0]?.id) {
-      setClassId(CHARACTER_CLASSES[0].id);
+    if (
+      !classId &&
+      CHARACTER_CLASSES[0]?.id
+    ) {
+      setClassId(
+        CHARACTER_CLASSES[0].id
+      );
     }
   }, [classId]);
 
   const selectedClass = useMemo(() => {
     return (
-      CHARACTER_CLASSES.find((c) => c.id === classId) || CHARACTER_CLASSES[0]
+      CHARACTER_CLASSES.find(
+        (characterClass) =>
+          characterClass.id === classId
+      ) || CHARACTER_CLASSES[0]
     );
   }, [classId]);
 
-  const selectedStats = useMemo(() => {
-    return (
-      selectedClass?.stats ?? {
-        strength: 5,
-        dexterity: 5,
-        vitality: 5,
-        perception: 5,
-        intelligence: 5,
-        luck: 5,
-      }
-    );
-  }, [selectedClass]);
+  const selectedStats =
+    selectedClass?.stats ||
+    DEFAULT_STATS;
 
   const selectedSkinTone = useMemo(() => {
-    return getSkinToneById(skinToneId) || SKIN_TONES[0];
+    return (
+      getSkinToneById(skinToneId) ||
+      SKIN_TONES[0]
+    );
   }, [skinToneId]);
+
+  const selectedHairStyle =
+    useMemo(() => {
+      return getHairStyleById(
+        hairStyle
+      );
+    }, [hairStyle]);
 
   const sanitizedName = useMemo(() => {
     return String(charName || "")
-      .replace(/[^a-zA-Z0-9 _'-]/g, "")
+      .replace(
+        /[^a-zA-Z0-9 _'-]/g,
+        ""
+      )
       .replace(/\s+/g, " ")
       .trim()
       .slice(0, 16);
@@ -109,237 +233,444 @@ export default function CharacterCreation({ account, onCreated, onCancel }) {
       !busy
   );
 
-  const submit = useCallback(async () => {
-    setErr("");
-    if (!canSubmit) return;
+  const submit = useCallback(
+    async () => {
+      if (!canSubmit) {
+        return;
+      }
 
-    try {
+      setErr("");
       setBusy(true);
 
-      const created = await createCharacter(account, account.token, {
-        charName: sanitizedName,
-        classId,
-        appearance: {
-          skinToneId,
-          eyeColor,
-          hairStyle,
-          hairColor,
-          beardStyle,
-          beardColor,
-        },
-      });
+      try {
+        const created =
+          await createCharacter(
+            account,
+            account.token,
+            {
+              charName:
+                sanitizedName,
 
-      onCreated?.(created?.character || created);
-    } catch (e) {
-      setErr(String(e?.message || "Failed to create character"));
-    } finally {
-      setBusy(false);
-    }
-  }, [
-    account,
-    beardColor,
-    beardStyle,
-    canSubmit,
-    classId,
-    eyeColor,
-    hairColor,
-    hairStyle,
-    onCreated,
-    sanitizedName,
-    skinToneId,
-  ]);
+              classId,
+
+              appearance: {
+                skinToneId,
+                eyeColor,
+
+                hairStyle:
+                  selectedHairStyle.id,
+
+                hairIndex:
+                  selectedHairStyle.hairIndex,
+
+                hairColor,
+
+                beardStyle,
+                beardColor,
+              },
+            }
+          );
+
+        onCreated?.(
+          created?.character ||
+            created
+        );
+      } catch (error) {
+        setErr(
+          String(
+            error?.message ||
+              "Failed to create character."
+          )
+        );
+      } finally {
+        setBusy(false);
+      }
+    },
+    [
+      account,
+      beardColor,
+      beardStyle,
+      canSubmit,
+      classId,
+      eyeColor,
+      hairColor,
+      onCreated,
+      sanitizedName,
+      selectedHairStyle,
+      skinToneId,
+    ]
+  );
 
   useEffect(() => {
-    function onKey(e) {
-      if (e.key === "Enter") {
-        e.preventDefault();
+    function handleKeyDown(event) {
+      if (event.key === "Enter") {
+        event.preventDefault();
         submit();
+        return;
       }
-      if (e.key === "Escape") {
+
+      if (event.key === "Escape") {
         onCancel?.();
       }
     }
 
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [submit, onCancel]);
+    window.addEventListener(
+      "keydown",
+      handleKeyDown
+    );
+
+    return () => {
+      window.removeEventListener(
+        "keydown",
+        handleKeyDown
+      );
+    };
+  }, [onCancel, submit]);
 
   return (
-    <div className="cc-overlay" onMouseDown={(e) => e.stopPropagation()}>
-      <div className="cc-card">
-        <div className="cc-header">
-          <div className="cc-title">Create Your Vessel</div>
-          <div className="cc-sub">
-            Shape your form. Choose your path. Enter the world.
+    <div
+      className="cc-overlay"
+      onMouseDown={(event) =>
+        event.stopPropagation()
+      }
+    >
+      <div
+        className="cc-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="character-creation-title"
+      >
+        <header className="cc-header">
+          <div
+            id="character-creation-title"
+            className="cc-title"
+          >
+            Create Your Vessel
           </div>
-        </div>
+
+          <div className="cc-sub">
+            Shape your form. Choose
+            your path. Enter the world.
+          </div>
+        </header>
 
         <div className="cc-body">
           <aside className="cc-preview">
             <div className="cc-portrait">
               <CharacterSpritePreview
-                skinTone={selectedSkinTone}
+                skinTone={
+                  selectedSkinTone
+                }
                 eyeColor={eyeColor}
+                hairColor={hairColor}
+                hairIndex={
+                  selectedHairStyle
+                    .hairIndex ?? 0
+                }
+                showHair={
+                  selectedHairStyle
+                    .hairIndex !== null
+                }
                 scale={4}
               />
             </div>
 
             <div className="cc-preview-meta">
               <div className="cc-preview-name">
-                {sanitizedName || "Unnamed Vessel"}
+                {sanitizedName ||
+                  "Unnamed Vessel"}
               </div>
+
               <div className="cc-preview-class">
-                {selectedClass?.label || "Unknown Class"}
+                {selectedClass?.label ||
+                  "Unknown Class"}
               </div>
+
               <div className="cc-preview-role">
-                {selectedClass?.role ? `Role: ${selectedClass.role}` : ""}
+                {selectedClass?.role
+                  ? `Role: ${selectedClass.role}`
+                  : ""}
               </div>
             </div>
 
             {selectedClass?.description && (
-              <div className="cc-preview-desc">{selectedClass.description}</div>
+              <div className="cc-preview-desc">
+                {
+                  selectedClass.description
+                }
+              </div>
             )}
 
             <div className="cc-stats-panel">
-              <div className="cc-stats-title">Starting Attributes</div>
+              <div className="cc-stats-title">
+                Starting Attributes
+              </div>
+
               <div className="cc-stats-grid">
-                <div className="cc-stat-row">
-                  <span className="cc-stat-label">Strength</span>
-                  <span className="cc-stat-value">{selectedStats.strength}</span>
-                </div>
-                <div className="cc-stat-row">
-                  <span className="cc-stat-label">Dexterity</span>
-                  <span className="cc-stat-value">{selectedStats.dexterity}</span>
-                </div>
-                <div className="cc-stat-row">
-                  <span className="cc-stat-label">Vitality</span>
-                  <span className="cc-stat-value">{selectedStats.vitality}</span>
-                </div>
-                <div className="cc-stat-row">
-                  <span className="cc-stat-label">Perception</span>
-                  <span className="cc-stat-value">{selectedStats.perception}</span>
-                </div>
-                <div className="cc-stat-row">
-                  <span className="cc-stat-label">Intelligence</span>
-                  <span className="cc-stat-value">
-                    {selectedStats.intelligence}
-                  </span>
-                </div>
-                <div className="cc-stat-row">
-                  <span className="cc-stat-label">Luck</span>
-                  <span className="cc-stat-value">{selectedStats.luck}</span>
-                </div>
+                {Object.entries(
+                  STAT_LABELS
+                ).map(
+                  ([
+                    statKey,
+                    statLabel,
+                  ]) => (
+                    <div
+                      key={statKey}
+                      className="cc-stat-row"
+                    >
+                      <span className="cc-stat-label">
+                        {statLabel}
+                      </span>
+
+                      <span className="cc-stat-value">
+                        {selectedStats[
+                          statKey
+                        ] ??
+                          DEFAULT_STATS[
+                            statKey
+                          ]}
+                      </span>
+                    </div>
+                  )
+                )}
               </div>
             </div>
           </aside>
 
           <section className="cc-form">
-            <label className="cc-label">Name</label>
+            <label
+              className="cc-label"
+              htmlFor="character-name"
+            >
+              Name
+            </label>
+
             <input
+              id="character-name"
               className="cc-input"
               value={charName}
-              onChange={(e) => setCharName(e.target.value)}
+              onChange={(event) =>
+                setCharName(
+                  event.target.value
+                )
+              }
               placeholder="e.g. Mourne, Selvek, Ithara..."
               maxLength={32}
               autoFocus
             />
+
             <div className="cc-hint">
-              3–16 characters. Letters, numbers, spaces, apostrophe, hyphen.
+              3–16 characters. Letters,
+              numbers, spaces, apostrophe,
+              and hyphen.
             </div>
 
             <div className="cc-divider" />
 
-            <label className="cc-label">Skin Tone</label>
-            <div className="cc-swatch-strip">
-              {SKIN_TONES.map((tone) => {
-                const active = tone.id === skinToneId;
+            <div className="cc-label">
+              Skin Tone
+            </div>
 
-                return (
-                  <button
-                    key={tone.id}
-                    type="button"
-                    className={`cc-swatch-dot ${active ? "is-active" : ""}`}
-                    style={{ "--swatch": tone.base }}
-                    onClick={() => setSkinToneId(tone.id)}
-                    title={tone.name}
-                    aria-label={tone.name}
-                  />
-                );
-              })}
+            <div
+              className="cc-swatch-strip"
+              role="group"
+              aria-label="Skin tone"
+            >
+              {SKIN_TONES.map(
+                (tone) => {
+                  const active =
+                    tone.id ===
+                    skinToneId;
+
+                  return (
+                    <button
+                      key={tone.id}
+                      type="button"
+                      className={`cc-swatch-dot ${
+                        active
+                          ? "is-active"
+                          : ""
+                      }`}
+                      style={{
+                        "--swatch":
+                          tone.base,
+                      }}
+                      onClick={() =>
+                        setSkinToneId(
+                          tone.id
+                        )
+                      }
+                      title={tone.name}
+                      aria-label={
+                        tone.name
+                      }
+                      aria-pressed={
+                        active
+                      }
+                    />
+                  );
+                }
+              )}
             </div>
 
             <div className="cc-divider" />
 
-            <label className="cc-label">Eye Color</label>
+            <div className="cc-label">
+              Eye Color
+            </div>
+
             <SwatchPicker
               options={EYE_COLORS}
               value={eyeColor}
               onChange={setEyeColor}
+              label="Eye color"
             />
 
             <div className="cc-divider" />
 
-            <label className="cc-label">Hair</label>
+            <label
+              className="cc-label"
+              htmlFor="hair-style"
+            >
+              Hair
+            </label>
+
             <select
+              id="hair-style"
               className="cc-input cc-select"
               value={hairStyle}
-              onChange={(e) => setHairStyle(e.target.value)}
+              onChange={(event) =>
+                setHairStyle(
+                  event.target.value
+                )
+              }
             >
-              <option value="none">None</option>
+              {HAIR_STYLES.map(
+                (style) => (
+                  <option
+                    key={style.id}
+                    value={style.id}
+                  >
+                    {style.label}
+                  </option>
+                )
+              )}
             </select>
 
-            <label className="cc-label cc-label-spaced">Hair Color</label>
+            <div className="cc-label cc-label-spaced">
+              Hair Color
+            </div>
+
             <SwatchPicker
               options={HAIR_COLORS}
               value={hairColor}
               onChange={setHairColor}
+              label="Hair color"
             />
 
-            <label className="cc-label cc-label-spaced">Beard</label>
+            <label
+              className="cc-label cc-label-spaced"
+              htmlFor="beard-style"
+            >
+              Beard
+            </label>
+
             <select
+              id="beard-style"
               className="cc-input cc-select"
               value={beardStyle}
-              onChange={(e) => setBeardStyle(e.target.value)}
+              onChange={(event) =>
+                setBeardStyle(
+                  event.target.value
+                )
+              }
             >
-              <option value="none">None</option>
+              <option value="none">
+                None
+              </option>
             </select>
 
-            <label className="cc-label cc-label-spaced">Beard Color</label>
+            <div className="cc-label cc-label-spaced">
+              Beard Color
+            </div>
+
             <SwatchPicker
               options={HAIR_COLORS}
               value={beardColor}
               onChange={setBeardColor}
+              label="Beard color"
             />
 
             <div className="cc-divider" />
 
-            <label className="cc-label">Class</label>
-            <div className="cc-class-grid">
-              {CHARACTER_CLASSES.map((c) => {
-                const active = c.id === classId;
-
-                return (
-                  <button
-                    key={c.id}
-                    type="button"
-                    className={`cc-class ${active ? "is-active" : ""}`}
-                    onClick={() => setClassId(c.id)}
-                  >
-                    <div className="cc-class-top">
-                      <div className="cc-class-name">{c.label}</div>
-                      <div className="cc-class-role">{c.role}</div>
-                    </div>
-                    <div className="cc-class-desc">{c.description}</div>
-                  </button>
-                );
-              })}
+            <div className="cc-label">
+              Class
             </div>
 
-            {err && <div className="cc-error">{err}</div>}
+            <div className="cc-class-grid">
+              {CHARACTER_CLASSES.map(
+                (characterClass) => {
+                  const active =
+                    characterClass.id ===
+                    classId;
+
+                  return (
+                    <button
+                      key={
+                        characterClass.id
+                      }
+                      type="button"
+                      className={`cc-class ${
+                        active
+                          ? "is-active"
+                          : ""
+                      }`}
+                      onClick={() =>
+                        setClassId(
+                          characterClass.id
+                        )
+                      }
+                      aria-pressed={
+                        active
+                      }
+                    >
+                      <div className="cc-class-top">
+                        <div className="cc-class-name">
+                          {
+                            characterClass.label
+                          }
+                        </div>
+
+                        <div className="cc-class-role">
+                          {
+                            characterClass.role
+                          }
+                        </div>
+                      </div>
+
+                      <div className="cc-class-desc">
+                        {
+                          characterClass.description
+                        }
+                      </div>
+                    </button>
+                  );
+                }
+              )}
+            </div>
+
+            {err && (
+              <div
+                className="cc-error"
+                role="alert"
+              >
+                {err}
+              </div>
+            )}
           </section>
         </div>
 
-        <div className="cc-footer">
+        <footer className="cc-footer">
           <button
             type="button"
             className="cc-btn cc-btn-ghost"
@@ -354,11 +685,17 @@ export default function CharacterCreation({ account, onCreated, onCancel }) {
             className="cc-btn cc-btn-primary"
             onClick={submit}
             disabled={!canSubmit}
-            title={!canSubmit ? "Enter a name and pick a class" : "Create"}
+            title={
+              !canSubmit
+                ? "Enter a name and pick a class"
+                : "Create character"
+            }
           >
-            {busy ? "Binding..." : "Create Character"}
+            {busy
+              ? "Binding..."
+              : "Create Character"}
           </button>
-        </div>
+        </footer>
       </div>
     </div>
   );

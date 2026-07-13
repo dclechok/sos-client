@@ -1,5 +1,20 @@
 import { useEffect, useRef } from "react";
+
 import spriteUrl from "../../art/Sprite-0001.png";
+import hairSpriteUrl from "../../art/Sprite-0001-hair.png";
+
+const FRAME_SIZE = 32;
+
+/*
+ * The body remains 32px tall.
+ * The preview gets 10 extra pixels above the body so tall
+ * hairstyles are not clipped.
+ */
+const HAIR_OVERFLOW_TOP = 10;
+
+const PREVIEW_WIDTH = FRAME_SIZE;
+const PREVIEW_HEIGHT =
+  FRAME_SIZE + HAIR_OVERFLOW_TOP;
 
 const SOURCE_COLORS = {
   outlineAndEyebrow: "#1a1a1a",
@@ -10,8 +25,16 @@ const SOURCE_COLORS = {
   baseSkin: "#9e9e9e",
 };
 
+const HAIR_SOURCE_COLORS = {
+  baseHair: "#f2f2f2",
+  darkHighlight: "#a5a5a5",
+  lightHighlight: "#c6c6c6",
+};
+
 function hexToRgb(hex) {
-  const clean = String(hex).replace("#", "");
+  const clean = String(hex)
+    .replace("#", "")
+    .trim();
 
   return {
     r: parseInt(clean.slice(0, 2), 16),
@@ -25,7 +48,10 @@ function rgbToHex(r, g, b) {
     "#" +
     [r, g, b]
       .map((value) =>
-        Math.max(0, Math.min(255, Math.round(value)))
+        Math.max(
+          0,
+          Math.min(255, Math.round(value))
+        )
           .toString(16)
           .padStart(2, "0")
       )
@@ -41,6 +67,16 @@ function darkenHex(hex, amount) {
     r * multiplier,
     g * multiplier,
     b * multiplier
+  );
+}
+
+function lightenHex(hex, amount) {
+  const { r, g, b } = hexToRgb(hex);
+
+  return rgbToHex(
+    r + (255 - r) * amount,
+    g + (255 - g) * amount,
+    b + (255 - b) * amount
   );
 }
 
@@ -62,160 +98,579 @@ function setPixel(data, index, hex) {
   data[index + 2] = color.b;
 }
 
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+
+    image.onload = () => {
+      resolve(image);
+    };
+
+    image.onerror = () => {
+      reject(
+        new Error(
+          `Could not load sprite: ${src}`
+        )
+      );
+    };
+
+    image.src = src;
+  });
+}
+
+function normalizeIndex(index, total) {
+  if (total <= 0) {
+    return 0;
+  }
+
+  const numericIndex =
+    Number(index) || 0;
+
+  return (
+    (numericIndex % total + total) %
+    total
+  );
+}
+
+function recolorBody(
+  context,
+  skinTone,
+  eyeColor
+) {
+  const imageData =
+    context.getImageData(
+      0,
+      HAIR_OVERFLOW_TOP,
+      FRAME_SIZE,
+      FRAME_SIZE
+    );
+
+  const pixels = imageData.data;
+
+  const baseSkin =
+    skinTone?.base ||
+    skinTone?.value ||
+    "#d8ab87";
+
+  const lightShadow =
+    skinTone?.light ||
+    darkenHex(baseSkin, 0.12);
+
+  const darkShadow =
+    skinTone?.dark ||
+    darkenHex(baseSkin, 0.25);
+
+  const outlineAndEyebrow =
+    skinTone?.outline ||
+    darkenHex(darkShadow, 0.65);
+
+  const lips =
+    skinTone?.lips ||
+    skinTone?.lip ||
+    darkenHex(baseSkin, 0.18);
+
+  for (
+    let index = 0;
+    index < pixels.length;
+    index += 4
+  ) {
+    const red = pixels[index];
+    const green = pixels[index + 1];
+    const blue = pixels[index + 2];
+    const alpha = pixels[index + 3];
+
+    if (alpha === 0) {
+      continue;
+    }
+
+    if (
+      colorsMatch(
+        red,
+        green,
+        blue,
+        SOURCE_COLORS.outlineAndEyebrow
+      )
+    ) {
+      setPixel(
+        pixels,
+        index,
+        outlineAndEyebrow
+      );
+
+      continue;
+    }
+
+    if (
+      colorsMatch(
+        red,
+        green,
+        blue,
+        SOURCE_COLORS.eyes
+      )
+    ) {
+      setPixel(
+        pixels,
+        index,
+        eyeColor
+      );
+
+      continue;
+    }
+
+    if (
+      colorsMatch(
+        red,
+        green,
+        blue,
+        SOURCE_COLORS.lips
+      )
+    ) {
+      setPixel(
+        pixels,
+        index,
+        lips
+      );
+
+      continue;
+    }
+
+    if (
+      colorsMatch(
+        red,
+        green,
+        blue,
+        SOURCE_COLORS.darkShadow
+      )
+    ) {
+      setPixel(
+        pixels,
+        index,
+        darkShadow
+      );
+
+      continue;
+    }
+
+    if (
+      colorsMatch(
+        red,
+        green,
+        blue,
+        SOURCE_COLORS.lightShadow
+      )
+    ) {
+      setPixel(
+        pixels,
+        index,
+        lightShadow
+      );
+
+      continue;
+    }
+
+    if (
+      colorsMatch(
+        red,
+        green,
+        blue,
+        SOURCE_COLORS.baseSkin
+      )
+    ) {
+      setPixel(
+        pixels,
+        index,
+        baseSkin
+      );
+    }
+  }
+
+  context.putImageData(
+    imageData,
+    0,
+    HAIR_OVERFLOW_TOP
+  );
+}
+
+function createHairFrame({
+  hairImage,
+  hairIndex,
+  frameIndex,
+  hairColor,
+}) {
+  const hairCanvas =
+    document.createElement("canvas");
+
+  hairCanvas.width = FRAME_SIZE;
+  hairCanvas.height = FRAME_SIZE;
+
+  const hairContext =
+    hairCanvas.getContext("2d", {
+      willReadFrequently: true,
+    });
+
+  if (!hairContext) {
+    return null;
+  }
+
+  hairContext.imageSmoothingEnabled =
+    false;
+
+  /*
+   * X axis:
+   * animation or facing frames
+   *
+   * Y axis:
+   * different hairstyles
+   */
+  const totalFrames = Math.max(
+    1,
+    Math.floor(
+      hairImage.naturalWidth /
+        FRAME_SIZE
+    )
+  );
+
+  const totalHairStyles = Math.max(
+    1,
+    Math.floor(
+      hairImage.naturalHeight /
+        FRAME_SIZE
+    )
+  );
+
+  const selectedFrameIndex =
+    normalizeIndex(
+      frameIndex,
+      totalFrames
+    );
+
+  const selectedHairIndex =
+    normalizeIndex(
+      hairIndex,
+      totalHairStyles
+    );
+
+  const sourceX =
+    selectedFrameIndex * FRAME_SIZE;
+
+  const sourceY =
+    selectedHairIndex * FRAME_SIZE;
+
+  hairContext.drawImage(
+    hairImage,
+
+    // Source position
+    sourceX,
+    sourceY,
+
+    // Source size
+    FRAME_SIZE,
+    FRAME_SIZE,
+
+    // Destination position
+    0,
+    0,
+
+    // Destination size
+    FRAME_SIZE,
+    FRAME_SIZE
+  );
+
+  const imageData =
+    hairContext.getImageData(
+      0,
+      0,
+      FRAME_SIZE,
+      FRAME_SIZE
+    );
+
+  const pixels = imageData.data;
+
+  const finalBaseHair =
+    hairColor;
+
+  const finalDarkHighlight =
+    darkenHex(hairColor, 0.35);
+
+  const finalLightHighlight =
+    lightenHex(hairColor, 0.22);
+
+  for (
+    let index = 0;
+    index < pixels.length;
+    index += 4
+  ) {
+    const red = pixels[index];
+    const green = pixels[index + 1];
+    const blue = pixels[index + 2];
+    const alpha = pixels[index + 3];
+
+    if (alpha === 0) {
+      continue;
+    }
+
+    if (
+      colorsMatch(
+        red,
+        green,
+        blue,
+        HAIR_SOURCE_COLORS.baseHair
+      )
+    ) {
+      setPixel(
+        pixels,
+        index,
+        finalBaseHair
+      );
+
+      continue;
+    }
+
+    if (
+      colorsMatch(
+        red,
+        green,
+        blue,
+        HAIR_SOURCE_COLORS.darkHighlight
+      )
+    ) {
+      setPixel(
+        pixels,
+        index,
+        finalDarkHighlight
+      );
+
+      continue;
+    }
+
+    if (
+      colorsMatch(
+        red,
+        green,
+        blue,
+        HAIR_SOURCE_COLORS.lightHighlight
+      )
+    ) {
+      setPixel(
+        pixels,
+        index,
+        finalLightHighlight
+      );
+    }
+  }
+
+  hairContext.putImageData(
+    imageData,
+    0,
+    0
+  );
+
+  return hairCanvas;
+}
+
 export default function CharacterSpritePreview({
   skinTone,
   eyeColor = "#3b271b",
+  hairColor = "#6b4022",
+
+  /*
+   * Hairstyle row:
+   *
+   * 0 = sourceY 0
+   * 1 = sourceY 32
+   * 2 = sourceY 64
+   * 3 = sourceY 96
+   */
+  hairIndex = 0,
+
+  /*
+   * Animation/facing column:
+   *
+   * 0 = sourceX 0
+   * 1 = sourceX 32
+   * 2 = sourceX 64
+   * 3 = sourceX 96
+   */
+  frameIndex = 0,
+
+  showHair = true,
+
+  hairOffsetX = 0,
+
+  /*
+   * This places the hair ten pixels
+   * above the body's 32x32 frame.
+   */
+  hairOffsetY = -10,
+
   scale = 4,
 }) {
   const canvasRef = useRef(null);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
+    const canvas =
+      canvasRef.current;
 
     if (!canvas) {
       return undefined;
     }
 
-    const context = canvas.getContext("2d", {
-      willReadFrequently: true,
-    });
+    const context =
+      canvas.getContext("2d", {
+        willReadFrequently: true,
+      });
 
     if (!context) {
       return undefined;
     }
 
-    const image = new Image();
-    image.src = spriteUrl;
+    let cancelled = false;
 
-    image.onload = () => {
-      canvas.width = image.naturalWidth;
-      canvas.height = image.naturalHeight;
+    async function renderCharacter() {
+      try {
+        const [
+          bodyImage,
+          hairImage,
+        ] = await Promise.all([
+          loadImage(spriteUrl),
+          loadImage(hairSpriteUrl),
+        ]);
 
-      context.clearRect(0, 0, canvas.width, canvas.height);
-      context.imageSmoothingEnabled = false;
-      context.drawImage(image, 0, 0);
-
-      const imageData = context.getImageData(
-        0,
-        0,
-        canvas.width,
-        canvas.height
-      );
-
-      const pixels = imageData.data;
-
-      const baseSkin =
-        skinTone?.base ||
-        skinTone?.value ||
-        "#d8ab87";
-
-      const lightShadow = darkenHex(baseSkin, 0.12);
-      const darkShadow = darkenHex(baseSkin, 0.25);
-
-      // Outline and eyebrows share one mask color and one output color.
-      // This makes them clearly darker than the darkest skin shadow.
-      const outlineAndEyebrow = darkenHex(darkShadow, 0.65);
-
-      // Lips are derived from the base skin so the variable is always defined.
-      const lips =
-        skinTone?.lips ||
-        skinTone?.lip ||
-        darkenHex(baseSkin, 0.18);
-
-      for (let i = 0; i < pixels.length; i += 4) {
-        const red = pixels[i];
-        const green = pixels[i + 1];
-        const blue = pixels[i + 2];
-        const alpha = pixels[i + 3];
-
-        if (alpha === 0) {
-          continue;
+        if (cancelled) {
+          return;
         }
+
+        canvas.width =
+          PREVIEW_WIDTH;
+
+        canvas.height =
+          PREVIEW_HEIGHT;
+
+        context.clearRect(
+          0,
+          0,
+          PREVIEW_WIDTH,
+          PREVIEW_HEIGHT
+        );
+
+        context.imageSmoothingEnabled =
+          false;
+
+        const bodyFrameCount =
+          Math.max(
+            1,
+            Math.floor(
+              bodyImage.naturalWidth /
+                FRAME_SIZE
+            )
+          );
+
+        const selectedBodyFrame =
+          normalizeIndex(
+            frameIndex,
+            bodyFrameCount
+          );
+
+        const bodySourceX =
+          selectedBodyFrame *
+          FRAME_SIZE;
+
+        /*
+         * Body stays 32x32.
+         *
+         * It is drawn 10 pixels below
+         * the top of the preview so hair
+         * can extend above it.
+         */
+        context.drawImage(
+          bodyImage,
+
+          // Source position
+          bodySourceX,
+          0,
+
+          // Source size
+          FRAME_SIZE,
+          FRAME_SIZE,
+
+          // Destination position
+          0,
+          HAIR_OVERFLOW_TOP,
+
+          // Destination size
+          FRAME_SIZE,
+          FRAME_SIZE
+        );
+
+        recolorBody(
+          context,
+          skinTone,
+          eyeColor
+        );
+
+        if (!showHair) {
+          return;
+        }
+
+        const hairCanvas =
+          createHairFrame({
+            hairImage,
+            hairIndex,
+            frameIndex,
+            hairColor,
+          });
 
         if (
-          colorsMatch(
-            red,
-            green,
-            blue,
-            SOURCE_COLORS.outlineAndEyebrow
-          )
+          !hairCanvas ||
+          cancelled
         ) {
-          setPixel(pixels, i, outlineAndEyebrow);
-          continue;
+          return;
         }
 
-        if (
-          colorsMatch(
-            red,
-            green,
-            blue,
-            SOURCE_COLORS.eyes
-          )
-        ) {
-          setPixel(pixels, i, eyeColor);
-          continue;
-        }
+        context.imageSmoothingEnabled =
+          false;
 
-        if (
-          colorsMatch(
-            red,
-            green,
-            blue,
-            SOURCE_COLORS.lips
-          )
-        ) {
-          setPixel(pixels, i, lips);
-          continue;
-        }
-
-        if (
-          colorsMatch(
-            red,
-            green,
-            blue,
-            SOURCE_COLORS.darkShadow
-          )
-        ) {
-          setPixel(pixels, i, darkShadow);
-          continue;
-        }
-
-        if (
-          colorsMatch(
-            red,
-            green,
-            blue,
-            SOURCE_COLORS.lightShadow
-          )
-        ) {
-          setPixel(pixels, i, lightShadow);
-          continue;
-        }
-
-        if (
-          colorsMatch(
-            red,
-            green,
-            blue,
-            SOURCE_COLORS.baseSkin
-          )
-        ) {
-          setPixel(pixels, i, baseSkin);
-        }
+        /*
+         * HAIR_OVERFLOW_TOP is 10.
+         * hairOffsetY is -10.
+         *
+         * 10 + -10 = 0
+         */
+        context.drawImage(
+          hairCanvas,
+          hairOffsetX,
+          HAIR_OVERFLOW_TOP +
+            hairOffsetY
+        );
+      } catch (error) {
+        console.error(
+          "Could not render character preview:",
+          error
+        );
       }
+    }
 
-      context.putImageData(imageData, 0, 0);
-    };
-
-    image.onerror = () => {
-      console.error("Could not load character sprite:", spriteUrl);
-    };
+    renderCharacter();
 
     return () => {
-      image.onload = null;
-      image.onerror = null;
+      cancelled = true;
     };
-  }, [skinTone, eyeColor]);
+  }, [
+    skinTone,
+    eyeColor,
+    hairColor,
+    hairIndex,
+    frameIndex,
+    showHair,
+    hairOffsetX,
+    hairOffsetY,
+  ]);
+
+  const displayedWidth =
+    PREVIEW_WIDTH * scale;
+
+  const displayedHeight =
+    PREVIEW_HEIGHT * scale;
 
   return (
     <canvas
@@ -223,9 +678,10 @@ export default function CharacterSpritePreview({
       aria-label="Character preview"
       style={{
         display: "block",
+        width: `${displayedWidth}px`,
+        height: `${displayedHeight}px`,
         imageRendering: "pixelated",
-        transform: `scale(${scale})`,
-        transformOrigin: "top left",
+        flexShrink: 0,
       }}
     />
   );
