@@ -17,46 +17,10 @@ import {
   getSkinToneById,
 } from "./utils/palletes";
 
-/*
- * Change this to the number of hairstyles contained in
- * Sprite-0001-hair.png.
- *
- * Each hairstyle must occupy one horizontal 32x32 block:
- *
- * Style 1 | Style 2 | Style 3 | Style 4
- */
-const HAIR_STYLE_COUNT = 8;
-
-const HAIR_STYLES = [
-  {
-    id: "none",
-    label: "None",
-    hairIndex: null,
-  },
-  ...Array.from(
-    { length: HAIR_STYLE_COUNT },
-    (_, index) => ({
-      id: `hair-${index}`,
-      label: `Style ${index + 1}`,
-      hairIndex: index,
-    })
-  ),
-];
-
-const HAIR_COLORS = [
-  "#161616",
-  "#241c18",
-  "#2b1d16",
-  "#3a2a20",
-  "#4a3326",
-  "#5a4331",
-  "#6a503a",
-  "#8a6847",
-  "#a37a52",
-  "#b88b5e",
-  "#c9b37e",
-  "#d4d4d4",
-];
+import CharacterAppearance, {
+  getBeardStyleById,
+  getHairStyleById,
+} from "./CharacterAppearance";
 
 const DEFAULT_STATS = {
   strength: 5,
@@ -75,67 +39,6 @@ const STAT_LABELS = {
   intelligence: "Intelligence",
   luck: "Luck",
 };
-
-function SwatchPicker({
-  options,
-  value,
-  onChange,
-  label,
-  className = "",
-}) {
-  return (
-    <div
-      className={`cc-swatch-strip ${className}`.trim()}
-      role="group"
-      aria-label={label}
-    >
-      {options.map((option) => {
-        const isString = typeof option === "string";
-
-        const color = isString
-          ? option
-          : option.value;
-
-        const id = isString
-          ? option
-          : option.id;
-
-        const optionLabel = isString
-          ? option
-          : option.name ||
-            option.label ||
-            option.id;
-
-        const active = color === value;
-
-        return (
-          <button
-            key={id}
-            type="button"
-            className={`cc-swatch-dot ${
-              active ? "is-active" : ""
-            }`}
-            style={{
-              "--swatch": color,
-            }}
-            onClick={() => onChange(color)}
-            title={optionLabel}
-            aria-label={optionLabel}
-            aria-pressed={active}
-          />
-        );
-      })}
-    </div>
-  );
-}
-
-function getHairStyleById(styleId) {
-  return (
-    HAIR_STYLES.find(
-      (style) => style.id === styleId
-    ) || HAIR_STYLES[0]
-  );
-}
 
 export default function CharacterCreation({
   account,
@@ -214,6 +117,13 @@ export default function CharacterCreation({
       );
     }, [hairStyle]);
 
+    const selectedBeardStyle =
+  useMemo(() => {
+    return getBeardStyleById(
+      beardStyle
+    );
+  }, [beardStyle]);
+
   const sanitizedName = useMemo(() => {
     return String(charName || "")
       .replace(
@@ -265,7 +175,12 @@ export default function CharacterCreation({
 
                 hairColor,
 
-                beardStyle,
+                beardStyle:
+                  selectedBeardStyle.id,
+
+                beardIndex:
+                  selectedBeardStyle.beardIndex,
+
                 beardColor,
               },
             }
@@ -289,13 +204,13 @@ export default function CharacterCreation({
     [
       account,
       beardColor,
-      beardStyle,
       canSubmit,
       classId,
       eyeColor,
       hairColor,
       onCreated,
       sanitizedName,
+      selectedBeardStyle,
       selectedHairStyle,
       skinToneId,
     ]
@@ -358,10 +273,9 @@ export default function CharacterCreation({
           <aside className="cc-preview">
             <div className="cc-portrait">
               <CharacterSpritePreview
-                skinTone={
-                  selectedSkinTone
-                }
+                skinTone={selectedSkinTone}
                 eyeColor={eyeColor}
+
                 hairColor={hairColor}
                 hairIndex={
                   selectedHairStyle
@@ -371,6 +285,17 @@ export default function CharacterCreation({
                   selectedHairStyle
                     .hairIndex !== null
                 }
+
+                beardColor={beardColor}
+                beardIndex={
+                  selectedBeardStyle
+                    .beardIndex ?? 0
+                }
+                showBeard={
+                  selectedBeardStyle
+                    .beardIndex !== null
+                }
+
                 scale={4}
               />
             </div>
@@ -467,141 +392,26 @@ export default function CharacterCreation({
 
             <div className="cc-divider" />
 
-            <div className="cc-label">
-              Skin Tone
-            </div>
-
-            <div
-              className="cc-swatch-strip"
-              role="group"
-              aria-label="Skin tone"
-            >
-              {SKIN_TONES.map(
-                (tone) => {
-                  const active =
-                    tone.id ===
-                    skinToneId;
-
-                  return (
-                    <button
-                      key={tone.id}
-                      type="button"
-                      className={`cc-swatch-dot ${
-                        active
-                          ? "is-active"
-                          : ""
-                      }`}
-                      style={{
-                        "--swatch":
-                          tone.base,
-                      }}
-                      onClick={() =>
-                        setSkinToneId(
-                          tone.id
-                        )
-                      }
-                      title={tone.name}
-                      aria-label={
-                        tone.name
-                      }
-                      aria-pressed={
-                        active
-                      }
-                    />
-                  );
-                }
-              )}
-            </div>
-
-            <div className="cc-divider" />
-
-            <div className="cc-label">
-              Eye Color
-            </div>
-
-            <SwatchPicker
-              options={EYE_COLORS}
-              value={eyeColor}
-              onChange={setEyeColor}
-              label="Eye color"
-            />
-
-            <div className="cc-divider" />
-
-            <label
-              className="cc-label"
-              htmlFor="hair-style"
-            >
-              Hair
-            </label>
-
-            <select
-              id="hair-style"
-              className="cc-input cc-select"
-              value={hairStyle}
-              onChange={(event) =>
-                setHairStyle(
-                  event.target.value
-                )
+            <CharacterAppearance
+              skinToneId={skinToneId}
+              setSkinToneId={
+                setSkinToneId
               }
-            >
-              {HAIR_STYLES.map(
-                (style) => (
-                  <option
-                    key={style.id}
-                    value={style.id}
-                  >
-                    {style.label}
-                  </option>
-                )
-              )}
-            </select>
-
-            <div className="cc-label cc-label-spaced">
-              Hair Color
-            </div>
-
-            <SwatchPicker
-              options={HAIR_COLORS}
-              value={hairColor}
-              onChange={setHairColor}
-              label="Hair color"
-            />
-
-            <label
-              className="cc-label cc-label-spaced"
-              htmlFor="beard-style"
-            >
-              Beard
-            </label>
-
-            <select
-              id="beard-style"
-              className="cc-input cc-select"
-              value={beardStyle}
-              onChange={(event) =>
-                setBeardStyle(
-                  event.target.value
-                )
+              eyeColor={eyeColor}
+              setEyeColor={setEyeColor}
+              hairStyle={hairStyle}
+              setHairStyle={setHairStyle}
+              hairColor={hairColor}
+              setHairColor={setHairColor}
+              beardStyle={beardStyle}
+              setBeardStyle={
+                setBeardStyle
               }
-            >
-              <option value="none">
-                None
-              </option>
-            </select>
-
-            <div className="cc-label cc-label-spaced">
-              Beard Color
-            </div>
-
-            <SwatchPicker
-              options={HAIR_COLORS}
-              value={beardColor}
-              onChange={setBeardColor}
-              label="Beard color"
+              beardColor={beardColor}
+              setBeardColor={
+                setBeardColor
+              }
             />
-
-            <div className="cc-divider" />
 
             <div className="cc-label">
               Class

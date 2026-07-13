@@ -486,3 +486,304 @@
     rgba(117, 94, 62, 0.22)
   );
 }
+
+/* =========================================================
+   CHARACTER APPEARANCE COLOR CONTROLS
+   ========================================================= */
+
+.cc-color-controls {
+  display: grid;
+  gap: 14px;
+  margin-top: 10px;
+  padding: 14px;
+  border: 1px solid var(--cc-border);
+  border-radius: 12px;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(17, 22, 28, 0.82),
+      rgba(9, 12, 16, 0.9)
+    );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.025),
+    0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+/* Current generated color */
+
+.cc-color-result {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-height: 44px;
+  padding: 8px 11px;
+  border: 1px solid rgba(145, 158, 175, 0.16);
+  border-radius: 9px;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(8, 11, 15, 0.8),
+      rgba(5, 7, 10, 0.92)
+    );
+}
+
+.cc-color-result-dot {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 8px;
+  background: var(--selected-color);
+  box-shadow:
+    inset 0 1px 2px rgba(255, 255, 255, 0.14),
+    0 4px 10px rgba(0, 0, 0, 0.32);
+}
+
+.cc-color-result code {
+  font-family:
+    "SFMono-Regular",
+    Consolas,
+    "Liberation Mono",
+    monospace;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #c8d0da;
+}
+
+/* Individual slider group */
+
+.cc-slider-field {
+  display: grid;
+  gap: 7px;
+  padding: 2px 1px;
+}
+
+.cc-slider-field + .cc-slider-field {
+  padding-top: 13px;
+  border-top: 1px solid rgba(255, 255, 255, 0.045);
+}
+
+.cc-slider-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  min-height: 20px;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 12px;
+  color: var(--cc-text-soft);
+}
+
+.cc-slider-header > span:first-child {
+  font-weight: 600;
+  letter-spacing: 0.025em;
+  color: #c4ccd5;
+}
+
+.cc-slider-value {
+  min-width: 44px;
+  padding: 3px 7px;
+  border: 1px solid rgba(192, 161, 123, 0.15);
+  border-radius: 6px;
+  background: rgba(143, 117, 80, 0.08);
+  font-family:
+    "SFMono-Regular",
+    Consolas,
+    monospace;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  color: #dec09b;
+}
+
+/* Slider track */
+
+.cc-slider {
+  width: 100%;
+  height: 20px;
+  margin: 0;
+  padding: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  outline: none;
+  cursor: pointer;
+}
+
+.cc-slider::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 999px;
+  background:
+    linear-gradient(
+      90deg,
+      #202731 0%,
+      #4d5867 48%,
+      #a88962 100%
+    );
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.48),
+    0 1px 0 rgba(255, 255, 255, 0.025);
+}
+
+.cc-slider::-moz-range-track {
+  width: 100%;
+  height: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 999px;
+  background:
+    linear-gradient(
+      90deg,
+      #202731 0%,
+      #4d5867 48%,
+      #a88962 100%
+    );
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.48),
+    0 1px 0 rgba(255, 255, 255, 0.025);
+}
+
+/* Slider handle */
+
+.cc-slider::-webkit-slider-thumb {
+  width: 18px;
+  height: 18px;
+  margin-top: -6px;
+  appearance: none;
+  -webkit-appearance: none;
+  border: 2px solid #d8bd9a;
+  border-radius: 50%;
+  background:
+    radial-gradient(
+      circle at 38% 32%,
+      #515b68,
+      #222831 68%
+    );
+  box-shadow:
+    0 3px 9px rgba(0, 0, 0, 0.68),
+    0 0 0 3px rgba(143, 117, 80, 0.13);
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+.cc-slider::-moz-range-thumb {
+  width: 15px;
+  height: 15px;
+  border: 2px solid #d8bd9a;
+  border-radius: 50%;
+  background:
+    radial-gradient(
+      circle at 38% 32%,
+      #515b68,
+      #222831 68%
+    );
+  box-shadow:
+    0 3px 9px rgba(0, 0, 0, 0.68),
+    0 0 0 3px rgba(143, 117, 80, 0.13);
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+.cc-slider:hover::-webkit-slider-thumb {
+  transform: scale(1.08);
+  box-shadow:
+    0 3px 10px rgba(0, 0, 0, 0.7),
+    0 0 0 4px rgba(192, 161, 123, 0.16);
+}
+
+.cc-slider:hover::-moz-range-thumb {
+  transform: scale(1.08);
+  box-shadow:
+    0 3px 10px rgba(0, 0, 0, 0.7),
+    0 0 0 4px rgba(192, 161, 123, 0.16);
+}
+
+.cc-slider:focus-visible::-webkit-slider-thumb {
+  box-shadow:
+    0 3px 10px rgba(0, 0, 0, 0.7),
+    0 0 0 4px rgba(192, 161, 123, 0.28);
+}
+
+.cc-slider:focus-visible::-moz-range-thumb {
+  box-shadow:
+    0 3px 10px rgba(0, 0, 0, 0.7),
+    0 0 0 4px rgba(192, 161, 123, 0.28);
+}
+
+/* Dark / Light, Gray / Vivid text */
+
+.cc-slider-labels {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #697482;
+}
+
+.cc-slider-labels span:last-child {
+  text-align: right;
+}
+
+/* Match hair color checkbox */
+
+.cc-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  margin-top: 12px;
+  padding: 9px 11px;
+  border: 1px solid var(--cc-border);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.018);
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 12px;
+  color: var(--cc-text-soft);
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.cc-checkbox-row:hover {
+  border-color: rgba(192, 161, 123, 0.28);
+  background: rgba(143, 117, 80, 0.045);
+}
+
+.cc-checkbox-row input {
+  width: 17px;
+  height: 17px;
+  margin: 0;
+  flex: 0 0 17px;
+  accent-color: #a88962;
+  cursor: pointer;
+}
+
+/* Better spacing between sections */
+
+.cc-label + .cc-color-controls {
+  margin-top: 0;
+}
+
+.cc-select + .cc-label-spaced {
+  margin-top: 18px;
+}
+
+@media (max-width: 620px) {
+  .cc-color-controls {
+    padding: 12px;
+  }
+
+  .cc-slider-header {
+    font-size: 11px;
+  }
+}

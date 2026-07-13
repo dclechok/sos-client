@@ -2,19 +2,20 @@ import { useEffect, useRef } from "react";
 
 import spriteUrl from "../../art/Sprite-0001.png";
 import hairSpriteUrl from "../../art/Sprite-0001-hair.png";
+import beardSpriteUrl from "../../art/Sprite-0001-beard.png";
 
 const FRAME_SIZE = 32;
 
 /*
  * The body remains 32px tall.
  * The preview gets 10 extra pixels above the body so tall
- * hairstyles are not clipped.
+ * hair and beard overlays use the same coordinate system.
  */
-const HAIR_OVERFLOW_TOP = 10;
+const OVERFLOW_TOP = 10;
 
 const PREVIEW_WIDTH = FRAME_SIZE;
 const PREVIEW_HEIGHT =
-  FRAME_SIZE + HAIR_OVERFLOW_TOP;
+  FRAME_SIZE + OVERFLOW_TOP;
 
 const SOURCE_COLORS = {
   outlineAndEyebrow: "#1a1a1a",
@@ -25,10 +26,14 @@ const SOURCE_COLORS = {
   baseSkin: "#9e9e9e",
 };
 
-const HAIR_SOURCE_COLORS = {
-  baseHair: "#f2f2f2",
-  darkHighlight: "#a5a5a5",
-  lightHighlight: "#c6c6c6",
+/*
+ * The beard sprite is expected to use these same source
+ * colors as the hair sprite.
+ */
+const OVERLAY_SOURCE_COLORS = {
+  base: "#f2f2f2",
+  dark: "#a5a5a5",
+  light: "#c6c6c6",
 };
 
 function hexToRgb(hex) {
@@ -50,7 +55,10 @@ function rgbToHex(r, g, b) {
       .map((value) =>
         Math.max(
           0,
-          Math.min(255, Math.round(value))
+          Math.min(
+            255,
+            Math.round(value)
+          )
         )
           .toString(16)
           .padStart(2, "0")
@@ -140,7 +148,7 @@ function recolorBody(
   const imageData =
     context.getImageData(
       0,
-      HAIR_OVERFLOW_TOP,
+      OVERFLOW_TOP,
       FRAME_SIZE,
       FRAME_SIZE
     );
@@ -287,53 +295,52 @@ function recolorBody(
   context.putImageData(
     imageData,
     0,
-    HAIR_OVERFLOW_TOP
+    OVERFLOW_TOP
   );
 }
 
-function createHairFrame({
-  hairImage,
-  hairIndex,
+/*
+ * Used for both hair and beard sheets.
+ *
+ * X axis = facing/animation frames
+ * Y axis = different styles
+ */
+function createRecoloredOverlayFrame({
+  image,
+  styleIndex,
   frameIndex,
-  hairColor,
+  color,
 }) {
-  const hairCanvas =
+  const overlayCanvas =
     document.createElement("canvas");
 
-  hairCanvas.width = FRAME_SIZE;
-  hairCanvas.height = FRAME_SIZE;
+  overlayCanvas.width = FRAME_SIZE;
+  overlayCanvas.height = FRAME_SIZE;
 
-  const hairContext =
-    hairCanvas.getContext("2d", {
+  const overlayContext =
+    overlayCanvas.getContext("2d", {
       willReadFrequently: true,
     });
 
-  if (!hairContext) {
+  if (!overlayContext) {
     return null;
   }
 
-  hairContext.imageSmoothingEnabled =
+  overlayContext.imageSmoothingEnabled =
     false;
 
-  /*
-   * X axis:
-   * animation or facing frames
-   *
-   * Y axis:
-   * different hairstyles
-   */
   const totalFrames = Math.max(
     1,
     Math.floor(
-      hairImage.naturalWidth /
+      image.naturalWidth /
         FRAME_SIZE
     )
   );
 
-  const totalHairStyles = Math.max(
+  const totalStyles = Math.max(
     1,
     Math.floor(
-      hairImage.naturalHeight /
+      image.naturalHeight /
         FRAME_SIZE
     )
   );
@@ -344,40 +351,32 @@ function createHairFrame({
       totalFrames
     );
 
-  const selectedHairIndex =
+  const selectedStyleIndex =
     normalizeIndex(
-      hairIndex,
-      totalHairStyles
+      styleIndex,
+      totalStyles
     );
 
   const sourceX =
     selectedFrameIndex * FRAME_SIZE;
 
   const sourceY =
-    selectedHairIndex * FRAME_SIZE;
+    selectedStyleIndex * FRAME_SIZE;
 
-  hairContext.drawImage(
-    hairImage,
-
-    // Source position
+  overlayContext.drawImage(
+    image,
     sourceX,
     sourceY,
-
-    // Source size
     FRAME_SIZE,
     FRAME_SIZE,
-
-    // Destination position
     0,
     0,
-
-    // Destination size
     FRAME_SIZE,
     FRAME_SIZE
   );
 
   const imageData =
-    hairContext.getImageData(
+    overlayContext.getImageData(
       0,
       0,
       FRAME_SIZE,
@@ -386,14 +385,13 @@ function createHairFrame({
 
   const pixels = imageData.data;
 
-  const finalBaseHair =
-    hairColor;
+  const finalBase = color;
 
-  const finalDarkHighlight =
-    darkenHex(hairColor, 0.35);
+  const finalDark =
+    darkenHex(color, 0.35);
 
-  const finalLightHighlight =
-    lightenHex(hairColor, 0.22);
+  const finalLight =
+    lightenHex(color, 0.22);
 
   for (
     let index = 0;
@@ -414,13 +412,13 @@ function createHairFrame({
         red,
         green,
         blue,
-        HAIR_SOURCE_COLORS.baseHair
+        OVERLAY_SOURCE_COLORS.base
       )
     ) {
       setPixel(
         pixels,
         index,
-        finalBaseHair
+        finalBase
       );
 
       continue;
@@ -431,13 +429,13 @@ function createHairFrame({
         red,
         green,
         blue,
-        HAIR_SOURCE_COLORS.darkHighlight
+        OVERLAY_SOURCE_COLORS.dark
       )
     ) {
       setPixel(
         pixels,
         index,
-        finalDarkHighlight
+        finalDark
       );
 
       continue;
@@ -448,61 +446,43 @@ function createHairFrame({
         red,
         green,
         blue,
-        HAIR_SOURCE_COLORS.lightHighlight
+        OVERLAY_SOURCE_COLORS.light
       )
     ) {
       setPixel(
         pixels,
         index,
-        finalLightHighlight
+        finalLight
       );
     }
   }
 
-  hairContext.putImageData(
+  overlayContext.putImageData(
     imageData,
     0,
     0
   );
 
-  return hairCanvas;
+  return overlayCanvas;
 }
 
 export default function CharacterSpritePreview({
   skinTone,
   eyeColor = "#3b271b",
+
   hairColor = "#6b4022",
-
-  /*
-   * Hairstyle row:
-   *
-   * 0 = sourceY 0
-   * 1 = sourceY 32
-   * 2 = sourceY 64
-   * 3 = sourceY 96
-   */
   hairIndex = 0,
-
-  /*
-   * Animation/facing column:
-   *
-   * 0 = sourceX 0
-   * 1 = sourceX 32
-   * 2 = sourceX 64
-   * 3 = sourceX 96
-   */
-  frameIndex = 0,
-
   showHair = true,
-
   hairOffsetX = 0,
-
-  /*
-   * This places the hair ten pixels
-   * above the body's 32x32 frame.
-   */
   hairOffsetY = -10,
 
+  beardColor = "#6b4022",
+  beardIndex = 0,
+  showBeard = false,
+  beardOffsetX = 0,
+  beardOffsetY = -9,
+
+  frameIndex = 0,
   scale = 4,
 }) {
   const canvasRef = useRef(null);
@@ -531,9 +511,11 @@ export default function CharacterSpritePreview({
         const [
           bodyImage,
           hairImage,
+          beardImage,
         ] = await Promise.all([
           loadImage(spriteUrl),
           loadImage(hairSpriteUrl),
+          loadImage(beardSpriteUrl),
         ]);
 
         if (cancelled) {
@@ -575,29 +557,14 @@ export default function CharacterSpritePreview({
           selectedBodyFrame *
           FRAME_SIZE;
 
-        /*
-         * Body stays 32x32.
-         *
-         * It is drawn 10 pixels below
-         * the top of the preview so hair
-         * can extend above it.
-         */
         context.drawImage(
           bodyImage,
-
-          // Source position
           bodySourceX,
           0,
-
-          // Source size
           FRAME_SIZE,
           FRAME_SIZE,
-
-          // Destination position
           0,
-          HAIR_OVERFLOW_TOP,
-
-          // Destination size
+          OVERFLOW_TOP,
           FRAME_SIZE,
           FRAME_SIZE
         );
@@ -608,40 +575,53 @@ export default function CharacterSpritePreview({
           eyeColor
         );
 
-        if (!showHair) {
-          return;
-        }
-
-        const hairCanvas =
-          createHairFrame({
-            hairImage,
-            hairIndex,
-            frameIndex,
-            hairColor,
-          });
-
-        if (
-          !hairCanvas ||
-          cancelled
-        ) {
-          return;
-        }
-
-        context.imageSmoothingEnabled =
-          false;
-
         /*
-         * HAIR_OVERFLOW_TOP is 10.
-         * hairOffsetY is -10.
-         *
-         * 10 + -10 = 0
+         * Beard is drawn before hair.
+         * This lets hair overlap the beard when necessary.
          */
-        context.drawImage(
-          hairCanvas,
-          hairOffsetX,
-          HAIR_OVERFLOW_TOP +
-            hairOffsetY
-        );
+        if (showBeard) {
+          const beardCanvas =
+            createRecoloredOverlayFrame({
+              image: beardImage,
+              styleIndex: beardIndex,
+              frameIndex,
+              color: beardColor,
+            });
+
+          if (
+            beardCanvas &&
+            !cancelled
+          ) {
+            context.drawImage(
+              beardCanvas,
+              beardOffsetX,
+              OVERFLOW_TOP +
+                beardOffsetY
+            );
+          }
+        }
+
+        if (showHair) {
+          const hairCanvas =
+            createRecoloredOverlayFrame({
+              image: hairImage,
+              styleIndex: hairIndex,
+              frameIndex,
+              color: hairColor,
+            });
+
+          if (
+            hairCanvas &&
+            !cancelled
+          ) {
+            context.drawImage(
+              hairCanvas,
+              hairOffsetX,
+              OVERFLOW_TOP +
+                hairOffsetY
+            );
+          }
+        }
       } catch (error) {
         console.error(
           "Could not render character preview:",
@@ -658,12 +638,20 @@ export default function CharacterSpritePreview({
   }, [
     skinTone,
     eyeColor,
+
     hairColor,
     hairIndex,
-    frameIndex,
     showHair,
     hairOffsetX,
     hairOffsetY,
+
+    beardColor,
+    beardIndex,
+    showBeard,
+    beardOffsetX,
+    beardOffsetY,
+
+    frameIndex,
   ]);
 
   const displayedWidth =
