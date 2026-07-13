@@ -14,8 +14,22 @@ export function getDefaultAppearance() {
   };
 }
 
-function makeAppearanceKey(appearance = {}) {
+function normalizeAppearance(appearance = {}) {
   const merged = { ...getDefaultAppearance(), ...(appearance || {}) };
+
+  return {
+    skinToneId: String(merged.skinToneId || "light_neutral_1"),
+    eyeColor: String(merged.eyeColor || "#3b271b"),
+    hairStyle: String(merged.hairStyle || "none"),
+    hairColor: String(merged.hairColor || "#2b1d16"),
+    beardStyle: String(merged.beardStyle || "none"),
+    beardColor: String(merged.beardColor || "#2b1d16"),
+  };
+}
+
+function makeAppearanceKey(appearance = {}) {
+  const merged = normalizeAppearance(appearance);
+
   return JSON.stringify({
     skinToneId: merged.skinToneId,
     eyeColor: merged.eyeColor,
@@ -27,7 +41,7 @@ function makeAppearanceKey(appearance = {}) {
 }
 
 export function getPlayerSheetRecord(appearance = {}) {
-  const merged = { ...getDefaultAppearance(), ...(appearance || {}) };
+  const merged = normalizeAppearance(appearance);
   const key = makeAppearanceKey(merged);
 
   if (runtimeSheetCache.has(key)) {
@@ -42,21 +56,38 @@ export function getPlayerSheetRecord(appearance = {}) {
     promise: null,
   };
 
+  const skinTone =
+    getSkinToneById(merged.skinToneId) ||
+    getSkinToneById("light_neutral_1") || {
+      id: "light_neutral_1",
+      base: "#ddb59a",
+      ear: "#c99f85",
+      dark: "#9e715a",
+      light: "#efc7ad",
+    };
+
   record.promise = composeSpriteSheet({
-    skinTone: getSkinToneById(merged.skinToneId),
+    skinTone,
     eyeColor: merged.eyeColor,
   })
     .then((canvas) => {
       record.status = "ready";
       record.canvas = canvas;
+      record.error = null;
       return canvas;
     })
     .catch((err) => {
       record.status = "error";
+      record.canvas = null;
       record.error = err;
+      console.error("[playerSheetRuntime] composeSpriteSheet failed:", err);
       return null;
     });
 
   runtimeSheetCache.set(key, record);
   return record;
+}
+
+export function clearPlayerSheetRuntimeCache() {
+  runtimeSheetCache.clear();
 }

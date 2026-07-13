@@ -1,5 +1,3 @@
-// src/api/characterApi.js
-
 const BASE_URL = process.env.REACT_APP_API_BASE_URL + "/api/characters/";
 
 // Helper: support account docs that use either `id` or `_id`
@@ -42,10 +40,14 @@ export async function fetchCharacterList(account, token) {
 /**
  * CREATE character for account
  * POST /api/characters/:accountId
- * Body: { charName, class }
+ * Body: { charName, classId, appearance }
  * Returns: { character }
  */
-export async function createCharacter(account, token, { charName, classId }) {
+export async function createCharacter(
+  account,
+  token,
+  { charName, classId, appearance = {} }
+) {
   const accountId = getAccountId(account);
 
   try {
@@ -62,6 +64,14 @@ export async function createCharacter(account, token, { charName, classId }) {
       body: JSON.stringify({
         charName,
         class: classId,
+        appearance: {
+          skinToneId: appearance?.skinToneId || "light_neutral_1",
+          eyeColor: appearance?.eyeColor || "#3b271b",
+          hairStyle: appearance?.hairStyle || "none",
+          hairColor: appearance?.hairColor || "#2b1d16",
+          beardStyle: appearance?.beardStyle || "none",
+          beardColor: appearance?.beardColor || "#2b1d16",
+        },
       }),
     });
 
@@ -108,7 +118,7 @@ export async function deleteCharacter(account, token, charId) {
       throw new Error(data?.message || "Failed to delete character");
     }
 
-    return data; // { ok: true }
+    return data;
   } catch (err) {
     console.error("Error deleting character:", err);
     throw err;
@@ -119,10 +129,6 @@ export async function deleteCharacter(account, token, charId) {
  * PATCH character position
  * PATCH /api/characters/:accountId/:charId/position
  * Body: { x, y }
- *
- * NOTE: You generally do NOT need to call this manually from the client.
- * The socket server auto-saves position to MongoDB every ~5 seconds.
- * Use this only if you need an immediate/forced save (e.g. on logout).
  */
 export async function updateCharacterPosition(account, token, charId, { x, y }) {
   const accountId = getAccountId(account);
@@ -155,7 +161,7 @@ export async function updateCharacterPosition(account, token, charId, { x, y }) 
       return null;
     }
 
-    return data; // { ok: true }
+    return data;
   } catch (err) {
     console.error("Error updating character position:", err);
     return null;

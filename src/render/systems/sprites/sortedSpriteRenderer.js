@@ -316,7 +316,15 @@ function getPlayerMoveKind(p) {
   const moving = avx > WALK_EPS || avy > WALK_EPS;
 
   if (!moving) {
-    const facing = p?.facing === "left" ? "left" : p?.facing === "right" ? "right" : "down";
+    const facing =
+      p?.facing === "left"
+        ? "left"
+        : p?.facing === "right"
+        ? "right"
+        : p?.facing === "up"
+        ? "up"
+        : "down";
+
     if (facing === "left" || facing === "right") return "idleRight";
     if (facing === "up") return "idleUp";
     return "idleDown";
@@ -391,7 +399,10 @@ export function renderSortedSprites(
   }
 
   if (playersById) {
-    const ids = Array.isArray(playerIds) ? playerIds : Object.keys(playersById || {});
+    const ids = Array.isArray(playerIds)
+      ? playerIds
+      : Object.keys(playersById || {});
+
     for (const id of ids) {
       const p = playersById?.[id];
       if (!p) continue;
@@ -459,7 +470,8 @@ export function renderSortedSprites(
 
       const light = d.def?.light;
       if (light?.radius) {
-        const key = d.obj?._id || `${String(d.obj?.defId || "")}:${d.wx},${d.wy}`;
+        const key =
+          d.obj?._id || `${String(d.obj?.defId || "")}:${d.wx},${d.wy}`;
         drawLight(ctx, t, z, sx, sy, light, key);
       }
 

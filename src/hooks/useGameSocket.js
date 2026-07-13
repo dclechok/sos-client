@@ -1,14 +1,10 @@
-// hooks/useGameSocket.js (OPEN WORLD MMO — robust + production-safe)
-
 import { useEffect, useRef, useState, useCallback } from "react";
 import socket from "./socket";
 
 export function useGameSocket() {
   const [isReady, setIsReady] = useState(socket.connected);
-
   const [worldSeed, setWorldSeed] = useState(null);
   const [myId, setMyId] = useState(null);
-
   const [players, setPlayers] = useState({});
 
   const playersRef = useRef(players);
@@ -18,9 +14,6 @@ export function useGameSocket() {
 
   const pendingIdentifyRef = useRef(null);
 
-  /* ------------------------------------------------------
-     BACKWARDS COMPAT: useSocketEvent(eventName, callback)
-  ------------------------------------------------------ */
   const useSocketEvent = (eventName, callback) => {
     const cbRef = useRef(callback);
 
@@ -37,9 +30,6 @@ export function useGameSocket() {
     }, [eventName]);
   };
 
-  /* ------------------------------------------------------
-     BACKWARDS COMPAT: send(event, data)
-  ------------------------------------------------------ */
   const send = useCallback((event, data) => {
     if (!socket.connected) {
       console.warn("❌ Tried sending but socket is not connected:", event);
@@ -48,9 +38,6 @@ export function useGameSocket() {
     socket.emit(event, data);
   }, []);
 
-  /* ------------------------------------------------------
-     Core connection lifecycle (handles reconnect re-identify)
-  ------------------------------------------------------ */
   useEffect(() => {
     const onConnect = () => {
       setIsReady(true);
@@ -75,9 +62,6 @@ export function useGameSocket() {
     };
   }, []);
 
-  /* ------------------------------------------------------
-     world:init -> seed
-  ------------------------------------------------------ */
   useEffect(() => {
     const handler = (payload) => {
       if (!payload || !Number.isFinite(payload.worldSeed)) return;
@@ -88,10 +72,6 @@ export function useGameSocket() {
     return () => socket.off("world:init", handler);
   }, []);
 
-  /* ------------------------------------------------------
-     player:self -> my socket id + optional initial ship
-     ✅ includes role + name from server identify response
-  ------------------------------------------------------ */
   useEffect(() => {
     const handler = (payload) => {
       if (!payload?.id) return;
@@ -108,9 +88,16 @@ export function useGameSocket() {
             vx: Number(payload.ship.vx ?? 0),
             vy: Number(payload.ship.vy ?? 0),
             angle: Number(payload.ship.angle ?? 0),
+            facing: payload.ship.facing ?? prev[payload.id]?.facing ?? "right",
             name: payload.ship.name ?? prev[payload.id]?.name ?? null,
-            role: payload.ship.role ?? payload.role ?? prev[payload.id]?.role ?? "player",
+            role:
+              payload.ship.role ??
+              payload.role ??
+              prev[payload.id]?.role ??
+              "player",
             class: payload.ship.class ?? prev[payload.id]?.class ?? null,
+            appearance:
+              payload.ship.appearance ?? prev[payload.id]?.appearance ?? null,
           },
         }));
       }
@@ -120,10 +107,6 @@ export function useGameSocket() {
     return () => socket.off("player:self", handler);
   }, []);
 
-  /* ------------------------------------------------------
-     world:snapshot -> players
-     ✅ Merges positional data but PRESERVES role/name/class
-  ------------------------------------------------------ */
   useEffect(() => {
     const handler = (snap) => {
       if (!snap?.players || typeof snap.players !== "object") return;
@@ -146,9 +129,10 @@ export function useGameSocket() {
             angle: Number(p.angle ?? 0),
             facing: p.facing ?? existing.facing ?? "right",
             t,
-            name:  p.name  ?? existing.name  ?? null,
+            name: p.name ?? existing.name ?? null,
             class: p.class ?? existing.class ?? null,
-            role:  p.role  ?? existing.role  ?? "player",
+            role: p.role ?? existing.role ?? "player",
+            appearance: p.appearance ?? existing.appearance ?? null,
           };
         }
 
@@ -160,10 +144,6 @@ export function useGameSocket() {
     return () => socket.off("world:snapshot", handler);
   }, []);
 
-  /* ------------------------------------------------------
-     teleported -> snap local position immediately
-     ✅ Prevents next snapshot from rubber-banding back
-  ------------------------------------------------------ */
   useEffect(() => {
     const handler = ({ x, y }) => {
       if (!myId) return;
@@ -183,20 +163,12 @@ export function useGameSocket() {
     return () => socket.off("teleported", handler);
   }, [myId]);
 
-  /* ------------------------------------------------------
-     Server errors
-  ------------------------------------------------------ */
   useEffect(() => {
     const handler = (e) => console.log("⚠️ server error:", e);
     socket.on("sceneError", handler);
     return () => socket.off("sceneError", handler);
   }, []);
 
-  /* ------------------------------------------------------
-     OPEN WORLD API
-  ------------------------------------------------------ */
-
-  // ✅ identify now accepts an optional role to pass to the server as fallback
   const identify = useCallback((characterId, role) => {
     if (!characterId) return;
     const payload = { characterId, ...(role ? { role } : {}) };
@@ -228,20 +200,15 @@ export function useGameSocket() {
     socket,
     isReady,
     worldSeed,
-
     myId,
     players,
     me,
-
     send,
     useSocketEvent,
-
     identify,
-
     sendInput,
     moveTo,
     cancelMove,
-
     playersRef,
   };
 }

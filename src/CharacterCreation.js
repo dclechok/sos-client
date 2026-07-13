@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import "./styles/CharacterCreation.css";
 import { CHARACTER_CLASSES } from "./render/players/characterClasses";
 import { createCharacter } from "./api/characterApi";
-import CharacterSpritePreview from "./render/players/CharacterSpritePreview";
+import CharacterSpritePreview from "./render/players/characterSpritePreview";
 import {
   SKIN_TONES,
   EYE_COLORS,
@@ -90,7 +90,7 @@ export default function CharacterCreation({ account, onCreated, onCancel }) {
   }, [selectedClass]);
 
   const selectedSkinTone = useMemo(() => {
-    return getSkinToneById(skinToneId);
+    return getSkinToneById(skinToneId) || SKIN_TONES[0];
   }, [skinToneId]);
 
   const sanitizedName = useMemo(() => {
@@ -129,7 +129,7 @@ export default function CharacterCreation({ account, onCreated, onCancel }) {
         },
       });
 
-      onCreated?.(created);
+      onCreated?.(created?.character || created);
     } catch (e) {
       setErr(String(e?.message || "Failed to create character"));
     } finally {

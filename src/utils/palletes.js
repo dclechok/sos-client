@@ -74,16 +74,129 @@ export const SKIN_TONES = [
 ];
 
 export const EYE_COLORS = [
-  { id: "brown_dark", name: "Dark Brown", value: "#3b271b" },
-  { id: "brown", name: "Brown", value: "#5a3b2b" },
-  { id: "hazel", name: "Hazel", value: "#7a6a3a" },
-  { id: "green", name: "Green", value: "#4d6b45" },
-  { id: "gray", name: "Gray", value: "#6f737a" },
-  { id: "blue_gray", name: "Blue Gray", value: "#6a8094" },
-  { id: "blue", name: "Blue", value: "#4f73a8" },
-  { id: "amber", name: "Amber", value: "#9a6c26" },
+  // Browns
+  {
+    id: "brown_near_black",
+    name: "Near Black Brown",
+    value: "#241915",
+  },
+  {
+    id: "brown_deep",
+    name: "Deep Brown",
+    value: "#35231c",
+  },
+
+  // Hazel and amber
+  {
+    id: "hazel_dark",
+    name: "Dark Hazel",
+    value: "#5a4c2b",
+  },
+  {
+    id: "hazel",
+    name: "Hazel",
+    value: "#6d5d32",
+  },
+  {
+    id: "hazel_golden",
+    name: "Golden Hazel",
+    value: "#7b6937",
+  },
+  {
+    id: "amber_muted",
+    name: "Muted Amber",
+    value: "#77512c",
+  },
+
+  // Greens
+  {
+    id: "olive_dark",
+    name: "Dark Olive",
+    value: "#3f4a31",
+  },
+  {
+    id: "olive",
+    name: "Olive",
+    value: "#536044",
+  },
+  {
+    id: "green_hazel",
+    name: "Green Hazel",
+    value: "#59654a",
+  },
+  {
+    id: "green_soft",
+    name: "Soft Green",
+    value: "#4e6952",
+  },
+  {
+    id: "green_grey",
+    name: "Green Grey",
+    value: "#586b61",
+  },
+
+  // Blues
+  {
+    id: "blue_deep",
+    name: "Deep Blue",
+    value: "#354b61",
+  },
+  {
+    id: "blue_grey",
+    name: "Blue Grey",
+    value: "#526879",
+  },
+  {
+    id: "blue_soft",
+    name: "Soft Blue",
+    value: "#587389",
+  },
+  {
+    id: "blue_slate",
+    name: "Slate Blue",
+    value: "#4d6074",
+  },
+  {
+    id: "blue_ice_muted",
+    name: "Muted Ice Blue",
+    value: "#6f8797",
+  },
+
+  // Greys
+  {
+    id: "grey_dark",
+    name: "Dark Grey",
+    value: "#4a5054",
+  },
+  {
+    id: "grey_steel",
+    name: "Steel Grey",
+    value: "#5f6970",
+  },
+  {
+    id: "grey_light",
+    name: "Light Grey",
+    value: "#788086",
+  },
+
+  // Fantasy colors, still muted
+  {
+    id: "violet_grey",
+    name: "Violet Grey",
+    value: "#625b78",
+  },
+  {
+    id: "violet_soft",
+    name: "Soft Violet",
+    value: "#6e5f82",
+  },
+  {
+    id: "plum_muted",
+    name: "Muted Plum",
+    value: "#60465f",
+  },
 ];
 
 export function getSkinToneById(id) {
-  return SKIN_TONES.find((s) => s.id === id) || SKIN_TONES[2];
+  return SKIN_TONES.find((skinTone) => skinTone.id === id) || SKIN_TONES[2];
 }
