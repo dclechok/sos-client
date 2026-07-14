@@ -480,7 +480,7 @@ export default function CharacterSpritePreview({
   beardIndex = 0,
   showBeard = false,
   beardOffsetX = 0,
-  beardOffsetY = -9,
+  beardOffsetY = -8,
 
   frameIndex = 0,
   scale = 4,

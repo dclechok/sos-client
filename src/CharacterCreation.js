@@ -7,8 +7,14 @@ import {
 
 import "./styles/CharacterCreation.css";
 
-import { createCharacter } from "./api/characterApi";
-import { CHARACTER_CLASSES } from "./render/players/characterClasses";
+import {
+  createCharacter,
+} from "./api/characterApi";
+
+import {
+  CHARACTER_CLASSES,
+} from "./render/players/characterClasses";
+
 import CharacterSpritePreview from "./render/players/characterSpritePreview";
 
 import {
@@ -21,6 +27,9 @@ import CharacterAppearance, {
   getBeardStyleById,
   getHairStyleById,
 } from "./CharacterAppearance";
+
+const HAIR_STYLE_COUNT = 8;
+const BEARD_STYLE_COUNT = 1;
 
 const DEFAULT_STATS = {
   strength: 5,
@@ -40,44 +49,283 @@ const STAT_LABELS = {
   luck: "Luck",
 };
 
+/*
+ * Natural-looking fallback eye colors.
+ * Your EYE_COLORS palette is preferred when available.
+ */
+const NATURAL_EYE_COLORS = [
+  "#3b271b",
+  "#4a3022",
+  "#5a3b28",
+  "#6b4a2d",
+  "#755538",
+  "#4b5142",
+  "#52604d",
+  "#51636b",
+  "#465966",
+  "#647176",
+  "#6c7355",
+  "#70634f",
+];
+
+/*
+ * Natural-looking hair colors.
+ * Avoids neon, highly saturated, and unrealistic colors.
+ */
+const NATURAL_HAIR_COLORS = [
+  "#171312",
+  "#211816",
+  "#2b1d16",
+  "#352319",
+  "#422a1c",
+  "#503322",
+  "#61402a",
+  "#704b30",
+  "#805938",
+  "#936845",
+  "#a97852",
+  "#b88962",
+  "#c59b71",
+  "#d0ad82",
+  "#8a6f5b",
+  "#6b5a50",
+  "#554a45",
+  "#3e3835",
+  "#b7aea4",
+  "#d1c8bc",
+];
+
+/*
+ * Slight variations make randomized beard colors
+ * feel related to the hair without always being identical.
+ */
+const BEARD_COLOR_VARIATIONS = [
+  0,
+  -12,
+  -6,
+  8,
+  14,
+];
+
+function randomItem(items) {
+  if (
+    !Array.isArray(items) ||
+    items.length === 0
+  ) {
+    return null;
+  }
+
+  return items[
+    Math.floor(
+      Math.random() *
+        items.length
+    )
+  ];
+}
+
+function randomInteger(
+  minimum,
+  maximum
+) {
+  const min =
+    Math.ceil(minimum);
+
+  const max =
+    Math.floor(maximum);
+
+  return Math.floor(
+    Math.random() *
+      (max - min + 1)
+  ) + min;
+}
+
+function clampColorChannel(value) {
+  return Math.max(
+    0,
+    Math.min(
+      255,
+      Math.round(value)
+    )
+  );
+}
+
+function adjustHexBrightness(
+  hex,
+  amount
+) {
+  const clean =
+    String(hex || "")
+      .replace("#", "")
+      .trim();
+
+  if (
+    !/^[0-9a-fA-F]{6}$/.test(
+      clean
+    )
+  ) {
+    return "#2b1d16";
+  }
+
+  const red =
+    parseInt(
+      clean.slice(0, 2),
+      16
+    );
+
+  const green =
+    parseInt(
+      clean.slice(2, 4),
+      16
+    );
+
+  const blue =
+    parseInt(
+      clean.slice(4, 6),
+      16
+    );
+
+  return (
+    "#" +
+    [
+      clampColorChannel(
+        red + amount
+      ),
+      clampColorChannel(
+        green + amount
+      ),
+      clampColorChannel(
+        blue + amount
+      ),
+    ]
+      .map((channel) =>
+        channel
+          .toString(16)
+          .padStart(2, "0")
+      )
+      .join("")
+  );
+}
+
+function getRandomEyeColor() {
+  const paletteColors =
+    Array.isArray(EYE_COLORS)
+      ? EYE_COLORS
+          .map(
+            (entry) =>
+              entry?.value
+          )
+          .filter(Boolean)
+      : [];
+
+  return (
+    randomItem(
+      paletteColors.length
+        ? paletteColors
+        : NATURAL_EYE_COLORS
+    ) || "#3b271b"
+  );
+}
+
+function getRandomHairStyleId() {
+  /*
+   * Approximately 15% chance of no hair.
+   */
+  if (Math.random() < 0.15) {
+    return "none";
+  }
+
+  const index =
+    randomInteger(
+      0,
+      HAIR_STYLE_COUNT - 1
+    );
+
+  return `hair-${index}`;
+}
+
+function getRandomBeardStyleId() {
+  /*
+   * Approximately 55% chance of no beard.
+   * Increase this number if you want beards
+   * to appear less frequently.
+   */
+  if (Math.random() < 0.55) {
+    return "none";
+  }
+
+  const index =
+    randomInteger(
+      0,
+      BEARD_STYLE_COUNT - 1
+    );
+
+  return `beard-${index}`;
+}
+
 export default function CharacterCreation({
   account,
   onCreated,
   onCancel,
 }) {
-  const [charName, setCharName] =
-    useState("");
+  const [
+    charName,
+    setCharName,
+  ] = useState("");
 
-  const [classId, setClassId] = useState(
-    CHARACTER_CLASSES[0]?.id || ""
+  const [
+    classId,
+    setClassId,
+  ] = useState(
+    CHARACTER_CLASSES[0]?.id ||
+      ""
   );
 
-  const [skinToneId, setSkinToneId] =
-    useState(
-      SKIN_TONES[2]?.id ||
-        SKIN_TONES[0]?.id ||
-        ""
-    );
+  const [
+    skinToneId,
+    setSkinToneId,
+  ] = useState(
+    SKIN_TONES[2]?.id ||
+      SKIN_TONES[0]?.id ||
+      ""
+  );
 
-  const [eyeColor, setEyeColor] =
-    useState(
-      EYE_COLORS[0]?.value || "#3b271b"
-    );
+  const [
+    eyeColor,
+    setEyeColor,
+  ] = useState(
+    EYE_COLORS[0]?.value ||
+      "#3b271b"
+  );
 
-  const [hairStyle, setHairStyle] =
-    useState("none");
+  const [
+    hairStyle,
+    setHairStyle,
+  ] = useState("none");
 
-  const [hairColor, setHairColor] =
-    useState("#2b1d16");
+  const [
+    hairColor,
+    setHairColor,
+  ] = useState("#2b1d16");
 
-  const [beardStyle, setBeardStyle] =
-    useState("none");
+  const [
+    beardStyle,
+    setBeardStyle,
+  ] = useState("none");
 
-  const [beardColor, setBeardColor] =
-    useState("#2b1d16");
+  const [
+    beardColor,
+    setBeardColor,
+  ] = useState("#2b1d16");
 
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState("");
+  const [
+    busy,
+    setBusy,
+  ] = useState(false);
+
+  const [
+    err,
+    setErr,
+  ] = useState("");
 
   useEffect(() => {
     if (
@@ -90,25 +338,33 @@ export default function CharacterCreation({
     }
   }, [classId]);
 
-  const selectedClass = useMemo(() => {
-    return (
-      CHARACTER_CLASSES.find(
-        (characterClass) =>
-          characterClass.id === classId
-      ) || CHARACTER_CLASSES[0]
-    );
-  }, [classId]);
+  const selectedClass =
+    useMemo(() => {
+      return (
+        CHARACTER_CLASSES.find(
+          (
+            characterClass
+          ) =>
+            characterClass.id ===
+            classId
+        ) ||
+        CHARACTER_CLASSES[0]
+      );
+    }, [classId]);
 
   const selectedStats =
     selectedClass?.stats ||
     DEFAULT_STATS;
 
-  const selectedSkinTone = useMemo(() => {
-    return (
-      getSkinToneById(skinToneId) ||
-      SKIN_TONES[0]
-    );
-  }, [skinToneId]);
+  const selectedSkinTone =
+    useMemo(() => {
+      return (
+        getSkinToneById(
+          skinToneId
+        ) ||
+        SKIN_TONES[0]
+      );
+    }, [skinToneId]);
 
   const selectedHairStyle =
     useMemo(() => {
@@ -117,114 +373,218 @@ export default function CharacterCreation({
       );
     }, [hairStyle]);
 
-    const selectedBeardStyle =
-  useMemo(() => {
-    return getBeardStyleById(
-      beardStyle
-    );
-  }, [beardStyle]);
+  const selectedBeardStyle =
+    useMemo(() => {
+      return getBeardStyleById(
+        beardStyle
+      );
+    }, [beardStyle]);
 
-  const sanitizedName = useMemo(() => {
-    return String(charName || "")
-      .replace(
-        /[^a-zA-Z0-9 _'-]/g,
-        ""
+  const sanitizedName =
+    useMemo(() => {
+      return String(
+        charName || ""
       )
-      .replace(/\s+/g, " ")
-      .trim()
-      .slice(0, 16);
-  }, [charName]);
+        .replace(
+          /[^a-zA-Z0-9 _'-]/g,
+          ""
+        )
+        .replace(
+          /\s+/g,
+          " "
+        )
+        .trim()
+        .slice(0, 16);
+    }, [charName]);
 
-  const canSubmit = Boolean(
-    account?.id &&
-      account?.token &&
-      sanitizedName.length >= 3 &&
-      classId &&
-      !busy
-  );
+  const canSubmit =
+    Boolean(
+      (account?.id ||
+        account?._id) &&
+        account?.token &&
+        sanitizedName.length >=
+          3 &&
+        classId &&
+        !busy
+    );
 
-  const submit = useCallback(
-    async () => {
-      if (!canSubmit) {
+  const randomizeCharacter =
+    useCallback(() => {
+      if (busy) {
         return;
       }
 
       setErr("");
-      setBusy(true);
 
-      try {
-        const created =
-          await createCharacter(
-            account,
-            account.token,
-            {
-              charName:
-                sanitizedName,
-
-              classId,
-
-              appearance: {
-                skinToneId,
-                eyeColor,
-
-                hairStyle:
-                  selectedHairStyle.id,
-
-                hairIndex:
-                  selectedHairStyle.hairIndex,
-
-                hairColor,
-
-                beardStyle:
-                  selectedBeardStyle.id,
-
-                beardIndex:
-                  selectedBeardStyle.beardIndex,
-
-                beardColor,
-              },
-            }
-          );
-
-        onCreated?.(
-          created?.character ||
-            created
+      const randomSkinTone =
+        randomItem(
+          SKIN_TONES
         );
-      } catch (error) {
-        setErr(
-          String(
-            error?.message ||
-              "Failed to create character."
+
+      if (
+        randomSkinTone?.id
+      ) {
+        setSkinToneId(
+          randomSkinTone.id
+        );
+      }
+
+      setEyeColor(
+        getRandomEyeColor()
+      );
+
+      const nextHairStyle =
+        getRandomHairStyleId();
+
+      const nextHairColor =
+        randomItem(
+          NATURAL_HAIR_COLORS
+        ) || "#2b1d16";
+
+      setHairStyle(
+        nextHairStyle
+      );
+
+      setHairColor(
+        nextHairColor
+      );
+
+      const nextBeardStyle =
+        getRandomBeardStyleId();
+
+      setBeardStyle(
+        nextBeardStyle
+      );
+
+      if (
+        nextBeardStyle ===
+        "none"
+      ) {
+        setBeardColor(
+          nextHairColor
+        );
+      } else {
+        /*
+         * Most randomized beards match the hair.
+         * Some are slightly lighter or darker.
+         */
+        const brightnessChange =
+          randomItem(
+            BEARD_COLOR_VARIATIONS
+          ) ?? 0;
+
+        setBeardColor(
+          adjustHexBrightness(
+            nextHairColor,
+            brightnessChange
           )
         );
-      } finally {
-        setBusy(false);
       }
-    },
-    [
-      account,
-      beardColor,
-      canSubmit,
-      classId,
-      eyeColor,
-      hairColor,
-      onCreated,
-      sanitizedName,
-      selectedBeardStyle,
-      selectedHairStyle,
-      skinToneId,
-    ]
-  );
+
+      const randomClass =
+        randomItem(
+          CHARACTER_CLASSES
+        );
+
+      if (
+        randomClass?.id
+      ) {
+        setClassId(
+          randomClass.id
+        );
+      }
+    }, [busy]);
+
+  const submit =
+    useCallback(
+      async () => {
+        if (!canSubmit) {
+          return;
+        }
+
+        setErr("");
+        setBusy(true);
+
+        try {
+          const created =
+            await createCharacter(
+              account,
+              account.token,
+              {
+                charName:
+                  sanitizedName,
+
+                classId,
+
+                appearance: {
+                  skinToneId,
+
+                  eyeColor,
+
+                  hairStyle:
+                    selectedHairStyle.id,
+
+                  hairIndex:
+                    selectedHairStyle.hairIndex,
+
+                  hairColor,
+
+                  beardStyle:
+                    selectedBeardStyle.id,
+
+                  beardIndex:
+                    selectedBeardStyle.beardIndex,
+
+                  beardColor,
+                },
+              }
+            );
+
+          onCreated?.(
+            created?.character ||
+              created
+          );
+        } catch (error) {
+          setErr(
+            String(
+              error?.message ||
+                "Failed to create character."
+            )
+          );
+        } finally {
+          setBusy(false);
+        }
+      },
+      [
+        account,
+        beardColor,
+        canSubmit,
+        classId,
+        eyeColor,
+        hairColor,
+        onCreated,
+        sanitizedName,
+        selectedBeardStyle,
+        selectedHairStyle,
+        skinToneId,
+      ]
+    );
 
   useEffect(() => {
-    function handleKeyDown(event) {
-      if (event.key === "Enter") {
+    function handleKeyDown(
+      event
+    ) {
+      if (
+        event.key === "Enter"
+      ) {
         event.preventDefault();
         submit();
         return;
       }
 
-      if (event.key === "Escape") {
+      if (
+        event.key === "Escape"
+      ) {
         onCancel?.();
       }
     }
@@ -240,12 +600,17 @@ export default function CharacterCreation({
         handleKeyDown
       );
     };
-  }, [onCancel, submit]);
+  }, [
+    onCancel,
+    submit,
+  ]);
 
   return (
     <div
       className="cc-overlay"
-      onMouseDown={(event) =>
+      onMouseDown={(
+        event
+      ) =>
         event.stopPropagation()
       }
     >
@@ -256,16 +621,30 @@ export default function CharacterCreation({
         aria-labelledby="character-creation-title"
       >
         <header className="cc-header">
-          <div
-            id="character-creation-title"
-            className="cc-title"
-          >
-            Create Your Vessel
-          </div>
+          <div className="cc-header-main">
+            <div>
+              <div
+                id="character-creation-title"
+                className="cc-title"
+              >
+                Create Your Vessel
+              </div>
 
-          <div className="cc-sub">
-            Shape your form. Choose
-            your path. Enter the world.
+              <div className="cc-sub">
+                Shape your form. Choose your path. Enter the world.
+              </div>
+            </div>
+
+            <button
+              type="button"
+              className="cc-randomize-btn"
+              onClick={randomizeCharacter}
+              disabled={busy}
+              title="Generate a random appearance and class"
+            >
+              <span className="cc-randomize-icon">↻</span>
+              Randomize
+            </button>
           </div>
         </header>
 
@@ -273,29 +652,36 @@ export default function CharacterCreation({
           <aside className="cc-preview">
             <div className="cc-portrait">
               <CharacterSpritePreview
-                skinTone={selectedSkinTone}
-                eyeColor={eyeColor}
-
-                hairColor={hairColor}
+                skinTone={
+                  selectedSkinTone
+                }
+                eyeColor={
+                  eyeColor
+                }
+                hairColor={
+                  hairColor
+                }
                 hairIndex={
                   selectedHairStyle
                     .hairIndex ?? 0
                 }
                 showHair={
                   selectedHairStyle
-                    .hairIndex !== null
+                    .hairIndex !==
+                  null
                 }
-
-                beardColor={beardColor}
+                beardColor={
+                  beardColor
+                }
                 beardIndex={
                   selectedBeardStyle
                     .beardIndex ?? 0
                 }
                 showBeard={
                   selectedBeardStyle
-                    .beardIndex !== null
+                    .beardIndex !==
+                  null
                 }
-
                 scale={4}
               />
             </div>
@@ -374,9 +760,12 @@ export default function CharacterCreation({
               id="character-name"
               className="cc-input"
               value={charName}
-              onChange={(event) =>
+              onChange={(
+                event
+              ) =>
                 setCharName(
-                  event.target.value
+                  event.target
+                    .value
                 )
               }
               placeholder="e.g. Mourne, Selvek, Ithara..."
@@ -385,29 +774,48 @@ export default function CharacterCreation({
             />
 
             <div className="cc-hint">
-              3–16 characters. Letters,
-              numbers, spaces, apostrophe,
-              and hyphen.
+              3–16 characters.
+              Letters, numbers,
+              spaces, apostrophe, and
+              hyphen.
             </div>
 
             <div className="cc-divider" />
 
             <CharacterAppearance
-              skinToneId={skinToneId}
+              skinToneId={
+                skinToneId
+              }
               setSkinToneId={
                 setSkinToneId
               }
-              eyeColor={eyeColor}
-              setEyeColor={setEyeColor}
-              hairStyle={hairStyle}
-              setHairStyle={setHairStyle}
-              hairColor={hairColor}
-              setHairColor={setHairColor}
-              beardStyle={beardStyle}
+              eyeColor={
+                eyeColor
+              }
+              setEyeColor={
+                setEyeColor
+              }
+              hairStyle={
+                hairStyle
+              }
+              setHairStyle={
+                setHairStyle
+              }
+              hairColor={
+                hairColor
+              }
+              setHairColor={
+                setHairColor
+              }
+              beardStyle={
+                beardStyle
+              }
               setBeardStyle={
                 setBeardStyle
               }
-              beardColor={beardColor}
+              beardColor={
+                beardColor
+              }
               setBeardColor={
                 setBeardColor
               }
@@ -419,7 +827,9 @@ export default function CharacterCreation({
 
             <div className="cc-class-grid">
               {CHARACTER_CLASSES.map(
-                (characterClass) => {
+                (
+                  characterClass
+                ) => {
                   const active =
                     characterClass.id ===
                     classId;
@@ -510,3 +920,4 @@ export default function CharacterCreation({
     </div>
   );
 }
+
