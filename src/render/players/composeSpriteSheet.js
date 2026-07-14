@@ -322,6 +322,7 @@ function recolorBodySheet({
   image,
   skinTone,
   eyeColor,
+  isBlinking = false,
 }) {
   const {
     canvas,
@@ -436,13 +437,15 @@ function recolorBodySheet({
         red,
         green,
         blue,
-        BODY_SOURCE_COLORS.outline
+        BODY_SOURCE_COLORS.eyes
       )
     ) {
       setPixel(
         pixels,
         index,
-        outline
+        isBlinking
+          ? outline
+          : finalEyeColor
       );
 
       continue;
@@ -803,6 +806,8 @@ export async function composeSpriteSheet({
   eyeColor =
     DEFAULT_COLORS.eyes,
 
+  isBlinking = false,
+
   hairStyle = "none",
   hairIndex = null,
   hairColor =
@@ -844,7 +849,10 @@ export async function composeSpriteSheet({
       String(
         skinTone?.id || ""
       ),
-
+    isBlinking:
+      Boolean(
+        isBlinking
+      ),
     base:
       normalizeHex(
         skinTone?.base,
@@ -952,17 +960,19 @@ export async function composeSpriteSheet({
         `Body sprite must contain at least one ${FRAME_SIZE}×${FRAME_SIZE} frame.`
       );
     }
+  const recoloredBodySheet =
+    recolorBodySheet({
+      image:
+        bodyImage,
 
-    const recoloredBodySheet =
-      recolorBodySheet({
-        image:
-          bodyImage,
+      skinTone,
 
-        skinTone,
+      eyeColor:
+        appearanceKey.eyeColor,
 
-        eyeColor:
-          appearanceKey.eyeColor,
-      });
+      isBlinking:
+        appearanceKey.isBlinking,
+    });
 
     /*
      * For now, use the first 32×32 body frame,

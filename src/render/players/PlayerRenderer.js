@@ -21,32 +21,189 @@ function RuntimePlayerSprite({
   appearance,
   facing = "right",
 }) {
-  const canvasRef = useRef(null);
+  const canvasRef =
+    useRef(null);
+
+  const [
+    renderVersion,
+    setRenderVersion,
+  ] = useState(0);
+
+  const [
+    isBlinking,
+    setIsBlinking,
+  ] = useState(false);
 
   /*
-   * Forces a redraw after the asynchronous
-   * sprite composition finishes.
+   * Random blink timing.
    */
-  const [renderVersion, setRenderVersion] =
-    useState(0);
+  const BLINK_MIN_DELAY_MS =
+    2500;
+
+  const BLINK_MAX_DELAY_MS =
+    7500;
+
+  const BLINK_DURATION_MS =
+    120;
 
   /*
-   * Use a stable string dependency because an
-   * appearance object may be recreated without
-   * any actual values changing.
+   * Your composed sprite is 32×42.
+   *
+   * The body starts 10 pixels below the top
+   * because hair can extend upward.
+   *
+   * These bounds keep the eye search limited
+   * to the face area.
    */
-  const appearanceKey = useMemo(() => {
-    return JSON.stringify(
-      appearance || {}
-    );
-  }, [appearance]);
+  const FACE_LEFT = 7;
+  const FACE_RIGHT = 24;
+  const FACE_TOP = 12;
+  const FACE_BOTTOM = 24;
 
-  const sheetRecord = useMemo(() => {
-    return getPlayerSheetRecord(
-      appearance || {}
-    );
-  }, [appearanceKey]);
+  const appearanceKey =
+    useMemo(() => {
+      return JSON.stringify(
+        appearance || {}
+      );
+    }, [appearance]);
 
+  const sheetRecord =
+    useMemo(() => {
+      return getPlayerSheetRecord(
+        appearance || {}
+      );
+    }, [appearanceKey]);
+
+  /*
+   * Convert the currently selected eye color
+   * from hex into RGB values so we can locate
+   * those exact pixels on the composed canvas.
+   */
+  const eyeRgb =
+    useMemo(() => {
+      const fallback =
+        "#3b271b";
+
+      const raw =
+        String(
+          appearance?.eyeColor ||
+            fallback
+        )
+          .trim()
+          .toLowerCase();
+
+      const normalized =
+        /^#[0-9a-f]{6}$/.test(
+          raw
+        )
+          ? raw
+          : fallback;
+
+      return {
+        r:
+          parseInt(
+            normalized.slice(
+              1,
+              3
+            ),
+            16
+          ),
+
+        g:
+          parseInt(
+            normalized.slice(
+              3,
+              5
+            ),
+            16
+          ),
+
+        b:
+          parseInt(
+            normalized.slice(
+              5,
+              7
+            ),
+            16
+          ),
+      };
+    }, [
+      appearance?.eyeColor,
+    ]);
+
+  /*
+   * Give each character its own random blink
+   * schedule so everyone does not blink together.
+   */
+  useEffect(() => {
+    let blinkTimer = null;
+    let reopenTimer = null;
+    let cancelled = false;
+
+    function scheduleNextBlink() {
+      const delay =
+        BLINK_MIN_DELAY_MS +
+        Math.random() *
+          (
+            BLINK_MAX_DELAY_MS -
+            BLINK_MIN_DELAY_MS
+          );
+
+      blinkTimer =
+        window.setTimeout(
+          () => {
+            if (cancelled) {
+              return;
+            }
+
+            setIsBlinking(
+              true
+            );
+
+            reopenTimer =
+              window.setTimeout(
+                () => {
+                  if (
+                    cancelled
+                  ) {
+                    return;
+                  }
+
+                  setIsBlinking(
+                    false
+                  );
+
+                  scheduleNextBlink();
+                },
+                BLINK_DURATION_MS
+              );
+          },
+          delay
+        );
+    }
+
+    scheduleNextBlink();
+
+    return () => {
+      cancelled = true;
+
+      if (blinkTimer) {
+        window.clearTimeout(
+          blinkTimer
+        );
+      }
+
+      if (reopenTimer) {
+        window.clearTimeout(
+          reopenTimer
+        );
+      }
+    };
+  }, []);
+
+  /*
+   * Wait for the asynchronously composed sprite.
+   */
   useEffect(() => {
     let cancelled = false;
 
@@ -54,14 +211,21 @@ function RuntimePlayerSprite({
       sheetRecord.status ===
       "pending"
     ) {
-      sheetRecord.promise.then(() => {
-        if (!cancelled) {
-          setRenderVersion(
-            (current) =>
-              current + 1
-          );
-        }
-      });
+      sheetRecord.promise
+        .then(() => {
+          if (!cancelled) {
+            setRenderVersion(
+              (current) =>
+                current + 1
+            );
+          }
+        })
+        .catch(() => {
+          /*
+           * The runtime sheet record already
+           * stores and reports its own error.
+           */
+        });
     }
 
     return () => {
@@ -69,6 +233,17 @@ function RuntimePlayerSprite({
     };
   }, [sheetRecord]);
 
+  /*
+   * Redraw the original composed sprite every
+   * time the blink state changes.
+   *
+   * When blinking, eye-colored pixels are replaced
+   * with the closest nearby non-eye pixel.
+   *
+   * Extremely dark pixels are ignored so the eyelid
+   * is more likely to use a skin or skin-shadow color
+   * instead of the nearly black outline.
+   */
   useEffect(() => {
     const outputCanvas =
       canvasRef.current;
@@ -93,7 +268,11 @@ function RuntimePlayerSprite({
 
     const context =
       outputCanvas.getContext(
-        "2d"
+        "2d",
+        {
+          willReadFrequently:
+            true,
+        }
       );
 
     if (!context) {
@@ -115,9 +294,295 @@ function RuntimePlayerSprite({
       0,
       0
     );
+
+    /*
+     * When not blinking, the normal source sprite
+     * has already been drawn, so nothing else is needed.
+     */
+    if (!isBlinking) {
+      return;
+    }
+
+    const imageData =
+      context.getImageData(
+        0,
+        0,
+        outputCanvas.width,
+        outputCanvas.height
+      );
+
+    const pixels =
+      imageData.data;
+
+    const width =
+      outputCanvas.width;
+
+    const height =
+      outputCanvas.height;
+
+    const left =
+      Math.max(
+        0,
+        Math.min(
+          FACE_LEFT,
+          width - 1
+        )
+      );
+
+    const right =
+      Math.max(
+        left,
+        Math.min(
+          FACE_RIGHT,
+          width - 1
+        )
+      );
+
+    const top =
+      Math.max(
+        0,
+        Math.min(
+          FACE_TOP,
+          height - 1
+        )
+      );
+
+    const bottom =
+      Math.max(
+        top,
+        Math.min(
+          FACE_BOTTOM,
+          height - 1
+        )
+      );
+
+    const eyePixels = [];
+
+    /*
+     * Locate every pixel matching the selected eye
+     * color inside the defined face area.
+     */
+    for (
+      let y = top;
+      y <= bottom;
+      y += 1
+    ) {
+      for (
+        let x = left;
+        x <= right;
+        x += 1
+      ) {
+        const index =
+          (
+            y * width +
+            x
+          ) *
+          4;
+
+        const alpha =
+          pixels[index + 3];
+
+        if (alpha === 0) {
+          continue;
+        }
+
+        const matchesEye =
+          pixels[index] ===
+            eyeRgb.r &&
+          pixels[index + 1] ===
+            eyeRgb.g &&
+          pixels[index + 2] ===
+            eyeRgb.b;
+
+        if (matchesEye) {
+          eyePixels.push({
+            x,
+            y,
+            index,
+          });
+        }
+      }
+    }
+
+    /*
+     * Replace each eye pixel with the closest nearby
+     * non-eye pixel that is not extremely dark.
+     */
+    for (
+      const eyePixel of
+        eyePixels
+    ) {
+      let eyelidRed =
+        pixels[
+          eyePixel.index
+        ];
+
+      let eyelidGreen =
+        pixels[
+          eyePixel.index + 1
+        ];
+
+      let eyelidBlue =
+        pixels[
+          eyePixel.index + 2
+        ];
+
+      let closestDistance =
+        Number.POSITIVE_INFINITY;
+
+      for (
+        let offsetY = -2;
+        offsetY <= 2;
+        offsetY += 1
+      ) {
+        for (
+          let offsetX = -2;
+          offsetX <= 2;
+          offsetX += 1
+        ) {
+          if (
+            offsetX === 0 &&
+            offsetY === 0
+          ) {
+            continue;
+          }
+
+          const sampleX =
+            eyePixel.x +
+            offsetX;
+
+          const sampleY =
+            eyePixel.y +
+            offsetY;
+
+          if (
+            sampleX < 0 ||
+            sampleX >= width ||
+            sampleY < 0 ||
+            sampleY >= height
+          ) {
+            continue;
+          }
+
+          const sampleIndex =
+            (
+              sampleY *
+                width +
+              sampleX
+            ) *
+            4;
+
+          const sampleAlpha =
+            pixels[
+              sampleIndex + 3
+            ];
+
+          if (
+            sampleAlpha === 0
+          ) {
+            continue;
+          }
+
+          const sampleRed =
+            pixels[
+              sampleIndex
+            ];
+
+          const sampleGreen =
+            pixels[
+              sampleIndex + 1
+            ];
+
+          const sampleBlue =
+            pixels[
+              sampleIndex + 2
+            ];
+
+          const sampleIsEye =
+            sampleRed ===
+              eyeRgb.r &&
+            sampleGreen ===
+              eyeRgb.g &&
+            sampleBlue ===
+              eyeRgb.b;
+
+          if (sampleIsEye) {
+            continue;
+          }
+
+          /*
+           * Avoid choosing the nearly black face
+           * outline or eyebrow as the eyelid color.
+           */
+          const brightness =
+            sampleRed +
+            sampleGreen +
+            sampleBlue;
+
+          if (brightness < 120) {
+            continue;
+          }
+
+          const distance =
+            Math.abs(
+              offsetX
+            ) +
+            Math.abs(
+              offsetY
+            );
+
+          if (
+            distance <
+            closestDistance
+          ) {
+            closestDistance =
+              distance;
+
+            eyelidRed =
+              sampleRed;
+
+            eyelidGreen =
+              sampleGreen;
+
+            eyelidBlue =
+              sampleBlue;
+          }
+        }
+      }
+
+      /*
+       * Actually replace the eye pixel.
+       *
+       * This assignment was missing in the
+       * previous broken version.
+       */
+      pixels[
+        eyePixel.index
+      ] =
+        eyelidRed;
+
+      pixels[
+        eyePixel.index + 1
+      ] =
+        eyelidGreen;
+
+      pixels[
+        eyePixel.index + 2
+      ] =
+        eyelidBlue;
+    }
+
+    context.putImageData(
+      imageData,
+      0,
+      0
+    );
   }, [
-    sheetRecord,
+    appearanceKey,
+    eyeRgb,
+    isBlinking,
     renderVersion,
+    sheetRecord,
   ]);
 
   if (
@@ -162,7 +627,7 @@ export default function PlayerRenderer({
   predictedLocalPosRef,
 
   /*
-   * Your composed sprite is now:
+   * Your composed sprite is:
    *
    * 32 pixels wide
    * 42 pixels tall
@@ -193,18 +658,20 @@ export default function PlayerRenderer({
       ? players[myId]
       : null;
 
-  const meRef = useRef(null);
+  const meRef =
+    useRef(null);
 
   useEffect(() => {
     meRef.current = me;
   }, [me]);
 
-  const z = Math.max(
-    1,
-    Math.floor(
-      Number(zoom) || 1
-    )
-  );
+  const z =
+    Math.max(
+      1,
+      Math.floor(
+        Number(zoom) || 1
+      )
+    );
 
   const drawW =
     spriteW * z;
@@ -239,11 +706,13 @@ export default function PlayerRenderer({
       return {
         cx:
           rectangle.left +
-          rectangle.width / 2,
+          rectangle.width /
+            2,
 
         cy:
           rectangle.top +
-          rectangle.height / 2,
+          rectangle.height /
+            2,
 
         scale:
           rectangle.width
@@ -268,7 +737,9 @@ export default function PlayerRenderer({
         Number.isFinite(
           camera?.x
         )
-          ? Number(camera.x)
+          ? Number(
+              camera.x
+            )
           : Number(
               fallback.x || 0
             );
@@ -277,7 +748,9 @@ export default function PlayerRenderer({
         Number.isFinite(
           camera?.y
         )
-          ? Number(camera.y)
+          ? Number(
+              camera.y
+            )
           : Number(
               fallback.y || 0
             );
@@ -285,12 +758,14 @@ export default function PlayerRenderer({
       if (z > 1) {
         return {
           x:
-            Math.round(x * z) /
-            z,
+            Math.round(
+              x * z
+            ) / z,
 
           y:
-            Math.round(y * z) /
-            z,
+            Math.round(
+              y * z
+            ) / z,
         };
       }
 
@@ -307,7 +782,9 @@ export default function PlayerRenderer({
     useCallback(
       (value) => {
         const numeric =
-          Number(value || 0);
+          Number(
+            value || 0
+          );
 
         if (
           !Number.isFinite(
@@ -348,20 +825,30 @@ export default function PlayerRenderer({
         return {
           x:
             cx +
-            ((Number(
-              position.x || 0
-            ) -
-              camera.x) *
-              z) /
+            (
+              (
+                Number(
+                  position.x ||
+                    0
+                ) -
+                camera.x
+              ) *
+              z
+            ) /
               scale,
 
           y:
             cy +
-            ((Number(
-              position.y || 0
-            ) -
-              camera.y) *
-              z) /
+            (
+              (
+                Number(
+                  position.y ||
+                    0
+                ) -
+                camera.y
+              ) *
+              z
+            ) /
               scale,
         };
       },
@@ -391,14 +878,24 @@ export default function PlayerRenderer({
         return {
           x:
             camera.x +
-            ((clientX - cx) *
-              scale) /
+            (
+              (
+                clientX -
+                cx
+              ) *
+              scale
+            ) /
               z,
 
           y:
             camera.y +
-            ((clientY - cy) *
-              scale) /
+            (
+              (
+                clientY -
+                cy
+              ) *
+              scale
+            ) /
               z,
         };
       },
@@ -413,7 +910,10 @@ export default function PlayerRenderer({
 
   const getDisplayName =
     useCallback(
-      (id, player) => {
+      (
+        id,
+        player
+      ) => {
         const playerName =
           player?.name;
 
@@ -453,7 +953,10 @@ export default function PlayerRenderer({
 
         return `Player ${String(
           id
-        ).slice(0, 4)}`;
+        ).slice(
+          0,
+          4
+        )}`;
       },
       [
         playerNames,
@@ -463,93 +966,100 @@ export default function PlayerRenderer({
     );
 
   const normalizeRole =
-    useCallback((role) => {
-      const raw =
-        role &&
-        typeof role ===
-          "object"
-          ? role.name ??
-            role.role ??
-            role.type ??
-            role.title ??
-            role.key ??
-            role.rank ??
-            role.level ??
-            ""
-          : role;
+    useCallback(
+      (role) => {
+        const raw =
+          role &&
+          typeof role ===
+            "object"
+            ? role.name ??
+              role.role ??
+              role.type ??
+              role.title ??
+              role.key ??
+              role.rank ??
+              role.level ??
+              ""
+            : role;
 
-      return (
-        String(
-          raw || "player"
-        )
-          .trim()
-          .toLowerCase() ||
-        "player"
-      );
-    }, []);
+        return (
+          String(
+            raw ||
+              "player"
+          )
+            .trim()
+            .toLowerCase() ||
+          "player"
+        );
+      },
+      []
+    );
 
   // ── Chat bubbles ───────────────────────────────────────────
 
   useEffect(() => {
-    const ttlFor = (
-      text
-    ) =>
-      Math.max(
-        3000,
-        Math.min(
-          18000,
-          2000 +
-            String(
-              text || ""
-            ).length *
-              80
-        )
-      );
+    const ttlFor =
+      (text) =>
+        Math.max(
+          3000,
+          Math.min(
+            18000,
+            2000 +
+              String(
+                text || ""
+              ).length *
+                80
+          )
+        );
 
-    const onBubble = (
-      event
-    ) => {
-      const detail =
-        event?.detail || {};
+    const onBubble =
+      (event) => {
+        const detail =
+          event?.detail ||
+          {};
 
-      const message =
-        String(
-          detail.message || ""
-        ).trim();
+        const message =
+          String(
+            detail.message ||
+              ""
+          ).trim();
 
-      if (!message) {
-        return;
-      }
+        if (!message) {
+          return;
+        }
 
-      const key =
-        String(
-          detail.senderId ??
-            detail.user ??
-            ""
-        ).trim();
+        const key =
+          String(
+            detail.senderId ??
+              detail.user ??
+              ""
+          ).trim();
 
-      if (!key) {
-        return;
-      }
+        if (!key) {
+          return;
+        }
 
-      setBubbles(
-        (current) => ({
-          ...current,
+        setBubbles(
+          (current) => ({
+            ...current,
 
-          [key]: {
-            text: message,
+            [key]: {
+              text:
+                message,
 
-            expiresAt:
-              Date.now() +
-              ttlFor(message),
+              expiresAt:
+                Date.now() +
+                ttlFor(
+                  message
+                ),
 
-            role:
-              detail.role ??
-              null,
-          },
-        })
-      );
-    };
+              role:
+                detail.role ??
+                null,
+            },
+          })
+        );
+      };
 
     window.addEventListener(
       "chat:bubble",
@@ -580,9 +1090,10 @@ export default function PlayerRenderer({
             };
 
             for (
-              const key of Object.keys(
-                next
-              )
+              const key of
+                Object.keys(
+                  next
+                )
             ) {
               if (
                 now >=
@@ -614,7 +1125,10 @@ export default function PlayerRenderer({
 
   const getBubble =
     useCallback(
-      (id, player) => {
+      (
+        id,
+        player
+      ) => {
         const bubble =
           bubbles?.[
             String(id)
@@ -641,7 +1155,8 @@ export default function PlayerRenderer({
           ...bubble,
 
           alpha:
-            remaining < 1100
+            remaining <
+            1100
               ? remaining /
                 1100
               : 1,
@@ -724,7 +1239,10 @@ export default function PlayerRenderer({
 
   const onMoveTo =
     useCallback(
-      ({ x, y }) => {
+      ({
+        x,
+        y,
+      }) => {
         setMoveTarget(
           x,
           y
@@ -734,8 +1252,11 @@ export default function PlayerRenderer({
           socket.emit(
             "player:moveTo",
             {
-              x: Number(x),
-              y: Number(y),
+              x:
+                Number(x),
+
+              y:
+                Number(y),
             }
           );
         }
@@ -769,31 +1290,35 @@ export default function PlayerRenderer({
   }, [getMyPos]);
 
   useEffect(() => {
-    let animationFrame = 0;
+    let animationFrame =
+      0;
 
     let lastMilliseconds =
       performance.now();
 
-    const tick = (
-      nowMilliseconds
-    ) => {
-      stepPrediction(
-        Math.min(
-          (nowMilliseconds -
-            lastMilliseconds) /
-            1000,
-          0.05
-        )
-      );
-
-      lastMilliseconds =
-        nowMilliseconds;
-
-      animationFrame =
-        requestAnimationFrame(
-          tick
+    const tick =
+      (
+        nowMilliseconds
+      ) => {
+        stepPrediction(
+          Math.min(
+            (
+              nowMilliseconds -
+              lastMilliseconds
+            ) /
+              1000,
+            0.05
+          )
         );
-    };
+
+        lastMilliseconds =
+          nowMilliseconds;
+
+        animationFrame =
+          requestAnimationFrame(
+            tick
+          );
+      };
 
     animationFrame =
       requestAnimationFrame(
@@ -816,7 +1341,8 @@ export default function PlayerRenderer({
     useRemoteInterpolation({
       players,
       myId,
-      interpDelayMs: 120,
+      interpDelayMs:
+        120,
     });
 
   const visibleRemoteIds =
@@ -844,7 +1370,9 @@ export default function PlayerRenderer({
           "#e9e6f2"
         );
       },
-      [normalizeRole]
+      [
+        normalizeRole,
+      ]
     );
 
   const myRole =
@@ -861,7 +1389,9 @@ export default function PlayerRenderer({
           predictedPosition.x
         )
       : me
-        ? Math.round(me.x)
+        ? Math.round(
+            me.x
+          )
         : 0;
 
   const displayY =
@@ -870,7 +1400,9 @@ export default function PlayerRenderer({
           predictedPosition.y
         )
       : me
-        ? Math.round(me.y)
+        ? Math.round(
+            me.y
+          )
         : 0;
 
   /*
@@ -904,15 +1436,17 @@ export default function PlayerRenderer({
               getRenderState(
                 id
               ) || {
-                x: Number(
-                  player.x ||
-                    0
-                ),
+                x:
+                  Number(
+                    player.x ||
+                      0
+                  ),
 
-                y: Number(
-                  player.y ||
-                    0
-                ),
+                y:
+                  Number(
+                    player.y ||
+                      0
+                  ),
 
                 facing:
                   player?.facing ===
@@ -924,13 +1458,15 @@ export default function PlayerRenderer({
             const renderState = {
               ...rawRenderState,
 
-              x: snapWorld(
-                rawRenderState.x
-              ),
+              x:
+                snapWorld(
+                  rawRenderState.x
+                ),
 
-              y: snapWorld(
-                rawRenderState.y
-              ),
+              y:
+                snapWorld(
+                  rawRenderState.y
+                ),
             };
 
             const {
@@ -965,11 +1501,15 @@ export default function PlayerRenderer({
                     : ""
                 }`}
                 onMouseEnter={() =>
-                  setHoverId(id)
+                  setHoverId(
+                    id
+                  )
                 }
                 onMouseLeave={() =>
                   setHoverId(
-                    (current) =>
+                    (
+                      current
+                    ) =>
                       current ===
                       id
                         ? null
@@ -987,8 +1527,8 @@ export default function PlayerRenderer({
                    * Anchor the player's world position near
                    * the bottom-center of the 32×42 sprite.
                    *
-                   * This prevents the 10px hair overflow from
-                   * shifting the player's feet/world position.
+                   * This prevents the ten-pixel hair overflow
+                   * from shifting the player's feet.
                    */
                   transform:
                     `translate3d(` +
@@ -1055,19 +1595,27 @@ export default function PlayerRenderer({
             : ""
         }`}
         onMouseEnter={() =>
-          setHoverId(myId)
+          setHoverId(
+            myId
+          )
         }
         onMouseLeave={() =>
           setHoverId(
-            (current) =>
-              current === myId
+            (
+              current
+            ) =>
+              current ===
+              myId
                 ? null
                 : current
           )
         }
         style={{
-          width: drawW,
-          height: drawH,
+          width:
+            drawW,
+
+          height:
+            drawH,
 
           /*
            * Keep the player's feet at the screen center.
@@ -1102,7 +1650,9 @@ export default function PlayerRenderer({
                     bubble.alpha,
                 }}
               >
-                {bubble.text}
+                {
+                  bubble.text
+                }
 
                 <div className="pr-bubbleTail" />
               </div>

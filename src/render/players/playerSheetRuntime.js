@@ -34,6 +34,13 @@ export function getDefaultAppearance() {
 
     beardColor:
       "#2b1d16",
+
+    /*
+     * Temporary rendering state.
+     * This is not saved as part of the character.
+     */
+    isBlinking:
+      false,
   };
 }
 
@@ -126,6 +133,11 @@ export function normalizeAppearance(
           merged.hairColor ||
           "#2b1d16"
       ),
+
+    isBlinking:
+      Boolean(
+        merged.isBlinking
+      ),
   };
 }
 
@@ -208,6 +220,9 @@ export function getPlayerSheetRecord(
 
       beardColor:
         merged.beardColor,
+
+      isBlinking:
+        merged.isBlinking,
     })
       .then((canvas) => {
         record.status =
